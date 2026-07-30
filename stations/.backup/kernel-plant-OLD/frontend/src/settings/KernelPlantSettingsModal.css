@@ -1,0 +1,284 @@
+/* ============================================
+   KERNEL PLANT SETTINGS - MEWAH LIGHT THEME
+   Strictly following original layout dimensions
+   ============================================ */
+
+:root {
+  --scada-bg: #f8fafc;
+  --scada-card: #ffffff;
+  --scada-border: #e2e8f0;
+  --scada-primary: #f59e0b;
+  --scada-header: #ffdb3b;
+  --scada-text-primary: #0f172a;
+  --scada-text-secondary: #64748b;
+}
+
+.som-kernel-settings-modal {
+  width: 100%;
+  height: 100%;
+  background-color: var(--scada-bg);
+  color: var(--scada-text-primary);
+  display: flex;
+  flex-direction: column;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+.som-kernel-settings-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Card Styling */
+.som-kernel-monitor-panel {
+  background: var(--scada-card);
+  border: 1px solid var(--scada-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.som-monitoring-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.som-overall-label {
+  background: #22c55e;
+  color: white;
+  padding: 4px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.som-total-load-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.som-total-load-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--scada-text-secondary);
+  text-transform: uppercase;
+}
+
+/* Values Styling */
+.som-scada-value-box {
+  background: #f8fafc;
+  border: 1px solid var(--scada-border);
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.som-scada-value {
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.som-scada-unit {
+  font-size: 10px;
+  color: var(--scada-text-secondary);
+}
+
+/* SP Sections */
+.som-sp-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.som-sp-label-text {
+  font-size: 11px;
+  font-weight: 950;
+  color: var(--scada-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.som-sp-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+/* Silo Diagram Section */
+.som-silo-diagram-container {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.som-silo-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.som-silo-svg {
+  width: 100%;
+  max-width: 80px;
+  height: auto;
+}
+
+.som-mill-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.som-mill-name {
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--scada-text-primary);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.som-param-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.som-param-label {
+  font-size: 9px;
+  font-weight: 900;
+  color: var(--scada-text-secondary);
+  width: 25px;
+}
+.som-ltds-card {
+  background: var(--scada-card);
+  border: 1px solid var(--scada-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.som-ltds-header {
+  padding: 12px 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.som-ltds-badge {
+  background: #22c55e;
+  color: white;
+  padding: 4px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.som-minmax-row {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  padding: 12px;
+  background: #f8fafc;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.som-minmax-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.som-minmax-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.som-freq-input-box {
+  background: #ffffff;
+  border: 1px solid var(--scada-header);
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.som-freq-input-box input {
+  background: none;
+  border: none;
+  width: 45px;
+  text-align: right;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Table */
+.som-freq-table {
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 16px;
+}
+
+.som-freq-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.som-freq-range {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--scada-text-secondary);
+}
+
+/* Footer */
+.som-kernel-settings-footer {
+  padding: 12px 16px;
+  background: #ffffff;
+  border-top: 1px solid var(--scada-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.som-kernel-settings-btn--save {
+  background: var(--scada-primary);
+  color: white;
+  border: none;
+  padding: 10px 36px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  text-transform: uppercase;
+}

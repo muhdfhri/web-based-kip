@@ -1,0 +1,912 @@
+{
+  "tags": [
+    {
+      "id": 182,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 0,
+      "bit_offset": 0,
+      "data_type": "BOOL",
+      "tag_name": "start_idfan",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 183,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 0,
+      "bit_offset": 1,
+      "data_type": "BOOL",
+      "tag_name": "stop_idfan",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 184,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 0,
+      "bit_offset": 2,
+      "data_type": "BOOL",
+      "tag_name": "Start_fuel_feeder1",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 185,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 0,
+      "bit_offset": 3,
+      "data_type": "BOOL",
+      "tag_name": "Stop_fuel_feeder1",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 186,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 0,
+      "bit_offset": 4,
+      "data_type": "BOOL",
+      "tag_name": "Start_fuel_feeder2",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 187,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 0,
+      "bit_offset": 5,
+      "data_type": "BOOL",
+      "tag_name": "Stop_fuel_feeder2",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 188,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 0,
+      "bit_offset": 6,
+      "data_type": "BOOL",
+      "tag_name": "start_screw",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 189,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 0,
+      "bit_offset": 7,
+      "data_type": "BOOL",
+      "tag_name": "stop_screw",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 190,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 1,
+      "bit_offset": 0,
+      "data_type": "BOOL",
+      "tag_name": "start_waterpump1",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 191,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 1,
+      "bit_offset": 1,
+      "data_type": "BOOL",
+      "tag_name": "stop_waterpump1",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 192,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 1,
+      "bit_offset": 2,
+      "data_type": "BOOL",
+      "tag_name": "start_waterpump2",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 193,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 1,
+      "bit_offset": 3,
+      "data_type": "BOOL",
+      "tag_name": "stop_waterpump2",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 194,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 1,
+      "bit_offset": 4,
+      "data_type": "BOOL",
+      "tag_name": "start_ff_fan",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 195,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 1,
+      "bit_offset": 5,
+      "data_type": "BOOL",
+      "tag_name": "stop_ff_fan",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 196,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 1,
+      "bit_offset": 6,
+      "data_type": "BOOL",
+      "tag_name": "start_pa_fan",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 197,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 1,
+      "bit_offset": 7,
+      "data_type": "BOOL",
+      "tag_name": "stop_pa_fan",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 198,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 2,
+      "bit_offset": 0,
+      "data_type": "BOOL",
+      "tag_name": "start_sa_fan",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 199,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 2,
+      "bit_offset": 1,
+      "data_type": "BOOL",
+      "tag_name": "stop_sa_fan",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 200,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 2,
+      "bit_offset": 2,
+      "data_type": "BOOL",
+      "tag_name": "start_airlock",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 201,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 2,
+      "bit_offset": 3,
+      "data_type": "BOOL",
+      "tag_name": "stop_airlock",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 202,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 2,
+      "bit_offset": 4,
+      "data_type": "BOOL",
+      "tag_name": "start_dosingpump",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 203,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 2,
+      "bit_offset": 5,
+      "data_type": "BOOL",
+      "tag_name": "stop_dosingpump",
+      "access": "WRITE",
+      "enabled": 1
+    },
+    {
+      "id": 204,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 2,
+      "bit_offset": 6,
+      "data_type": "BOOL",
+      "tag_name": "low",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 205,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 2,
+      "bit_offset": 7,
+      "data_type": "BOOL",
+      "tag_name": "normal",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 206,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 3,
+      "bit_offset": 0,
+      "data_type": "BOOL",
+      "tag_name": "high",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 207,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 3,
+      "bit_offset": 1,
+      "data_type": "BOOL",
+      "tag_name": "high_high",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 208,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 3,
+      "bit_offset": 2,
+      "data_type": "BOOL",
+      "tag_name": "emergency",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 209,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 3,
+      "bit_offset": 3,
+      "data_type": "BOOL",
+      "tag_name": "Auto_soot_blowing",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 210,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 4,
+      "bit_offset": null,
+      "data_type": "REAL",
+      "tag_name": "Draft",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 211,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 8,
+      "bit_offset": null,
+      "data_type": "REAL",
+      "tag_name": "Temperatur",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 212,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 12,
+      "bit_offset": null,
+      "data_type": "REAL",
+      "tag_name": "Current_Ampere",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 213,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 16,
+      "bit_offset": null,
+      "data_type": "INT",
+      "tag_name": "Speed",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 214,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 18,
+      "bit_offset": null,
+      "data_type": "INT",
+      "tag_name": "steam_Pressure",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 215,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 20,
+      "bit_offset": null,
+      "data_type": "INT",
+      "tag_name": "steam_flow",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 216,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 22,
+      "bit_offset": null,
+      "data_type": "REAL",
+      "tag_name": "steam_temp",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 217,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 26,
+      "bit_offset": null,
+      "data_type": "REAL",
+      "tag_name": "water_level",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 218,
+      "plc_id": 15,
+      "db_number": 44,
+      "byte_offset": 30,
+      "bit_offset": null,
+      "data_type": "INT",
+      "tag_name": "water_flow",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 219,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 0,
+      "bit_offset": 0,
+      "data_type": "BOOL",
+      "tag_name": "fuel_feeder1",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 220,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 0,
+      "bit_offset": 1,
+      "data_type": "BOOL",
+      "tag_name": "fuel_feeder2",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 221,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 0,
+      "bit_offset": 2,
+      "data_type": "BOOL",
+      "tag_name": "FF_FAN",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 222,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 0,
+      "bit_offset": 3,
+      "data_type": "BOOL",
+      "tag_name": "SA_FAN",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 223,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 0,
+      "bit_offset": 4,
+      "data_type": "BOOL",
+      "tag_name": "PA_FAN",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 224,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 0,
+      "bit_offset": 5,
+      "data_type": "BOOL",
+      "tag_name": "SCREW",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 225,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 0,
+      "bit_offset": 6,
+      "data_type": "BOOL",
+      "tag_name": "AIRLOCK",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 226,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 0,
+      "bit_offset": 7,
+      "data_type": "BOOL",
+      "tag_name": "DOSING_PUMP",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 227,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 1,
+      "bit_offset": 0,
+      "data_type": "BOOL",
+      "tag_name": "FEED_WATERPUMP2",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 228,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 1,
+      "bit_offset": 1,
+      "data_type": "BOOL",
+      "tag_name": "FEED_WATERPUMP1",
+      "access": "READ",
+      "enabled": 1
+    },
+    {
+      "id": 229,
+      "plc_id": 15,
+      "db_number": 45,
+      "byte_offset": 1,
+      "bit_offset": 2,
+      "data_type": "BOOL",
+      "tag_name": "ID_FAN",
+      "access": "READ",
+      "enabled": 1
+    }
+  ],
+  "mappings": [
+    {
+      "id": 1,
+      "station": "BOILER_HOUSE",
+      "equipment": "STEAM PRESSURE",
+      "signal_key": "MONITOR",
+      "tag_id": 214,
+      "created_at": "2026-04-20T07:08:27.000Z",
+      "updated_at": "2026-04-20T07:08:27.000Z"
+    },
+    {
+      "id": 2,
+      "station": "BOILER_HOUSE",
+      "equipment": "STEAM FLOW",
+      "signal_key": "MONITOR",
+      "tag_id": 215,
+      "created_at": "2026-04-20T07:08:38.000Z",
+      "updated_at": "2026-04-20T07:08:38.000Z"
+    },
+    {
+      "id": 3,
+      "station": "BOILER_HOUSE",
+      "equipment": "STEAM TEMP",
+      "signal_key": "MONITOR",
+      "tag_id": 216,
+      "created_at": "2026-04-20T07:08:58.000Z",
+      "updated_at": "2026-04-20T07:08:58.000Z"
+    },
+    {
+      "id": 4,
+      "station": "BOILER_HOUSE",
+      "equipment": "WATER LEVEL",
+      "signal_key": "MONITOR",
+      "tag_id": 217,
+      "created_at": "2026-04-20T07:09:06.000Z",
+      "updated_at": "2026-04-20T07:09:06.000Z"
+    },
+    {
+      "id": 5,
+      "station": "BOILER_HOUSE",
+      "equipment": "WATER FLOW",
+      "signal_key": "MONITOR",
+      "tag_id": 218,
+      "created_at": "2026-04-20T07:09:14.000Z",
+      "updated_at": "2026-04-20T07:09:14.000Z"
+    },
+    {
+      "id": 6,
+      "station": "BOILER_HOUSE",
+      "equipment": "TEMPRATURE",
+      "signal_key": "MONITOR",
+      "tag_id": 211,
+      "created_at": "2026-04-20T07:11:45.000Z",
+      "updated_at": "2026-04-20T07:11:45.000Z"
+    },
+    {
+      "id": 7,
+      "station": "BOILER_HOUSE",
+      "equipment": "DRAFT",
+      "signal_key": "MONITOR",
+      "tag_id": 210,
+      "created_at": "2026-04-20T07:11:50.000Z",
+      "updated_at": "2026-04-20T07:11:50.000Z"
+    },
+    {
+      "id": 8,
+      "station": "BOILER_HOUSE",
+      "equipment": "DOSING PUMP",
+      "signal_key": "STATUS",
+      "tag_id": 226,
+      "created_at": "2026-04-20T07:16:22.000Z",
+      "updated_at": "2026-04-20T07:16:22.000Z"
+    },
+    {
+      "id": 9,
+      "station": "BOILER_HOUSE",
+      "equipment": "DOSING PUMP",
+      "signal_key": "START",
+      "tag_id": 202,
+      "created_at": "2026-04-20T07:16:22.000Z",
+      "updated_at": "2026-04-20T07:16:22.000Z"
+    },
+    {
+      "id": 10,
+      "station": "BOILER_HOUSE",
+      "equipment": "DOSING PUMP",
+      "signal_key": "STOP",
+      "tag_id": 203,
+      "created_at": "2026-04-20T07:16:22.000Z",
+      "updated_at": "2026-04-20T07:16:22.000Z"
+    },
+    {
+      "id": 11,
+      "station": "BOILER_HOUSE",
+      "equipment": "FEEDER 1",
+      "signal_key": "STATUS",
+      "tag_id": 219,
+      "created_at": "2026-04-20T07:17:16.000Z",
+      "updated_at": "2026-04-20T07:19:49.000Z"
+    },
+    {
+      "id": 12,
+      "station": "BOILER_HOUSE",
+      "equipment": "FEEDER 1",
+      "signal_key": "START",
+      "tag_id": 184,
+      "created_at": "2026-04-20T07:17:16.000Z",
+      "updated_at": "2026-04-20T07:19:49.000Z"
+    },
+    {
+      "id": 13,
+      "station": "BOILER_HOUSE",
+      "equipment": "FEEDER 1",
+      "signal_key": "STOP",
+      "tag_id": 185,
+      "created_at": "2026-04-20T07:17:16.000Z",
+      "updated_at": "2026-04-20T07:19:49.000Z"
+    },
+    {
+      "id": 14,
+      "station": "BOILER_HOUSE",
+      "equipment": "FEEDER 2",
+      "signal_key": "STATUS",
+      "tag_id": 220,
+      "created_at": "2026-04-20T07:17:16.000Z",
+      "updated_at": "2026-04-20T07:19:49.000Z"
+    },
+    {
+      "id": 15,
+      "station": "BOILER_HOUSE",
+      "equipment": "FEEDER 2",
+      "signal_key": "START",
+      "tag_id": 186,
+      "created_at": "2026-04-20T07:17:16.000Z",
+      "updated_at": "2026-04-20T07:19:49.000Z"
+    },
+    {
+      "id": 16,
+      "station": "BOILER_HOUSE",
+      "equipment": "FEEDER 2",
+      "signal_key": "STOP",
+      "tag_id": 187,
+      "created_at": "2026-04-20T07:17:16.000Z",
+      "updated_at": "2026-04-20T07:19:49.000Z"
+    },
+    {
+      "id": 23,
+      "station": "BOILER_HOUSE",
+      "equipment": "PUMP 1",
+      "signal_key": "STATUS",
+      "tag_id": 228,
+      "created_at": "2026-04-20T07:20:20.000Z",
+      "updated_at": "2026-04-20T07:20:20.000Z"
+    },
+    {
+      "id": 24,
+      "station": "BOILER_HOUSE",
+      "equipment": "PUMP 1",
+      "signal_key": "START",
+      "tag_id": 190,
+      "created_at": "2026-04-20T07:20:20.000Z",
+      "updated_at": "2026-04-20T07:20:20.000Z"
+    },
+    {
+      "id": 25,
+      "station": "BOILER_HOUSE",
+      "equipment": "PUMP 1",
+      "signal_key": "STOP",
+      "tag_id": 191,
+      "created_at": "2026-04-20T07:20:20.000Z",
+      "updated_at": "2026-04-20T07:20:20.000Z"
+    },
+    {
+      "id": 26,
+      "station": "BOILER_HOUSE",
+      "equipment": "PUMP 2",
+      "signal_key": "STATUS",
+      "tag_id": 227,
+      "created_at": "2026-04-20T07:20:20.000Z",
+      "updated_at": "2026-04-20T07:20:20.000Z"
+    },
+    {
+      "id": 27,
+      "station": "BOILER_HOUSE",
+      "equipment": "PUMP 2",
+      "signal_key": "START",
+      "tag_id": 192,
+      "created_at": "2026-04-20T07:20:20.000Z",
+      "updated_at": "2026-04-20T07:20:20.000Z"
+    },
+    {
+      "id": 28,
+      "station": "BOILER_HOUSE",
+      "equipment": "PUMP 2",
+      "signal_key": "STOP",
+      "tag_id": 193,
+      "created_at": "2026-04-20T07:20:20.000Z",
+      "updated_at": "2026-04-20T07:20:20.000Z"
+    },
+    {
+      "id": 29,
+      "station": "BOILER_HOUSE",
+      "equipment": "IDF FAN",
+      "signal_key": "STATUS",
+      "tag_id": 229,
+      "created_at": "2026-04-20T07:20:47.000Z",
+      "updated_at": "2026-04-20T07:20:47.000Z"
+    },
+    {
+      "id": 30,
+      "station": "BOILER_HOUSE",
+      "equipment": "IDF FAN",
+      "signal_key": "START",
+      "tag_id": 182,
+      "created_at": "2026-04-20T07:20:47.000Z",
+      "updated_at": "2026-04-20T07:20:47.000Z"
+    },
+    {
+      "id": 31,
+      "station": "BOILER_HOUSE",
+      "equipment": "IDF FAN",
+      "signal_key": "STOP",
+      "tag_id": 183,
+      "created_at": "2026-04-20T07:20:47.000Z",
+      "updated_at": "2026-04-20T07:20:47.000Z"
+    },
+    {
+      "id": 32,
+      "station": "BOILER_HOUSE",
+      "equipment": "SCREW",
+      "signal_key": "STATUS",
+      "tag_id": 224,
+      "created_at": "2026-04-20T07:21:03.000Z",
+      "updated_at": "2026-04-20T07:21:03.000Z"
+    },
+    {
+      "id": 33,
+      "station": "BOILER_HOUSE",
+      "equipment": "SCREW",
+      "signal_key": "START",
+      "tag_id": 188,
+      "created_at": "2026-04-20T07:21:03.000Z",
+      "updated_at": "2026-04-20T07:21:03.000Z"
+    },
+    {
+      "id": 34,
+      "station": "BOILER_HOUSE",
+      "equipment": "SCREW",
+      "signal_key": "STOP",
+      "tag_id": 189,
+      "created_at": "2026-04-20T07:21:03.000Z",
+      "updated_at": "2026-04-20T07:21:03.000Z"
+    },
+    {
+      "id": 35,
+      "station": "BOILER_HOUSE",
+      "equipment": "AIRLOCK",
+      "signal_key": "STATUS",
+      "tag_id": 225,
+      "created_at": "2026-04-20T07:21:21.000Z",
+      "updated_at": "2026-04-20T07:21:21.000Z"
+    },
+    {
+      "id": 36,
+      "station": "BOILER_HOUSE",
+      "equipment": "AIRLOCK",
+      "signal_key": "START",
+      "tag_id": 200,
+      "created_at": "2026-04-20T07:21:21.000Z",
+      "updated_at": "2026-04-20T07:21:21.000Z"
+    },
+    {
+      "id": 37,
+      "station": "BOILER_HOUSE",
+      "equipment": "AIRLOCK",
+      "signal_key": "STOP",
+      "tag_id": 201,
+      "created_at": "2026-04-20T07:21:21.000Z",
+      "updated_at": "2026-04-20T07:21:21.000Z"
+    },
+    {
+      "id": 38,
+      "station": "BOILER_HOUSE",
+      "equipment": "FF FAN",
+      "signal_key": "STATUS",
+      "tag_id": 221,
+      "created_at": "2026-04-20T07:22:09.000Z",
+      "updated_at": "2026-04-20T07:22:09.000Z"
+    },
+    {
+      "id": 39,
+      "station": "BOILER_HOUSE",
+      "equipment": "FF FAN",
+      "signal_key": "START",
+      "tag_id": 194,
+      "created_at": "2026-04-20T07:22:09.000Z",
+      "updated_at": "2026-04-20T07:22:09.000Z"
+    },
+    {
+      "id": 40,
+      "station": "BOILER_HOUSE",
+      "equipment": "FF FAN",
+      "signal_key": "STOP",
+      "tag_id": 195,
+      "created_at": "2026-04-20T07:22:09.000Z",
+      "updated_at": "2026-04-20T07:22:09.000Z"
+    },
+    {
+      "id": 41,
+      "station": "BOILER_HOUSE",
+      "equipment": "SD FAN",
+      "signal_key": "STATUS",
+      "tag_id": 222,
+      "created_at": "2026-04-20T07:22:55.000Z",
+      "updated_at": "2026-04-20T07:22:55.000Z"
+    },
+    {
+      "id": 42,
+      "station": "BOILER_HOUSE",
+      "equipment": "SD FAN",
+      "signal_key": "START",
+      "tag_id": 198,
+      "created_at": "2026-04-20T07:22:55.000Z",
+      "updated_at": "2026-04-20T07:22:55.000Z"
+    },
+    {
+      "id": 43,
+      "station": "BOILER_HOUSE",
+      "equipment": "SD FAN",
+      "signal_key": "STOP",
+      "tag_id": 199,
+      "created_at": "2026-04-20T07:22:55.000Z",
+      "updated_at": "2026-04-20T07:22:55.000Z"
+    },
+    {
+      "id": 44,
+      "station": "BOILER_HOUSE",
+      "equipment": "FD FAN",
+      "signal_key": "STATUS",
+      "tag_id": 223,
+      "created_at": "2026-04-20T07:23:13.000Z",
+      "updated_at": "2026-04-20T07:23:13.000Z"
+    },
+    {
+      "id": 45,
+      "station": "BOILER_HOUSE",
+      "equipment": "FD FAN",
+      "signal_key": "START",
+      "tag_id": 196,
+      "created_at": "2026-04-20T07:23:13.000Z",
+      "updated_at": "2026-04-20T07:23:13.000Z"
+    },
+    {
+      "id": 46,
+      "station": "BOILER_HOUSE",
+      "equipment": "FD FAN",
+      "signal_key": "STOP",
+      "tag_id": 197,
+      "created_at": "2026-04-20T07:23:13.000Z",
+      "updated_at": "2026-04-20T07:23:13.000Z"
+    },
+    {
+      "id": 48,
+      "station": "BOILER_HOUSE",
+      "equipment": "SPEED",
+      "signal_key": "MONITOR",
+      "tag_id": 213,
+      "created_at": "2026-04-20T09:18:20.000Z",
+      "updated_at": "2026-04-20T09:18:20.000Z"
+    },
+    {
+      "id": 49,
+      "station": "BOILER_HOUSE",
+      "equipment": "CURRENT",
+      "signal_key": "MONITOR",
+      "tag_id": 212,
+      "created_at": "2026-04-20T09:18:33.000Z",
+      "updated_at": "2026-04-20T09:18:33.000Z"
+    }
+  ]
+}
