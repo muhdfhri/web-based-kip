@@ -34,15 +34,6 @@ export const ValveSVG = ({ x, y, id, type = 'actuator', status, opening, label, 
  * Reusable Sensor SVG Component
  */
 export const SensorCardSVG = ({ x, y, id, label, value, unit, equipmentName, trendType, onClick }) => {
-    let displayValue = value;
-    if (value !== null && value !== undefined) {
-        if (typeof value === 'number') {
-            displayValue = value.toFixed(1);
-        } else if (typeof value === 'string' && value.trim() !== '' && !isNaN(Number(value))) {
-            displayValue = Number(value).toFixed(1);
-        }
-    }
-
     return (
         <g id={id} className="svg-equipment sensor-group" onClick={() => onClick && onClick(id)}>
             <foreignObject x={x - 60} y={y - 35} width="120" height="70" style={{ overflow: 'visible' }}>
@@ -51,7 +42,7 @@ export const SensorCardSVG = ({ x, y, id, label, value, unit, equipmentName, tre
                         {label || equipmentName}
                     </div>
                     <div className="som-dig-card-body" style={{ padding: '6px 10px', display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '3px' }}>
-                        <span className="som-dig-value" style={{ fontSize: '18px', fontWeight: '900' }}>{displayValue}</span>
+                        <span className="som-dig-value" style={{ fontSize: '18px', fontWeight: '900' }}>{value}</span>
                         <span className="som-dig-unit" style={{ fontSize: '11px', fontWeight: '800', opacity: 0.7 }}>{unit}</span>
                     </div>
                 </div>
@@ -125,22 +116,12 @@ export const MaintenanceCardSVG = ({ x, y, id, label, params = [], onClick }) =>
                         <span className="som-boiler-mini-tag">{label}</span>
                     </div>
                     <div className="som-boiler-mini-body">
-                        {params.map((p, i) => {
-                            let displayValue = p.value;
-                            if (p.value !== null && p.value !== undefined) {
-                                if (typeof p.value === 'number') {
-                                    displayValue = p.value.toFixed(1);
-                                } else if (typeof p.value === 'string' && p.value.trim() !== '' && !isNaN(Number(p.value))) {
-                                    displayValue = Number(p.value).toFixed(1);
-                                }
-                            }
-                            return (
-                                <div key={i} className="som-boiler-mini-param">
-                                    <span className="som-boiler-mini-label">{p.label}</span>
-                                    <span className="som-boiler-mini-value">{displayValue}<span className="som-boiler-mini-unit">{p.unit}</span></span>
-                                </div>
-                            );
-                        })}
+                        {params.map((p, i) => (
+                            <div key={i} className="som-boiler-mini-param">
+                                <span className="som-boiler-mini-label">{p.label}</span>
+                                <span className="som-boiler-mini-value">{p.value}<span className="som-boiler-mini-unit">{p.unit}</span></span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </foreignObject>
@@ -156,25 +137,15 @@ export const SummaryTableSVG = ({ x, y, title, data }) => (
         <div className="som-minimal-card" style={{ padding: '10px' }}>
             <div className="som-minimal-header" style={{ marginBottom: '8px', fontSize: '12px' }}>{title}</div>
             <div className="som-minimal-body">
-                {data.map((row, i) => {
-                    let displayValue = row.value;
-                    if (row.value !== null && row.value !== undefined) {
-                        if (typeof row.value === 'number') {
-                            displayValue = row.value.toFixed(1);
-                        } else if (typeof row.value === 'string' && row.value.trim() !== '' && !isNaN(Number(row.value))) {
-                            displayValue = Number(row.value).toFixed(1);
-                        }
-                    }
-                    return (
-                        <div key={i} className="som-minimal-row" style={{ padding: '4px 0' }}>
-                            <span className="som-minimal-label" style={{ fontSize: '11px' }}>{row.label}</span>
-                            <div>
-                                <span className="som-minimal-value" style={{ fontSize: '13px' }}>{displayValue}</span>
-                                <span className="som-minimal-unit" style={{ fontSize: '10px' }}>{row.unit}</span>
-                            </div>
+                {data.map((row, i) => (
+                    <div key={i} className="som-minimal-row" style={{ padding: '4px 0' }}>
+                        <span className="som-minimal-label" style={{ fontSize: '11px' }}>{row.label}</span>
+                        <div>
+                            <span className="som-minimal-value" style={{ fontSize: '13px' }}>{row.value}</span>
+                            <span className="som-minimal-unit" style={{ fontSize: '10px' }}>{row.unit}</span>
                         </div>
-                    );
-                })}
+                    </div>
+                ))}
             </div>
         </div>
     </foreignObject>
@@ -305,7 +276,7 @@ export function StatusGraphPopup({ position, equipmentName, type = 'Pressure', v
                 <div className="som-amp-popup-title">{type} Trend</div>
                 <div className="som-amp-popup-subtitle">
                     <span>{equipmentName}</span>
-                    <span>Current: {value.toFixed(1)} {unit}</span>
+                    <span>Current: {value.toFixed(2)} {unit}</span>
                 </div>
             </div>
             <div className="som-amp-popup-body">

@@ -128,7 +128,7 @@
    ========================================================= */
 .som-settings-columns-container {
   display: grid;
-  grid-template-columns: 1.18fr 0.92fr 0.9fr;
+  grid-template-columns: 1.4fr 0.70fr 0.9fr;
   gap: 6px;
   flex: 1;
   min-height: 0;
@@ -331,7 +331,7 @@
   min-width: 0 !important;
   justify-content: center !important;
   text-align: center !important;
-  height: 22px !important;
+  height: 18px !important;
   border-color: #ffe082 !important;
   font-size: 9px !important;
   padding: 0 !important;
@@ -342,7 +342,7 @@
   min-width: 0 !important;
   justify-content: center !important;
   text-align: center !important;
-  height: 17px !important;
+  height: 13px !important;
   border-color: #ffe082 !important;
   font-size: 8px !important;
   padding: 0 !important;
@@ -353,16 +353,16 @@
   min-width: 0 !important;
   justify-content: center !important;
   text-align: center !important;
-  height: 19px !important;
+  height: 15px !important;
   border-color: #ffe082 !important;
   font-size: 9px !important;
   padding: 0 !important;
 }
 
 .som-ster-page .som-ultra-table .som-val-box--editable:hover {
-  background: rgba(255, 219, 59, 0.25) !important;
+  background: rgba(255, 219, 59, 0.15) !important;
   border-color: #f59e0b !important;
-  box-shadow: none !important;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4) !important;
 }
 
 /* Recipe dropdown */
@@ -665,7 +665,7 @@
 
 /* Specific size for val boxes inside the bottom score panels */
 .som-ster-page .som-score-bottom-panels .som-val-box {
-  height: 22px !important;
+  height: 18px !important;
   font-size: 9px !important;
 }
 
@@ -777,7 +777,7 @@
   width: 40px !important;
   justify-content: center !important;
   padding: 1px 0 !important;
-  height: 22px !important;
+  height: 18px !important;
   font-size: 9px !important;
 }
 
@@ -845,7 +845,7 @@
 
 /* Card 3 specific val boxes size override */
 .som-ster-page .som-logic-section .som-val-box {
-  height: 22px !important;
+  height: 18px !important;
   font-size: 9.5px !important;
 }
 
@@ -899,7 +899,7 @@
   width: 58px !important;
   flex-shrink: 0 !important;
   cursor: default !important;
-  height: 20px !important;
+  height: 14px !important;
   box-sizing: border-box !important;
 }
 
@@ -914,25 +914,13 @@
 .som-ster-page .som-val-box--editable {
   cursor: pointer !important;
   border-color: #ffdb3b !important;
-  transition: none !important;
-  position: relative !important;
-}
-
-.som-ster-page .som-val-box--editable::after {
-  content: "" !important;
-  position: absolute !important;
-  top: -8px !important;
-  bottom: -8px !important;
-  left: -8px !important;
-  right: -8px !important;
-  cursor: pointer !important;
-  z-index: 10 !important;
+  transition: all 0.2s !important;
 }
 
 .som-ster-page .som-val-box--editable:hover {
-  background: rgba(255, 219, 59, 0.15) !important;
+  background: rgba(255, 219, 59, 0.1) !important;
   border-color: #f59e0b !important;
-  box-shadow: none !important;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.3) !important;
 }
 
 .som-ster-page .som-val-unit {
@@ -1281,8 +1269,4 @@
   flex-direction: column;
   gap: 2px;
   justify-content: center;
-}
-.som-edited-field {
-  outline: 2px solid #fef08a !important;
-  outline-offset: -2px;
 }

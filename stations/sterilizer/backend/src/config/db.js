@@ -13,7 +13,7 @@ export const dbPool = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "kip_station_user",
   password: dbPassword,
-  database: process.env.DB_NAME || "mewah_sterilizer",
+  database: process.env.DB_NAME || "mewah_pis_sterilizer_trial",
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

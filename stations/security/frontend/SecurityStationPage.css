@@ -114,6 +114,13 @@
     overflow: hidden;
 }
 
+.som-security-content.tab-queues,
+.som-security-content.tab-cctv,
+.som-security-content.tab-incidents,
+.som-security-content.tab-dashboard {
+    grid-template-columns: 1fr;
+}
+
 .som-security-main-panel {
     display: flex;
     flex-direction: column;

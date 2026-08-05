@@ -33,7 +33,7 @@ app.get("/health", (_req, res) => {
 });
 
 // ── Start Server & Redis Alarm Worker ──
-const serverInstance = app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", () => {
   const jwtSecretPreview =
     (process.env.JWT_SECRET || "jwt_change_me_in_production").substring(0, 8) +
     "...";
@@ -48,13 +48,4 @@ const serverInstance = app.listen(PORT, "0.0.0.0", () => {
       err.message,
     );
   });
-});
-
-serverInstance.on("error", (err) => {
-  if (err.code === "EADDRINUSE") {
-    console.error(`[station-${STATION_SLUG}] FATAL: Port ${PORT} is already in use. Exiting.`);
-    process.exit(1);
-  } else {
-    throw err;
-  }
 });

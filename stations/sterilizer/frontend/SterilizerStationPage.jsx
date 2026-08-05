@@ -90,9 +90,9 @@ const TagEditorModal = ({
           cursor: "pointer",
         }}
       >
-        <option value="" style={{ background: "#0f172a", color: "#e2e8f0" }}>— No Tag —</option>
+        <option value="">— No Tag —</option>
         {tagList.map((tag) => (
-          <option key={tag.id} value={tag.id} style={{ background: "#0f172a", color: "#e2e8f0" }}>
+          <option key={tag.id} value={tag.id}>
             {tag.tag_name}
           </option>
         ))}
@@ -363,6 +363,8 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
     return () => clearInterval(timer);
   }, []);
 
+
+
   const [hoverData, setHoverData] = useState(null);
   const [tagEdit, setTagEdit] = useState(null);
   const [tagMap, setTagMap] = useState({});
@@ -370,6 +372,11 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
   const [savingTags, setSavingTags] = useState(false);
   const [realtimeData, setRealtimeData] = useState({});
   const tags = usePlcStore((state) => state.tags);
+  const initSocket = usePlcStore((state) => state.initSocket);
+
+  useEffect(() => {
+    if (initSocket) initSocket();
+  }, [initSocket]);
 
   useEffect(() => {
     let active = true;
@@ -398,51 +405,9 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
   }, []);
 
   const getMappedValue = useCallback((equipment, signalKey, defaultValue) => {
-    if (signalKey === "CYCLE_TIME" || signalKey === "TOTAL_CYCLE_TIME") {
-      const minKey = `${equipment}__${signalKey}_MIN`;
-      const secKey = `${equipment}__${signalKey}_SEC`;
-      const minTagId = tagMap[minKey];
-      const secTagId = tagMap[secKey];
-
-      if (!minTagId && !secTagId) {
-        return "No Tag";
-      }
-
-      let minLive = "--";
-      if (minTagId) {
-        const minTagObj = availableTags.find((t) => String(t.id) === String(minTagId));
-        if (minTagObj) {
-          const val = tags[minTagObj.tag_name]?.value !== undefined
-            ? tags[minTagObj.tag_name].value
-            : realtimeData[minTagObj.tag_name];
-          if (val !== undefined && val !== null && val !== "--") {
-            const num = parseInt(val, 10);
-            minLive = isNaN(num) ? String(val) : String(num).padStart(2, "0");
-          }
-        }
-      }
-
-      let secLive = "--";
-      if (secTagId) {
-        const secTagObj = availableTags.find((t) => String(t.id) === String(secTagId));
-        if (secTagObj) {
-          const val = tags[secTagObj.tag_name]?.value !== undefined
-            ? tags[secTagObj.tag_name].value
-            : realtimeData[secTagObj.tag_name];
-          if (val !== undefined && val !== null && val !== "--") {
-            const num = parseInt(val, 10);
-            secLive = isNaN(num) ? String(val) : String(num).padStart(2, "0");
-          }
-        }
-      }
-
-      if (minLive === "--" && secLive === "--") return "--";
-      return `${minLive}:${secLive}`;
-    }
-
     const key = `${equipment}__${signalKey}`;
     const tagId = tagMap[key];
-    if (!tagId) {
+    if (!tagId || tagId === "null" || tagId === "undefined" || tagId === "none" || tagId === "") {
       return "No Tag";
     }
 
@@ -509,9 +474,11 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
         if (data.success && Array.isArray(data.data)) {
           const restored = {};
           data.data.forEach((mapping) => {
-            restored[`${mapping.equipment}__${mapping.signal_key}`] = String(
-              mapping.tag_id,
-            );
+            if (mapping.tag_id !== null && mapping.tag_id !== undefined && String(mapping.tag_id) !== "null" && String(mapping.tag_id) !== "") {
+              restored[`${mapping.equipment}__${mapping.signal_key}`] = String(
+                mapping.tag_id,
+              );
+            }
           });
           setTagMap(restored);
         }
@@ -535,7 +502,7 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
         .map(([key, tagId]) => {
           const [equipment, signal_key] = key.split("__");
           return {
-            station: "STERILIZER",
+            station: "sterilizer",
             equipment,
             signal_key,
             tag_id: tagId ? Number(tagId) : null,
@@ -558,7 +525,7 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
 
         const result = await res.json();
         if (!res.ok || !result.success) {
-          throw new Error(result.message || "Failed to save station mappings");
+          throw new Error(result.error || result.message || "Failed to save station mappings");
         }
       }
 
@@ -709,11 +676,10 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
     loadRecipesFromDb();
   }, []);
 
-  // Helper for Time Labels
   const getTrendTimeRange = useCallback(() => {
     const now = Date.now();
-    let durationMs = 5 * 60 * 60 * 1000; // 5 hours default
-    let stepMs = 1 * 60 * 60 * 1000; // 1 hour step
+    let durationMs = 5 * 60 * 60 * 1000;
+    let stepMs = 1 * 60 * 60 * 1000;
     
     if (trendPeriod === "2H") {
       durationMs = 2 * 60 * 60 * 1000;
@@ -788,8 +754,7 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
     const fetchTrendData = async () => {
       try {
         const { start, end } = getTrendTimeRange();
-        const url = `/api/sterilizer/monitor/historical?start=${start}&end=${end}`;
-        const res = await fetch(url, {
+        const res = await fetch(`/api/sterilizer/monitor/historical?start=${start}&end=${end}&period=${trendPeriod}`, {
           headers: authHeaders(),
         });
         if (res.ok) {
@@ -806,7 +771,7 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
     fetchTrendData();
     let interval;
     if (trendOffset === 0) {
-      interval = setInterval(fetchTrendData, 10000); // 10s refresh in live mode
+      interval = setInterval(fetchTrendData, 10000);
     }
     return () => {
       active = false;
@@ -819,6 +784,7 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
     const rect = svg.getBoundingClientRect();
     const x = e.clientX - rect.left;
 
+    // Adjust for internal padding (matches CSS padding: 0 15px)
     const padding = 15;
     const plotWidth = rect.width - padding * 2;
     const relativeX = Math.max(0, Math.min(plotWidth, x - padding));
@@ -826,20 +792,20 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
     const index = Math.round(
       (relativeX / plotWidth) * (trendData.resolution - 1),
     );
+    const labels = getXAxisLabels(trendPeriod);
 
-    const { start, end } = getTrendTimeRange();
-    const resolution = trendData.resolution || 60;
-    const timeMs = start + (index / (resolution - 1 || 1)) * (end - start);
-    const t = new Date(timeMs);
-    const dateStr = t.toLocaleDateString("id-ID", {
+    // Format timestamp with Date
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("id-ID", {
       day: "2-digit",
       month: "short",
     });
-    const timeLabel = t.toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    }).replace(/\./g, ":");
+    let timeLabel = "";
+
+    if (trendPeriod === "H")
+      timeLabel = `${now.getHours().toString().padStart(2, "0")}:${labels[index]}`;
+    else if (trendPeriod === "D") timeLabel = `${labels[index]}:00`;
+    else timeLabel = `Tgl ${labels[index]}`;
 
     setHoverData({
       index,
@@ -933,39 +899,36 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
           ];
         } else if (id.endsWith("_summary")) {
           signals = [
-            { key: "STATUS", label: "Status" },
-            { key: "ACTUAL_STEP", label: "Actual Step" },
-            { key: "TOTAL_TIME", label: "Total Time (minute)" },
-            { key: "STEP_TIME", label: "Step Time (minute)" },
-            { key: "CYCLE_TIME_MIN", label: "Cycle Time - Minute" },
-            { key: "CYCLE_TIME_SEC", label: "Cycle Time - Second" },
-            { key: "TOTAL_CYCLE_TIME_MIN", label: "Total Cycle Time - Minute" },
-            { key: "TOTAL_CYCLE_TIME_SEC", label: "Total Cycle Time - Second" },
-            { key: "PRESSURE", label: "Pressure (Bar)" },
+            { key: "CURRENT_STEP", label: "Current Step" },
+            { key: "TOTAL_TIME", label: "Total Sterilization Time" },
+            { key: "PREV_TIME", label: "Previous Sterilization Time" },
+            { key: "PREV_CYCLE", label: "Previous Cycle Time" },
+            { key: "SCORE", label: "Sterilizer Score" },
           ];
         } else if (id.endsWith("_status")) {
           signals = [
             { key: "STATUS", label: "Status" },
-            { key: "ACTUAL_STEP", label: "Actual Step" },
-            { key: "TOTAL_TIME", label: "Total Time (minute)" },
-            { key: "STEP_TIME", label: "Step Time (minute)" },
-            { key: "CYCLE_TIME_MIN", label: "Cycle Time - Minute" },
-            { key: "CYCLE_TIME_SEC", label: "Cycle Time - Second" },
-            { key: "TOTAL_CYCLE_TIME_MIN", label: "Total Cycle Time - Minute" },
-            { key: "TOTAL_CYCLE_TIME_SEC", label: "Total Cycle Time - Second" },
-            { key: "PRESSURE", label: "Pressure (Bar)" },
+            { key: "STEP", label: "Actual Step" },
+            { key: "TOTAL_TIME", label: "Total Time" },
+            { key: "DOOR_IN", label: "Door (In)" },
+            { key: "DOOR_OUT", label: "Door (Out)" },
+            { key: "PRESSURE", label: "Pressure" },
+            { key: "TEMP", label: "Temperature" },
           ];
         } else if (id.endsWith("_valve_auto")) {
           signals = [
             { key: "MIN", label: "Min (%)" },
             { key: "MAX", label: "Max (%)" },
-            { key: "SETPOINT", label: "Setpoint (bar)" },
-            { key: "CONTROL_RANGE_LOW", label: "Control Range Low (bar)" },
+            { key: "SETPOINT", label: "Setpoint (Bar)" },
+            { key: "CONTROL_RANGE_LOW", label: "Control Low (Bar)" },
           ];
         } else if (id.endsWith("_valve_manual")) {
           signals = [
             { key: "SET_VALUE", label: "Set Value (%)" },
-            { key: "HIGH_TEMP", label: "High Temp (C)" },
+          ];
+        } else if (id.endsWith("_high_temp")) {
+          signals = [
+            { key: "SETPOINT", label: "High Temp (°C)" },
           ];
         }
       }
@@ -977,251 +940,253 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
     console.log(`Equipment clicked: ${id}`);
   };
 
-// Logic Simulations
-const st1_inlet = "0.0";
-const st1_exhaust = "CLOSE";
-const st1_cond = "OPEN";
+  // Logic Simulations
+  const st1_inlet = "0.0";
+  const st1_exhaust = "CLOSE";
+  const st1_cond = "OPEN";
 
-const st2_inlet = "0.2";
-const st2_exhaust = "CLOSE";
-const st2_cond = "CLOSE";
+  const st2_inlet = "0.2";
+  const st2_exhaust = "CLOSE";
+  const st2_cond = "CLOSE";
 
-const st3_inlet = "100.0";
-const st3_exhaust = "CLOSE";
-const st3_cond = "CLOSE";
+  const st3_inlet = "45.0";
+  const st3_exhaust = "CLOSE";
+  const st3_cond = "CLOSE";
 
-const st4_inlet = "0.1";
-const st4_exhaust = "CLOSE";
-const st4_cond = "CLOSE";
+  const st4_inlet = "0.1";
+  const st4_exhaust = "CLOSE";
+  const st4_cond = "CLOSE";
 
-return (
-  <section className="som-sterilizer-station">
-    {!showSettings && (
-      <header className="som-sterilizer-station-header">
-        <div className="som-header-left">
-          <h2 className="som-sterilizer-station-title">Sterilizer Station</h2>
-          <div className="som-station-tabs">
-            <button
-              className={`som-station-tab ${activeTab === "ai-grading" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("ai-grading");
-                setShowSettings(false);
-              }}
-            >
-              AI GRADING - FFB
-            </button>
-            <button
-              className={`som-station-tab ${activeTab === "overview" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("overview");
-                setShowSettings(false);
-              }}
-            >
-              Overview
-            </button>
-            <button
-              className={`som-station-tab ${activeTab === "line1" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("line1");
-                setShowSettings(false);
-              }}
-            >
-              Line 1
-            </button>
-            <button
-              className={`som-station-tab ${activeTab === "line2" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("line2");
-                setShowSettings(false);
-              }}
-            >
-              Line 2
-            </button>
-            <button
-              className={`som-station-tab ${activeTab === "line3" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("line3");
-                setShowSettings(false);
-              }}
-            >
-              Line 3
-            </button>
-            <button
-              className={`som-station-tab ${activeTab === "line4" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("line4");
-                setShowSettings(false);
-              }}
-            >
-              Line 4
-            </button>
-            <button
-              className={`som-station-tab ${activeTab === "trend" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("trend");
-                setShowSettings(false);
-              }}
-            >
-              Trend
-            </button>
-            <button
-              className={`som-station-tab ${activeTab === "bpv" ? "active" : ""}`}
-              onClick={() => {
-                setActiveTab("bpv");
-                setShowSettings(false);
-              }}
-            >
-              BPV
-            </button>
+  return (
+    <section className="som-sterilizer-station">
+      {!showSettings && (
+        <header className="som-sterilizer-station-header">
+          <div className="som-header-left">
+            <h2 className="som-sterilizer-station-title">Sterilizer Station</h2>
+            <div className="som-station-tabs">
+              <button
+                className={`som-station-tab ${activeTab === "ai-grading" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("ai-grading");
+                  setShowSettings(false);
+                }}
+              >
+                AI GRADING - FFB
+              </button>
+              <button
+                className={`som-station-tab ${activeTab === "overview" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("overview");
+                  setShowSettings(false);
+                }}
+              >
+                Overview
+              </button>
+              <button
+                className={`som-station-tab ${activeTab === "line1" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("line1");
+                  setShowSettings(false);
+                }}
+              >
+                Line 1
+              </button>
+              <button
+                className={`som-station-tab ${activeTab === "line2" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("line2");
+                  setShowSettings(false);
+                }}
+              >
+                Line 2
+              </button>
+              <button
+                className={`som-station-tab ${activeTab === "line3" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("line3");
+                  setShowSettings(false);
+                }}
+              >
+                Line 3
+              </button>
+              <button
+                className={`som-station-tab ${activeTab === "line4" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("line4");
+                  setShowSettings(false);
+                }}
+              >
+                Line 4
+              </button>
+              <button
+                className={`som-station-tab ${activeTab === "trend" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("trend");
+                  setShowSettings(false);
+                }}
+              >
+                Trend
+              </button>
+              <button
+                className={`som-station-tab ${activeTab === "bpv" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("bpv");
+                  setShowSettings(false);
+                }}
+              >
+                BPV
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div
-          className="som-view-toggle-container"
-          style={{ marginLeft: "auto", display: "flex", gap: "10px" }}
-        >
-          <button
-            className={`som-view-btn ${!showSettings && viewMode === "process" ? "active" : ""}`}
-            onClick={() => {
-              setViewMode("process");
-              setShowSettings(false);
-            }}
+          <div
+            className="som-view-toggle-container"
+            style={{ marginLeft: "auto", display: "flex", gap: "10px" }}
           >
-            PROCESS VIEW
-          </button>
-          <button
-            className="som-view-btn"
-            disabled
-            style={{
-              cursor: "not-allowed",
-              opacity: 0.6,
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            MAINTENANCE VIEW
-            <svg
-              width="10"
-              height="12"
-              viewBox="0 0 448 512"
-              fill="currentColor"
-              style={{ marginLeft: "4px" }}
-            >
-              <path d="M400 224h-24v-72C376 68.2 307.8 0 224 0S72 68.2 72 152v72H48c-26.5 0-48 21.5-48 48v192c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V272c0-26.5-21.5-48-48-48zm-104 0H152v-72c0-39.7 32.3-72 72-72s72 32.3 72 72v72z" />
-            </svg>
-          </button>
-          {onSelectSubmenu && (
             <button
-              className={`som-view-btn ${showSettings ? "active" : ""}`}
-              onClick={() => setShowSettings(true)}
-              style={{ marginLeft: "8px" }}
+              className={`som-view-btn ${!showSettings && viewMode === "process" ? "active" : ""}`}
+              onClick={() => {
+                setViewMode("process");
+                setShowSettings(false);
+              }}
             >
-              ⚙️ SETTINGS
+              PROCESS VIEW
             </button>
+            <button
+              className="som-view-btn"
+              disabled
+              style={{
+                cursor: "not-allowed",
+                opacity: 0.6,
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              MAINTENANCE VIEW
+              <svg
+                width="10"
+                height="12"
+                viewBox="0 0 448 512"
+                fill="currentColor"
+                style={{ marginLeft: "4px" }}
+              >
+                <path d="M400 224h-24v-72C376 68.2 307.8 0 224 0S72 68.2 72 152v72H48c-26.5 0-48 21.5-48 48v192c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48V272c0-26.5-21.5-48-48-48zm-104 0H152v-72c0-39.7 32.3-72 72-72s72 32.3 72 72v72z" />
+              </svg>
+            </button>
+
+            {onSelectSubmenu && (
+                <button
+                  className={`som-view-btn ${showSettings ? "active" : ""}`}
+                  onClick={() => setShowSettings(true)}
+                  style={{ marginLeft: "8px" }}
+                >
+                  ⚙️ SETTINGS
+                </button>
+            )}
+          </div>
+        </header>
+      )}
+
+      {showSettings ? (
+        <SterilizerStationSettingsPage
+          onClose={() => setShowSettings(false)}
+          onSelectSubmenu={onSelectSubmenu}
+          recipes={recipes}
+          setRecipes={setRecipes}
+          editingLine={editingLine}
+          setEditingLine={setEditingLine}
+          toggleStatus={toggleStatus}
+          handleRecipeChange={handleRecipeChange}
+          configMode={configMode}
+          handleEquipmentClick={handleEquipmentClick}
+          tagMap={tagMap}
+        />
+      ) : (
+        <div className="som-sterilizer-station-main" style={{ position: 'relative' }}>
+
+          {activeTab === "ai-grading" ? (
+            <AiGradingTab
+              configMode={configMode}
+              availableTags={availableTags}
+              tagMap={tagMap}
+            />
+          ) : activeTab === "trend" ? (
+            <TrendTab
+              trendPeriod={trendPeriod}
+              setTrendPeriod={setTrendPeriod}
+              showTrendSettings={showTrendSettings}
+              setShowTrendSettings={setShowTrendSettings}
+              currentDateTime={currentDateTime}
+              handleTrendMouseMove={handleTrendMouseMove}
+              handleTrendMouseLeave={handleTrendMouseLeave}
+              getResolution={getResolution}
+              trendData={trendData}
+              hoverData={hoverData}
+              getXAxisLabels={getXAxisLabels}
+              getMappedValue={getMappedValue}
+              trendOffset={trendOffset}
+              setTrendOffset={setTrendOffset}
+              getTrendTimeRange={getTrendTimeRange}
+            />
+          ) : activeTab === "bpv" ? (
+            <BpvTab
+              viewMode={viewMode}
+              bpvMakeup={bpvMakeup}
+              bpvBlowoff={bpvBlowoff}
+              bpvMode={bpvMode}
+              bpvMakeupPos={bpvMakeupPos}
+              bpvBlowoffPos={bpvBlowoffPos}
+              setBpvMakeup={setBpvMakeup}
+              setBpvBlowoff={setBpvBlowoff}
+              setBpvMode={setBpvMode}
+              setBpvMakeupPos={setBpvMakeupPos}
+              setBpvBlowoffPos={setBpvBlowoffPos}
+              handleEquipmentClick={handleEquipmentClick}
+              getMappedValue={getMappedValue}
+              configMode={configMode}
+              tagMap={tagMap}
+            />
+          ) : (
+            <OverviewTab
+              activeTab={activeTab}
+              viewMode={viewMode}
+              handleEquipmentClick={handleEquipmentClick}
+              condColor={condColor}
+              st1_inlet={st1_inlet}
+              st1_exhaust={st1_exhaust}
+              st1_cond={st1_cond}
+              st2_inlet={st2_inlet}
+              st2_exhaust={st2_exhaust}
+              st2_cond={st2_cond}
+              st3_inlet={st3_inlet}
+              st3_exhaust={st3_exhaust}
+              st3_cond={st3_cond}
+              st4_inlet={st4_inlet}
+              st4_exhaust={st4_exhaust}
+              st4_cond={st4_cond}
+              getMappedValue={getMappedValue}
+              configMode={configMode}
+              tagMap={tagMap}
+            />
           )}
+
+
         </div>
-      </header>
-    )}
+      )}
 
-    {showSettings ? (
-      <SterilizerStationSettingsPage
-        onClose={() => setShowSettings(false)}
-        onSelectSubmenu={onSelectSubmenu}
-        recipes={recipes}
-        setRecipes={setRecipes}
-        editingLine={editingLine}
-        setEditingLine={setEditingLine}
-        toggleStatus={toggleStatus}
-        handleRecipeChange={handleRecipeChange}
-        configMode={configMode}
-        handleEquipmentClick={handleEquipmentClick}
-        tagMap={tagMap}
-        availableTags={availableTags}
-        realtimeData={realtimeData}
-      />
-    ) : (
-      <div className="som-sterilizer-station-main">
-        {activeTab === "ai-grading" ? (
-          <AiGradingTab
-            configMode={configMode}
-            availableTags={availableTags}
-            tagMap={tagMap}
-          />
-        ) : activeTab === "trend" ? (
-          <TrendTab
-            trendPeriod={trendPeriod}
-            setTrendPeriod={setTrendPeriod}
-            showTrendSettings={showTrendSettings}
-            setShowTrendSettings={setShowTrendSettings}
-            currentDateTime={currentDateTime}
-            handleTrendMouseMove={handleTrendMouseMove}
-            handleTrendMouseLeave={handleTrendMouseLeave}
-            getResolution={getResolution}
-            trendData={trendData}
-            hoverData={hoverData}
-            getXAxisLabels={getXAxisLabels}
-            getMappedValue={getMappedValue}
-            trendOffset={trendOffset}
-            setTrendOffset={setTrendOffset}
-            getTrendTimeRange={getTrendTimeRange}
-          />
-        ) : activeTab === "bpv" ? (
-          <BpvTab
-            viewMode={viewMode}
-            bpvMakeup={bpvMakeup}
-            bpvBlowoff={bpvBlowoff}
-            bpvMode={bpvMode}
-            bpvMakeupPos={bpvMakeupPos}
-            bpvBlowoffPos={bpvBlowoffPos}
-            setBpvMakeup={setBpvMakeup}
-            setBpvBlowoff={setBpvBlowoff}
-            setBpvMode={setBpvMode}
-            setBpvMakeupPos={setBpvMakeupPos}
-            setBpvBlowoffPos={setBpvBlowoffPos}
-            handleEquipmentClick={handleEquipmentClick}
-            getMappedValue={getMappedValue}
-            configMode={configMode}
-            tagMap={tagMap}
-          />
-        ) : (
-          <OverviewTab
-            activeTab={activeTab}
-            viewMode={viewMode}
-            handleEquipmentClick={handleEquipmentClick}
-            condColor={condColor}
-            st1_inlet={st1_inlet}
-            st1_exhaust={st1_exhaust}
-            st1_cond={st1_cond}
-            st2_inlet={st2_inlet}
-            st2_exhaust={st2_exhaust}
-            st2_cond={st2_cond}
-            st3_inlet={st3_inlet}
-            st3_exhaust={st3_exhaust}
-            st3_cond={st3_cond}
-            st4_inlet={st4_inlet}
-            st4_exhaust={st4_exhaust}
-            st4_cond={st4_cond}
-            getMappedValue={getMappedValue}
-            configMode={configMode}
-            tagMap={tagMap}
-            trendData={trendData}
-          />
-        )}
-      </div>
-    )}
-
-    {tagEdit && (
-      <TagEditorModal
-        data={tagEdit}
-        onClose={() => setTagEdit(null)}
-        onSave={handleTagSave}
-        tagMap={tagMap}
-        availableTags={availableTags}
-        saving={savingTags}
-      />
-    )}
-  </section>
-);
+      {tagEdit && (
+        <TagEditorModal
+          data={tagEdit}
+          onClose={() => setTagEdit(null)}
+          onSave={handleTagSave}
+          tagMap={tagMap}
+          availableTags={availableTags}
+          saving={savingTags}
+        />
+      )}
+    </section>
+  );
 }
+
 export default SterilizerStationPage;

@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import './EngineRoomPage.css'
+import { useWTFlowBuilder, WTFlowOverlay, WTFlowPanel } from './components/WTFlowBuilder.jsx'
 
 // Assets
 import engineRoomImageUrl from './assets/engine-room.webp'
@@ -447,7 +448,7 @@ const TagEditorModal = ({
  */
 const GenericMiniCard = ({ x, y, title, params, status = "active", width = 110, height = 80, utilization = null, configMode = false, onTagEdit = null, cardId = null }) => (
     <foreignObject x={x} y={y} width={width} height={height + (utilization ? 15 : 0)} style={{ overflow: 'visible' }}>
-        <div 
+        <div
             className={`som-boiler-mini-card ${configMode ? 'som-editable' : ''}`}
             onClick={(e) => {
                 if (configMode && onTagEdit && cardId) {
@@ -479,58 +480,224 @@ const GenericMiniCard = ({ x, y, title, params, status = "active", width = 110, 
 )
 
 /**
- * Simple Box Component for Header Bar
+ * Universal Engine Room SCADA Card — Sterilizer-Matched Theme
+ * All styles are inline to prevent CSS class conflicts with parent theme.
  */
-const PowerBox = ({ x, y, label, value, colorClass = "green" }) => (
-    <foreignObject x={x} y={y} width="145" height="65" style={{ overflow: 'visible' }}>
-        <div className={`som-power-dist-box ${colorClass}`}>
-            <span className="box-label">{label}</span>
-            <span className="box-value">{value} <span className="box-unit">KW</span></span>
-        </div>
-    </foreignObject>
-)
+const EngineCard = ({ x, y, width = 145, height = 70, title, status = "active", children, onClick, isEditable }) => {
+    const headerH = 26;
+    return (
+        <foreignObject x={x} y={y} width={width} height={height} style={{ overflow: 'visible' }}>
+            <div
+                xmlns="http://www.w3.org/1999/xhtml"
+                onClick={onClick}
+                style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                    cursor: onClick ? 'pointer' : 'default',
+                    fontFamily: "'Inter', system-ui, sans-serif",
+                    outline: isEditable ? '2px dashed #f59e0b' : 'none',
+                }}
+            >
+                {/* Header bar */}
+                <div style={{
+                    height: `${headerH}px`,
+                    background: '#ffdb3b',
+                    padding: '0 8px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '2px solid rgba(15,23,42,0.06)',
+                }}>
+                    <span style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1 }}>{title}</span>
+                    <div style={{
+                        width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                        background: status === 'active' ? '#f59e0b' : '#94a3b8',
+                        boxShadow: status === 'active' ? '0 0 6px rgba(245,158,11,0.4)' : 'none',
+                    }} />
+                </div>
+                {/* Body */}
+                <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    {children}
+                </div>
+            </div>
+        </foreignObject>
+    );
+};
 
-/**
- * Reusable Steam/Liquid Flow Animation Component
- * Identical to Sterilizer Station SteamFlowSVG
- */
-const SteamFlowSVG = ({ d, active = true, mode = 'flowing', color = '#a9dbe1ff' }) => {
-    if (!active) return null;
+/* Param row helper — used inside Genset/Turbin/PowerSummary cards */
+const ParamRow = ({ label, value, unit, labelSize = '10px', valueSize = '12px' }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1px 0' }}>
+        <span style={{ fontSize: labelSize, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{label}</span>
+        <span style={{ fontSize: valueSize, fontWeight: 900, color: '#0f172a', fontFamily: "'Inter', system-ui, sans-serif" }}>
+            {value}{unit && <span style={{ fontSize: '9.5px', fontWeight: 800, color: '#94a3b8', marginLeft: '2px' }}>{unit}</span>}
+        </span>
+    </div>
+);
 
-    let modeClass = 'liquid-flow--flowing';
-    if (mode === 'standby') modeClass = 'liquid-flow--standby';
-    if (mode === 'liquid') modeClass = 'liquid-flow--liquid';
+/* Centre value helper — used inside StationBox / FlowCard / Sidebar summary cards */
+const CentreValue = ({ value, unit, valueSize = '16px' }) => (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: '3px', padding: '2px 0' }}>
+        <span style={{ fontSize: valueSize, fontWeight: 950, color: '#0f172a' }}>{value}</span>
+        <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748b' }}>{unit}</span>
+    </div>
+);
+
+/* ── 1. TOP STATION BOX (14 across the top row) ── */
+const HmiStationBox = ({ x, y, label, value = "0" }) => (
+    <EngineCard x={x} y={y} width={128} height={58} title={label}>
+        <CentreValue value={value} unit="Kw" valueSize="15px" />
+    </EngineCard>
+);
+
+/* ── 2. GENSET CARD (3 params: POWER, FREQ, UTIL) ── */
+const HmiGensetCard = ({ x, y, title, power = "0", freq = "0.0", util = "0.0", configMode, onTagEdit, cardId }) => (
+    <EngineCard
+        x={x} y={y} width={155} height={102} title={title}
+        isEditable={configMode} onClick={(e) => configMode && onTagEdit && onTagEdit(e, cardId, [])}
+    >
+        <ParamRow label="POWER" value={power} unit="Kw" />
+        <ParamRow label="FREQ" value={freq} unit="Hz" />
+        <ParamRow label="UTIL" value={util} unit="%" />
+    </EngineCard>
+);
+
+/* ── 3. TURBIN CARD (4 params: POWER, FREQ, RPM, UTIL) ── */
+const HmiTurbinCard = ({ x, y, title, power = "0", freq = "0.0", rpm = "0.0", util = "0.0", configMode, onTagEdit, cardId }) => (
+    <EngineCard
+        x={x} y={y} width={165} height={122} title={title}
+        isEditable={configMode} onClick={(e) => configMode && onTagEdit && onTagEdit(e, cardId, [])}
+    >
+        <ParamRow label="POWER" value={power} unit="Kw" />
+        <ParamRow label="FREQ" value={freq} unit="Hz" />
+        <ParamRow label="RPM" value={rpm} />
+        <ParamRow label="UTIL" value={util} unit="%" />
+    </EngineCard>
+);
+
+/* ── 4. FLOW CARD (single value with m³/h) ── */
+const HmiFlowCard = ({ x, y, title, value = "0", configMode, onTagEdit, cardId }) => (
+    <EngineCard
+        x={x} y={y} width={128} height={58} title={title}
+        isEditable={configMode} onClick={(e) => configMode && onTagEdit && onTagEdit(e, cardId, [])}
+    >
+        <CentreValue value={value} unit="m³/h" valueSize="15px" />
+    </EngineCard>
+);
+
+/* ── 5. LEFT SIDEBAR (5 stacked summary cards) ── */
+const HmiLeftSummarySidebar = ({
+    x, y,
+    totalActive = "0",
+    totalApparent = "0",
+    energyToday = "0",
+    runningStation = "0",
+    adminKw = "0",
+    mainProcKw = "0",
+    utilKw = "0",
+    byProdKw = "0"
+}) => {
+    const smallW = 145;
+    const bigW = 185;
+    const smallH = 58;     // single-value cards
+    const bigH = 138;      // POWER SUMMARY (4 param rows)
+    const gap = 8;         // vertical gap between cards
+
+    const y1 = 0;
+    const y2 = smallH + gap;
+    const y3 = y2 + smallH + gap;
+    const y4 = y3 + smallH + gap;
+    const y5 = y4 + smallH + gap;
 
     return (
-        <g className={modeClass}>
-            <path d={d} fill="none" stroke={color} className="liquid-flow-glow" pointerEvents="none" />
-            <path d={d} fill="none" stroke={color} className="liquid-flow-aura" pointerEvents="none" />
+        <g>
+            <EngineCard x={x} y={y + y1} width={smallW} height={smallH} title="TOTAL ACTIVE POWER">
+                <CentreValue value={totalActive} unit="Kw" valueSize="17px" />
+            </EngineCard>
+
+            <EngineCard x={x} y={y + y2} width={smallW} height={smallH} title="TOTAL APPARENT">
+                <CentreValue value={totalApparent} unit="Kw" valueSize="17px" />
+            </EngineCard>
+
+            <EngineCard x={x} y={y + y3} width={smallW} height={smallH} title="ENERGY TODAY">
+                <CentreValue value={energyToday} unit="KwH" valueSize="17px" />
+            </EngineCard>
+
+            <EngineCard x={x} y={y + y4} width={smallW} height={smallH} title="RUNNING STATION">
+                <CentreValue value={runningStation} unit="" valueSize="17px" />
+            </EngineCard>
+
+            <EngineCard x={x} y={y + y5} width={bigW} height={bigH} title="POWER SUMMARY">
+                <ParamRow label="ADMINISTRATION & RECEIVING" value={adminKw} unit="Kw" labelSize="8.5px" valueSize="11px" />
+                <ParamRow label="MAIN PROCESSING PLANT" value={mainProcKw} unit="Kw" labelSize="8.5px" valueSize="11px" />
+                <ParamRow label="UTILITIES & SUPPORT" value={utilKw} unit="Kw" labelSize="8.5px" valueSize="11px" />
+                <ParamRow label="BY PRODUCT & STORAGE" value={byProdKw} unit="Kw" labelSize="8.5px" valueSize="11px" />
+            </EngineCard>
         </g>
     );
 };
 
-/**
- * Dedicated Steam Consumption Card (Individual Row)
- */
-const SteamRowCard = ({ x, y, label, hr, day }) => (
-    <foreignObject x={x} y={y} width="257" height="35" style={{ overflow: 'visible' }}>
-        <div className="som-er-steam-card-row">
-            <div className="steam-card-label">{label}</div>
-            <div className="steam-card-values">
-                <div className="steam-card-val-hr">
-                    {hr} <span className="steam-card-unit">/hr</span>
-                </div>
-                <div className="steam-card-val-day">
-                    {day} <span className="steam-card-unit">/day</span>
-                </div>
-            </div>
-        </div>
-    </foreignObject>
-)
+const SteamFlowSVG = ({ d, active, color = "#38bdf8", thickness = 8 }) => {
+    if (!active) return null;
+    return (
+        <g style={{ pointerEvents: "none" }}>
+            <path
+                d={d}
+                style={{
+                    stroke: color,
+                    strokeWidth: thickness + 6,
+                    filter: "blur(4px)",
+                    animation: "er-flow-pulse-opacity 2s ease-in-out infinite",
+                    fill: "none",
+                    strokeLinecap: "round",
+                    strokeLinejoin: "round",
+                }}
+            />
+            <path
+                d={d}
+                style={{
+                    stroke: color,
+                    strokeWidth: thickness,
+                    animation: "er-flow-pulse-opacity 2s ease-in-out infinite",
+                    fill: "none",
+                    strokeLinecap: "round",
+                    strokeLinejoin: "round",
+                }}
+            />
+        </g>
+    );
+};
+
+const LiquidSteamFlowSVG = ({ d, active, mode = "flowing", color = "#38bdf8", thickness = 8 }) => {
+    if (!active) return null;
+    return (
+        <g className={`liquid-flow--${mode}`} style={{ pointerEvents: "none" }}>
+            <path
+                d={d}
+                fill="none"
+                stroke={color}
+                className="liquid-flow-glow"
+                style={{ strokeWidth: thickness + 6 }}
+            />
+            <path
+                d={d}
+                fill="none"
+                stroke={color}
+                className="liquid-flow-aura"
+                style={{ strokeWidth: thickness }}
+            />
+        </g>
+    );
+};
 
 function EngineRoomPage({ user, onSelectSubmenu }) {
     const [viewMode, setViewMode] = useState('process')
     const svgRef = useRef(null)
+    const wtFlow = useWTFlowBuilder()
 
     const handleMouseMove = (e) => {
         if (!svgRef.current) return
@@ -542,6 +709,14 @@ function EngineRoomPage({ user, onSelectSubmenu }) {
     }
 
     const [isFullscreen, setIsFullscreen] = useState(false)
+
+    // --- MAKEUP VALVE STATE ---
+    const [makeupValveOpen, setMakeupValveOpen] = useState(true);
+    const toggleMakeupValve = () => setMakeupValveOpen(v => !v);
+
+    // --- BLOWDOWN VALVE STATE ---
+    const [blowdownValveOpen, setBlowdownValveOpen] = useState(false);
+    const toggleBlowdownValve = () => setBlowdownValveOpen(v => !v);
 
     // --- PLC CONFIG STATE ---
     const [configMode, setConfigMode] = useState(false);
@@ -701,8 +876,8 @@ function EngineRoomPage({ user, onSelectSubmenu }) {
                 </div>
 
                 {user && (user.role === 'Developer' || user.userRole === 'Developer') && (
-                    <div className={`som-dev-config-toggle ${configMode ? 'active' : ''}`} onClick={() => setConfigMode(!configMode)} style={{position: 'absolute', top: '100px', right: '20px', zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(2, 6, 23, 0.8)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)'}}>
-                        <div className="toggle-text" style={{color: '#f1f5f9', fontSize: '10px', fontWeight: 'bold'}}>{configMode ? 'Config Mode ON' : 'Config Mode'}</div>
+                    <div className={`som-dev-config-toggle ${configMode ? 'active' : ''}`} onClick={() => setConfigMode(!configMode)} style={{ position: 'absolute', top: '100px', right: '20px', zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(2, 6, 23, 0.8)', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div className="toggle-text" style={{ color: '#f1f5f9', fontSize: '10px', fontWeight: 'bold' }}>{configMode ? 'Config Mode ON' : 'Config Mode'}</div>
                         <div className="som-boiler-status-indicator active" style={{ backgroundColor: configMode ? '#0f172a' : '#ffdb3b', width: '8px', height: '8px', borderRadius: '50%' }}></div>
                     </div>
                 )}
@@ -727,6 +902,13 @@ function EngineRoomPage({ user, onSelectSubmenu }) {
                     {onSelectSubmenu && (
                         <button className="som-view-btn" onClick={() => onSelectSubmenu('Engine Room', 'Settings')} style={{ marginLeft: '8px' }}>⚙️ SETTINGS</button>
                     )}
+                    <button
+                        className={`som-view-btn ${wtFlow.isActive ? 'active' : ''}`}
+                        onClick={wtFlow.toggle}
+                        style={{ marginLeft: '8px', background: wtFlow.isActive ? '#eab308' : undefined, color: wtFlow.isActive ? '#000' : undefined }}
+                    >
+                        {wtFlow.isActive ? 'EXIT FLOW BUILDER' : 'FLOW BUILDER'}
+                    </button>
                 </div>
             </header>
 
@@ -740,120 +922,152 @@ function EngineRoomPage({ user, onSelectSubmenu }) {
                             preserveAspectRatio="xMidYMid meet"
                             onMouseMove={handleMouseMove}
                         >
-                            <image href={engineRoomImageUrl} width="1920" height="1080" />
+                            <defs>
+                                <filter id="tint-red">
+                                    <feColorMatrix type="matrix"
+                                        values="0.244 0.822 0.083 0 0
+                                                0     0     0     0 0
+                                                0     0     0     0 0
+                                                0 0 0 1 0"/>
+                                </filter>
+                                <filter id="tint-green">
+                                    <feColorMatrix type="matrix"
+                                        values="0.0638 0.2146 0.0216 0 0
+                                                0.2551 0.8582 0.0867 0 0
+                                                0.0425 0.1430 0.0144 0 0
+                                                0 0 0 1 0"/>
+                                </filter>
+                            </defs>
+                            <image href={engineRoomImageUrl} x="0" y="-30" width="1920" height="1080" />
 
-                            {/* Power Distribution Header Bar (Top 12 items) */}
-                            <PowerBox x={20} y={120} label="OFFICE" value="126" colorClass="purple" />
-                            <PowerBox x={175} y={120} label="GRADING" value="60" colorClass="green" />
-                            <PowerBox x={330} y={120} label="STERILIZER" value="140" colorClass="green" />
-                            <PowerBox x={485} y={120} label="THRESHER" value="60" colorClass="green" />
-                            <PowerBox x={640} y={120} label="EFB PLANT" value="200" colorClass="green" />
-                            <PowerBox x={795} y={120} label="PRESS" value="200" colorClass="green" />
-                            <PowerBox x={950} y={120} label="KERNEL" value="200" colorClass="green" />
-                            <PowerBox x={1105} y={120} label="OIL ROOM" value="200" colorClass="green" />
-                            <PowerBox x={1260} y={120} label="BOILER" value="400" colorClass="green" />
-                            <PowerBox x={1415} y={120} label="RWT" value="40" colorClass="blue" />
-                            <PowerBox x={1570} y={120} label="ETP" value="40" colorClass="yellow" />
-                            <PowerBox x={1725} y={120} label="HOUSING" value="30" colorClass="blue-dark" />
+                            {/* ==========================================
+                               1. TOP STATION POWER BAR (12 STATIONS)
+                               Row: y=15, 12 cards evenly spaced
+                               ========================================== */}
+                            <HmiStationBox x={25} y={40} label="Office" value={lv('st_office_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={185} y={40} label="Grading" value={lv('st_grading_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={340} y={40} label="Weighbridge" value={lv('st_weighbridge_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={500} y={40} label="Sterilizer" value={lv('st_sterilizer_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={655} y={40} label="Thresher" value={lv('st_thresher_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={810} y={40} label="EFB Plant" value={lv('st_efb_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={970} y={40} label="Press" value={lv('st_press_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={1135} y={40} label="Kernel" value={lv('st_kernel_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={1285} y={40} label="Clarification" value={lv('st_clarification_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={1445} y={40} label="Boiler" value={lv('st_boiler_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={1600} y={40} label="RWT" value={lv('st_rwt_kw', 'MONITOR', '0')} />
+                            <HmiStationBox x={1760} y={40} label="ETP" value={lv('st_etp_kw', 'MONITOR', '0')} />
 
-                            {/* Top Left Stats Box */}
-                            <foreignObject x={180} y={210} width="280" height="100">
-                                <div className="som-er-purple-box">
-                                    <div className="er-stat-row">Today Electricity from Genset</div>
-                                    <div className="er-stat-value er-stat-value-neon">1,200 kWh</div>
-                                    <div className="er-stat-row">Today Diesel Consumption</div>
-                                    <div className="er-stat-value">480 L, rated 2.5 kWh/L Diesel</div>
-                                </div>
-                            </foreignObject>
+                            {/* ==========================================
+                               2. LEFT POWER SUMMARY CARDS (INDEPENDENT X, Y)
+                               ========================================== */}
+                            <EngineCard x={305} y={155} width={130} height={58} title="TOTAL ACTIVE POWER">
+                                <CentreValue value={lv('total_active_power', 'MONITOR', '0')} unit="Kw" valueSize="17px" />
+                            </EngineCard>
 
-                            {/* Gensets */}
-                            <g>
-                                <GenericMiniCard x={330} y={350} title="GENSET 1" status="standby" utilization="00" params={[
-                                    { label: 'POWER', value: '---', unit: 'KW' },
-                                    { label: 'FREQ', value: '---', unit: 'Hz' }
-                                ]} width={120} configMode={configMode} onTagEdit={handleTagEditRequest} cardId="GENSET 1" />
+                            <EngineCard x={170} y={155} width={130} height={58} title="TOTAL APPARENT">
+                                <CentreValue value={lv('total_apparent_power', 'MONITOR', '0')} unit="Kw" valueSize="17px" />
+                            </EngineCard>
 
-                                <GenericMiniCard x={330} y={570} title="GENSET 2" status="standby" utilization="00" params={[
-                                    { label: 'POWER', value: '---', unit: 'KW' },
-                                    { label: 'FREQ', value: '---', unit: 'Hz' }
-                                ]} width={120} configMode={configMode} onTagEdit={handleTagEditRequest} cardId="GENSET 2" />
+                            <EngineCard x={35} y={155} width={130} height={58} title="ENERGY TODAY">
+                                <CentreValue value={lv('energy_today', 'MONITOR', '0')} unit="KwH" valueSize="17px" />
+                            </EngineCard>
 
-                                <GenericMiniCard x={330} y={800} title="GENSET 3" status="standby" utilization="00" params={[
-                                    { label: 'POWER', value: '---', unit: 'KW' },
-                                    { label: 'FREQ', value: '---', unit: 'Hz' }
-                                ]} width={120} configMode={configMode} onTagEdit={handleTagEditRequest} cardId="GENSET 3" />
-                            </g>
+                            <EngineCard x={-100} y={155} width={130} height={58} title="RUNNING STATION">
+                                <CentreValue value={lv('running_station_count', 'MONITOR', '0')} unit="" valueSize="17px" />
+                            </EngineCard>
 
-                            {/* Turbines */}
-                            <g>
-                                <GenericMiniCard x={890} y={240} title="TURBINE 1" utilization="80" params={[
-                                    { label: 'POWER', value: '1,023', unit: 'KW' },
-                                    { label: 'SPEED', value: '1500', unit: 'RPM' },
-                                    { label: 'FREQ', value: '50.1', unit: 'Hz' }
-                                ]} width={140} height={100} configMode={configMode} onTagEdit={handleTagEditRequest} cardId="TURBINE 1" />
+                            <EngineCard x={280} y={840} width={200} height={138} title="POWER SUMMARY">
+                                <ParamRow label="ADMINISTRATION & RECEIVING" value={lv('admin_receiving_kw', 'MONITOR', '0')} unit="Kw" labelSize="8.5px" valueSize="11px" />
+                                <ParamRow label="MAIN PROCESSING PLANT" value={lv('main_processing_kw', 'MONITOR', '0')} unit="Kw" labelSize="8.5px" valueSize="11px" />
+                                <ParamRow label="UTILITIES & SUPPORT" value={lv('utilities_support_kw', 'MONITOR', '0')} unit="Kw" labelSize="8.5px" valueSize="11px" />
+                                <ParamRow label="BY PRODUCT & STORAGE" value={lv('byproduct_storage_kw', 'MONITOR', '0')} unit="Kw" labelSize="8.5px" valueSize="11px" />
+                            </EngineCard>
 
-                                <GenericMiniCard x={1540} y={240} title="TURBINE 2" status="standby" utilization="00" params={[
-                                    { label: 'POWER', value: '---', unit: 'KW' },
-                                    { label: 'SPEED', value: '---', unit: 'RPM' },
-                                    { label: 'FREQ', value: '---', unit: 'Hz' }
-                                ]} width={140} height={100} configMode={configMode} onTagEdit={handleTagEditRequest} cardId="TURBINE 2" />
-                            </g>
+                            {/* ==========================================
+                               3. GENSETS 1, 2, 3
+                               x=195 (15+165+15, clear of widened sidebar)
+                               Each 140w × 88h, gap=10
+                               ========================================== */}
+                            <HmiGensetCard
+                                x={280} y={280}
+                                title="GENSET 1"
+                                power={lv('genset1_power', 'MONITOR', '0')}
+                                freq={lv('genset1_freq', 'MONITOR', '0.0')}
+                                util={lv('genset1_util', 'MONITOR', '0.0')}
+                                configMode={configMode}
+                                onTagEdit={handleTagEditRequest}
+                                cardId="GENSET 1"
+                            />
+                            <HmiGensetCard
+                                x={280} y={490}
+                                title="GENSET 2"
+                                power={lv('genset2_power', 'MONITOR', '0')}
+                                freq={lv('genset2_freq', 'MONITOR', '0.0')}
+                                util={lv('genset2_util', 'MONITOR', '0.0')}
+                                configMode={configMode}
+                                onTagEdit={handleTagEditRequest}
+                                cardId="GENSET 2"
+                            />
+                            <HmiGensetCard
+                                x={280} y={710}
+                                title="GENSET 3"
+                                power={lv('genset3_power', 'MONITOR', '0')}
+                                freq={lv('genset3_freq', 'MONITOR', '0.0')}
+                                util={lv('genset3_util', 'MONITOR', '0.0')}
+                                configMode={configMode}
+                                onTagEdit={handleTagEditRequest}
+                                cardId="GENSET 3"
+                            />
 
-                            {/* Steam Highlights */}
-                            <foreignObject x={1700} y={350} width="220" height="100" style={{ overflow: 'visible' }}>
-                                <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
-                                    <div
-                                        onClick={(e) => {
-                                            if (configMode) handleTagEditRequest(e, 'main_steam');
-                                        }}
-                                        className={`som-boiler-mini-card ${configMode ? 'som-editable' : ''}`}
-                                        style={{ cursor: configMode ? 'pointer' : 'default', minWidth: '180px' }}
-                                    >
-                                        <div className="som-boiler-mini-header">
-                                            <span className="som-boiler-mini-tag">MAIN STEAM PIPE</span>
-                                            <div className="som-boiler-status-indicator active"></div>
-                                        </div>
-                                        <div className="som-boiler-mini-body" style={{ flexDirection: "row", justifyContent: "center", alignItems: "baseline", gap: "5px" }}>
-                                            <span className="som-v2-value" style={{ textShadow: "none", fontSize: "20px" }}>
-                                                {lv('main_steam', 'MONITOR', '--', 2)}
-                                            </span>
-                                            <span className="som-boiler-mini-unit">bar</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </foreignObject>
+                            {/* ==========================================
+                               4. TURBINES 1 & 2 + FLOATING STATIONS (ORP & Storage)
+                               ========================================== */}
+                            <HmiTurbinCard
+                                x={1040} y={170}
+                                title="TURBIN 1"
+                                power={lv('turbin1_power', 'MONITOR', '0')}
+                                freq={lv('turbin1_freq', 'MONITOR', '0.0')}
+                                rpm={lv('turbin1_rpm', 'MONITOR', '0.0')}
+                                util={lv('turbin1_util', 'MONITOR', '0.0')}
+                                configMode={configMode}
+                                onTagEdit={handleTagEditRequest}
+                                cardId="TURBIN 1"
+                            />
 
-                            <GenericMiniCard x={1750} y={239} title="STEAM FLOW" params={[
-                                { label: 'FROM BOILER', value: '26', unit: 'ton/hr' }
-                            ]} width={120} />
+                            {/* ORP (Floating Box above Turbin 2/Pipes area) */}
+                            <HmiStationBox x={880} y={155} label="ORP" value={lv('st_orp_kw', 'MONITOR', '0')} />
 
-                            <GenericMiniCard x={530} y={500} title="MAKE-UP" params={[
-                                { label: 'VALVE', value: '45', unit: '%' }
-                            ]} width={100} />
+                            <HmiTurbinCard
+                                x={1675} y={170}
+                                title="TURBIN 2"
+                                power={lv('turbin2_power', 'MONITOR', '0')}
+                                freq={lv('turbin2_freq', 'MONITOR', '0.0')}
+                                rpm={lv('turbin2_rpm', 'MONITOR', '0.0')}
+                                util={lv('turbin2_util', 'MONITOR', '0.0')}
+                                configMode={configMode}
+                                onTagEdit={handleTagEditRequest}
+                                cardId="TURBIN 2"
+                            />
 
-                            {/* BPV Tank */}
-                            <text x={1060} y={770} fill="#000000ff" fontSize="24" fontWeight="900">BPV</text>
-                            <GenericMiniCard x={920} y={730} title="BPV PRESSURE" params={[
-                                { label: 'CURRENT', value: '3.6', unit: 'bar' }
-                            ]} width={120} />
+                            {/* Storage (Floating Box to the right of ORP) */}
+                            <HmiStationBox x={1510} y={170} label="Storage" value={lv('st_storage_kw', 'MONITOR', '0')} />
 
-                            {steamData.map((d, i) => (
-                                <SteamRowCard
-                                    key={i}
-                                    x={1615}
-                                    y={496 + (i * 42)}
-                                    label={d.label}
-                                    hr={d.hr}
-                                    day={d.day}
-                                />
-                            ))}
+                            {/* ==========================================
+                               5. RIGHT SIDE FLOW CARDS (m3/h)
+                               x=1850, each 120w × 52h, gap=8
+                               ========================================== */}
+                            <HmiFlowCard x={1910} y={340} title="Feed Tank" value={lv('feed_tank_flow', 'MONITOR', '0')} configMode={configMode} onTagEdit={handleTagEditRequest} cardId="feed_tank_flow" />
+                            <HmiFlowCard x={1910} y={410} title="Kernel" value={lv('kernel_flow', 'MONITOR', '0')} configMode={configMode} onTagEdit={handleTagEditRequest} cardId="kernel_flow" />
+                            <HmiFlowCard x={1910} y={480} title="Storage Tank" value={lv('storage_tank_flow', 'MONITOR', '0')} configMode={configMode} onTagEdit={handleTagEditRequest} cardId="storage_tank_flow" />
+                            <HmiFlowCard x={1910} y={550} title="Clarification" value={lv('clarification_flow', 'MONITOR', '0')} configMode={configMode} onTagEdit={handleTagEditRequest} cardId="clarification_flow" />
+                            <HmiFlowCard x={1910} y={620} title="Sterilizer" value={lv('sterilizer_flow', 'MONITOR', '0')} configMode={configMode} onTagEdit={handleTagEditRequest} cardId="sterilizer_flow" />
 
-                            {/* Adjustable Valve */}
+                            {/* Make-Up Control Valve */}
                             {(() => {
-                                const valveX = 620;
-                                const valveY = 554;
-                                const valveSize = 80;
-                                const valveRot = 270; // Anda dapat mengubah rotasi di sini (dalam derajat)
+                                const valveX = 817;
+                                const valveY = 648;
+                                const valveSize = 95;
+                                const valveRot = 270;
 
                                 return (
                                     <image
@@ -863,21 +1077,363 @@ function EngineRoomPage({ user, onSelectSubmenu }) {
                                         width={valveSize}
                                         height={valveSize}
                                         transform={`rotate(${valveRot} ${valveX + valveSize / 2} ${valveY + valveSize / 2})`}
+                                        style={{
+                                            filter: makeupValveOpen
+                                                ? 'url(#tint-green) drop-shadow(0 0 8px #22c55e)'
+                                                : 'url(#tint-red) drop-shadow(0 0 8px #ef4444)',
+                                            cursor: 'pointer'
+                                        }}
+                                        onClick={toggleMakeupValve}
                                     />
                                 );
                             })()}
 
-                            {/* Bottom Right Stats Box */}
-                            <foreignObject x={1570} y={800} width="280" height="100">
-                                <div className="som-er-purple-box">
-                                    <div className="er-stat-row">Today Electricity from Turbine</div>
-                                    <div className="er-stat-value er-stat-value-neon">12,000 kWh</div>
-                                    <div className="er-stat-row">Today Steam Consumed</div>
-                                    <div className="er-stat-value">6,000, rated 2.0 kWh/ton steam</div>
+                            {/* Blowdown Valve */}
+                            {(() => {
+                                const bdValveX = 1721;
+                                const bdValveY = 595;
+                                const bdValveSize = 60;
+                                const bdValveRot = 360;
+
+                                return (
+                                    <image
+                                        href={valve_positionerSvg}
+                                        x={bdValveX}
+                                        y={bdValveY}
+                                        width={bdValveSize}
+                                        height={bdValveSize}
+                                        transform={`rotate(${bdValveRot} ${bdValveX + bdValveSize / 2} ${bdValveY + bdValveSize / 2})`}
+                                        style={{
+                                            filter: blowdownValveOpen
+                                                ? 'url(#tint-green) drop-shadow(0 0 8px #22c55e)'
+                                                : 'url(#tint-red) drop-shadow(0 0 8px #ef4444)',
+                                            cursor: 'pointer'
+                                        }}
+                                        onClick={toggleBlowdownValve}
+                                    />
+                                );
+                            })()}
+
+                            {/* Bottom Right Stats — Unified EngineCard style */}
+                            <EngineCard x={1570} y={920} width={200} height={58} title="TODAY ELECTRICITY FROM TURBINE">
+                                <CentreValue value="12,000" unit="kWh" valueSize="15px" />
+                            </EngineCard>
+                            <EngineCard x={1780} y={920} width={200} height={58} title="TODAY STEAM CONSUMED">
+                                <CentreValue value="6,000" unit="rated 2.0 kWh/ton steam" valueSize="13px" />
+                            </EngineCard>
+
+                            {/* Permanent Flows */}
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 1915,159 L 1054,156 Q 1029,156 1029,181 L 1031,303 Q 1031,315 1021,322 L 1010,328"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 1663,164 L 1665,307 Q 1665,318 1655,323 L 1645,328"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 958,378 L 960,402 Q 962,425 986,425 L 1354,423 Q 1379,423 1379,448 L 1380,571"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 1302,594 L 1302,533 Q 1302,516 1302,499 L 1302,499 Q 1301,482 1284,482 L 586,482"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 1257,597 L 1257,544 Q 1257,529 1257,514 L 1257,514 Q 1257,499 1242,499 L 581,497"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 1446,600 L 1446,440"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 1485,593 L 1485,464 Q 1485,439 1510,439 L 1812,440"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 1541,598 L 1539,482 Q 1539,457 1564,457 L 1809,458"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 1676,572 L 1675,550 Q 1674,528 1696,528 L 1807,525"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 1596,390 L 1597,571"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 1735,610 L 1733,580 Q 1732,555 1757,557 L 1810,560"
+                                    active={blowdownValveOpen}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            {/* ==== MAKEUP VALVE CONTROLLED FLOWS ==== */}
+                            {/* SteamFlowSVG = solid pulsing (valve CLOSED/RED) */}
+                            {/* LiquidSteamFlowSVG = dashed flowing (valve OPEN/GREEN) */}
+                            <g className="wt-permanent-flows">
+                                <SteamFlowSVG
+                                    d="M 1895,165 L 1893,882 Q 1893,907 1868,907 L 588,908 Q 563,908 563,883 L 564,747 Q 564,722 589,722 L 633,722"
+                                    active={!makeupValveOpen}
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                                <LiquidSteamFlowSVG
+                                    d="M 1895,165 L 1893,882 Q 1893,907 1868,907 L 588,908 Q 563,908 563,883 L 564,747 Q 564,722 589,722 L 633,722"
+                                    active={makeupValveOpen}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <SteamFlowSVG
+                                    d="M 666,722 L 750,720"
+                                    active={!makeupValveOpen}
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                                <LiquidSteamFlowSVG
+                                    d="M 666,722 L 750,720"
+                                    active={makeupValveOpen}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <SteamFlowSVG
+                                    d="M 786,721 L 844,721"
+                                    active={!makeupValveOpen}
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                                <LiquidSteamFlowSVG
+                                    d="M 786,721 L 844,721"
+                                    active={makeupValveOpen}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <SteamFlowSVG
+                                    d="M 732,718 L 730,590 Q 730,565 755,566 L 845,568"
+                                    active={!makeupValveOpen}
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                                <LiquidSteamFlowSVG
+                                    d="M 732,718 L 730,590 Q 730,565 755,566 L 845,568"
+                                    active={makeupValveOpen}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+                            <g className="wt-permanent-flows">
+                                <LiquidSteamFlowSVG
+                                    d="M 891,723 L 996,721 Q 1010,721 1010,707 L 1011,581 Q 1011,567 1025,567 L 1178,568 Q 1188,568 1190,578 L 1192,587"
+                                    active={makeupValveOpen}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={8}
+                                />
+                            </g>
+
+
+                            {/* Make-Up Valve Command Card */}
+                            <foreignObject x={775} y={755} width={170} height={140} style={{ overflow: 'visible' }}>
+                                <div style={{
+                                    background: '#ffffff',
+                                    borderRadius: '12px',
+                                    padding: '12px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                    fontFamily: 'sans-serif',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px',
+                                    border: '1px solid #f1f5f9'
+                                }}>
+                                    <div style={{ textAlign: 'center', fontWeight: '900', color: '#0f172a', fontSize: '11px', letterSpacing: '0.05em' }}>
+                                        MAKE-UP VALVE
+                                    </div>
+                                    <div style={{ height: '2px', background: '#fde047', width: '100%', marginTop: '-2px' }} />
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b' }}>COMMAND</span>
+                                        <button
+                                            onClick={toggleMakeupValve}
+                                            style={{
+                                                background: makeupValveOpen ? '#f0fdf4' : '#fef2f2',
+                                                border: makeupValveOpen ? '1.5px solid #22c55e' : '1.5px solid #ef4444',
+                                                color: makeupValveOpen ? '#22c55e' : '#ef4444',
+                                                fontWeight: '800',
+                                                fontSize: '10px',
+                                                padding: '4px 12px',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {makeupValveOpen ? 'OPEN' : 'CLOSE'}
+                                        </button>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b' }}>POSITION</span>
+                                        <div style={{
+                                            width: '100%',
+                                            textAlign: 'center',
+                                            background: makeupValveOpen ? '#eab308' : '#f1f5f9',
+                                            color: '#0f172a',
+                                            fontWeight: '900',
+                                            fontSize: '11px',
+                                            padding: '4px 0',
+                                            borderRadius: '4px'
+                                        }}>
+                                            {makeupValveOpen ? '100.0%' : '0.0%'}
+                                        </div>
+                                    </div>
                                 </div>
                             </foreignObject>
 
+                            {/* Blowdown Valve Command Card */}
+                            <foreignObject x={1666} y={665} width={170} height={140} style={{ overflow: 'visible' }}>
+                                <div style={{
+                                    background: '#ffffff',
+                                    borderRadius: '12px',
+                                    padding: '12px',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                    fontFamily: 'sans-serif',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px',
+                                    border: '1px solid #f1f5f9'
+                                }}>
+                                    <div style={{ textAlign: 'center', fontWeight: '900', color: '#0f172a', fontSize: '11px', letterSpacing: '0.05em' }}>
+                                        BLOWDOWN VALVE
+                                    </div>
+                                    <div style={{ height: '2px', background: '#fde047', width: '100%', marginTop: '-2px' }} />
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b' }}>COMMAND</span>
+                                        <button 
+                                            onClick={toggleBlowdownValve}
+                                            style={{
+                                                background: blowdownValveOpen ? '#f0fdf4' : '#fef2f2',
+                                                border: blowdownValveOpen ? '1.5px solid #22c55e' : '1.5px solid #ef4444',
+                                                color: blowdownValveOpen ? '#22c55e' : '#ef4444',
+                                                fontWeight: '800',
+                                                fontSize: '10px',
+                                                padding: '4px 12px',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {blowdownValveOpen ? 'OPEN' : 'CLOSE'}
+                                        </button>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                                        <span style={{ fontSize: '10px', fontWeight: '800', color: '#64748b' }}>POSITION</span>
+                                        <div style={{
+                                            width: '100%',
+                                            textAlign: 'center',
+                                            background: blowdownValveOpen ? '#eab308' : '#f1f5f9',
+                                            color: '#0f172a',
+                                            fontWeight: '900',
+                                            fontSize: '11px',
+                                            padding: '4px 0',
+                                            borderRadius: '4px'
+                                        }}>
+                                            {blowdownValveOpen ? '100.0%' : '0.0%'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </foreignObject>
+
+                            {/* WT Flow Builder Overlay */}
+                            <WTFlowOverlay
+                                flows={wtFlow.flows}
+                                activeFlowIdx={wtFlow.activeFlowIdx}
+                                isActive={wtFlow.isActive}
+                                isPlacing={wtFlow.isPlacing}
+                                onPointDrag={wtFlow.updatePoint}
+                                onInsertPoint={wtFlow.insertPoint}
+                                onDeletePoint={wtFlow.deletePoint}
+                                onSelectFlow={wtFlow.setActiveFlowIdx}
+                                onCanvasClick={(x, y) => wtFlow.addPointToActiveFlow(x, y)}
+                            />
                         </svg>
+
+                        {/* WT Flow Builder Panel */}
+                        {wtFlow.isActive && (
+                            <WTFlowPanel
+                                flows={wtFlow.flows}
+                                activeFlowIdx={wtFlow.activeFlowIdx}
+                                isPlacing={wtFlow.isPlacing}
+                                onSelectFlow={wtFlow.setActiveFlowIdx}
+                                onAddNewFlow={wtFlow.addNewFlow}
+                                onDeleteFlow={wtFlow.deleteFlow}
+                                onUpdateFlowSettings={wtFlow.updateFlowSettings}
+                                onFinishPlacing={wtFlow.finishPlacing}
+                                onClose={wtFlow.toggle}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

@@ -1,28 +1,28 @@
--- DATABASE FOR STATION: mewah_sterilizer
+-- DATABASE FOR STATION: mewah_pis_sterilizer_trial
 -- Domain: Sterilizer Station - Monitoring & Logsheets
 
 SET NAMES utf8mb4;
 SET time_zone = "+00:00";
 SET FOREIGN_KEY_CHECKS = 0;
 
-CREATE DATABASE IF NOT EXISTS `mewah_sterilizer`
+CREATE DATABASE IF NOT EXISTS `mewah_pis_sterilizer_trial`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-USE `mewah_sterilizer`;
+USE `mewah_pis_sterilizer_trial`;
 
 -- ── DB Users (Application-Level access) ──
 CREATE USER IF NOT EXISTS 'kip_station_user'@'localhost' IDENTIFIED BY 'CHANGE_THIS_PASSWORD';
-GRANT ALL PRIVILEGES ON mewah_sterilizer.* TO 'kip_station_user'@'localhost';
+GRANT ALL PRIVILEGES ON mewah_pis_sterilizer_trial.* TO 'kip_station_user'@'localhost';
 
 -- User untuk plc-collector (Snap7) membaca device & tag
 CREATE USER IF NOT EXISTS 'kip_snap7'@'localhost' IDENTIFIED BY 'CHANGE_THIS_PASSWORD';
-GRANT SELECT ON mewah_sterilizer.plc_devices TO 'kip_snap7'@'localhost';
-GRANT SELECT ON mewah_sterilizer.plc_tags TO 'kip_snap7'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON mewah_sterilizer.plc_tag_values TO 'kip_snap7'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON mewah_sterilizer.plc_tag_latest TO 'kip_snap7'@'localhost';
-GRANT SELECT, UPDATE ON mewah_sterilizer.plc_commands TO 'kip_snap7'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON mewah_sterilizer.plc_desired_state TO 'kip_snap7'@'localhost';
+GRANT SELECT ON mewah_pis_sterilizer_trial.plc_devices TO 'kip_snap7'@'localhost';
+GRANT SELECT ON mewah_pis_sterilizer_trial.plc_tags TO 'kip_snap7'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON mewah_pis_sterilizer_trial.plc_tag_values TO 'kip_snap7'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON mewah_pis_sterilizer_trial.plc_tag_latest TO 'kip_snap7'@'localhost';
+GRANT SELECT, UPDATE ON mewah_pis_sterilizer_trial.plc_commands TO 'kip_snap7'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON mewah_pis_sterilizer_trial.plc_desired_state TO 'kip_snap7'@'localhost';
 FLUSH PRIVILEGES;
 
 -- ─────────────────────────────────────────────────────────────

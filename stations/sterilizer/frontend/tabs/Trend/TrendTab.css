@@ -25,7 +25,7 @@
   flex-direction: row;
   padding-right: 12px;
   padding-left: 8px;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 2px solid #0f172a;
 }
 
 .som-trend-y-label {
@@ -35,19 +35,21 @@
   font-weight: 950;
   color: #0f172a;
   margin-right: 15px;
-  margin-bottom: 25px; /* Adjusting it slightly higher by increasing bottom margin */
+  align-self: center;
+  margin-bottom: 70px;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
 
 .som-trend-y-ticks {
-  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 10px 4px 10px 0;
-  font-size: 0.65rem;
+  margin-top: 40px;
+  height: calc(100% - 143px);
+  padding-right: 6px;
+  font-size: 0.70rem;
   font-weight: 700;
   color: #64748b;
 }
@@ -270,16 +272,20 @@
   flex: 1;
   width: 100%;
   height: 100%;
-  min-height: 0;
+  min-height: 250px;
 }
 
 .som-trend-x-axis {
   display: flex;
   justify-content: space-between;
-  padding: 4px 15px;
-  margin-top: 5px;
+  height: 20px;
+  padding: 0 15px;
+  margin-top: 0;
   color: #64748b;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-top: 2px solid #0f172a;
+  align-items: center;
 }
 
 .som-trend-x-axis span {
@@ -322,15 +328,15 @@
 .som-box.s4 { background: #f59e0b; }
 
 /* SUMMARY FOOTER (DARK) */
-.som-trend-summary-footer {
+.som-trend-container .som-trend-summary-footer {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
-  height: 70px;
+  height: 66px;
   flex-shrink: 0;
 }
 
-.som-trend-card {
+.som-trend-container .som-trend-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -338,46 +344,47 @@
   flex-direction: row;
   justify-content: space-around;
   align-items: center;
-  padding: 6px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  padding: 5px 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
   transition: all 0.3s ease;
 }
 
-.som-trend-card:hover {
+.som-trend-container .som-trend-card:hover {
   border-color: #ffdb3b;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(255, 219, 59, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(255, 219, 59, 0.15);
 }
 
-.som-trend-card-section {
+.som-trend-container .som-trend-card-section {
   text-align: center;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.som-trend-card-label {
+.som-trend-container .som-trend-card-label {
   font-size: 0.65rem;
-  font-weight: 900;
+  font-weight: 850;
   color: #64748b;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   line-height: 1;
+  text-transform: uppercase;
 }
 
-.som-trend-card-val {
-  font-size: 1.1rem;
-  font-weight: 950;
+.som-trend-container .som-trend-card-val {
+  font-size: 1.10rem;
+  font-weight: 900;
   color: #0f172a;
   line-height: 1;
   font-family: 'JetBrains Mono', monospace;
 }
 
-.som-trend-accent-val {
+.som-trend-container .som-trend-accent-val {
   color: #d4ac0d;
 }
 
-.som-unit {
-  font-size: 0.6rem;
+.som-trend-container .som-unit {
+  font-size: 0.60rem;
   font-weight: 800;
   margin-left: 2px;
   color: #64748b;

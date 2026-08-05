@@ -45,7 +45,7 @@ const TagEditorModal = ({
                     const key = `${data.targetId}__${sigKey}`;
                     let existingTag = tagMap[key];
                     if (!existingTag && sigKey === 'FLOW_SP') {
-                        existingTag = tagMap[`${data.targetId}__FLOW` ];
+                        existingTag = tagMap[`${data.targetId}__FLOW`];
                     }
                     initial[key] = existingTag || "";
                 });
@@ -187,7 +187,7 @@ const TagEditorModal = ({
                     </button>
                 </div>
 
-                <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px", maxHeight: "65vh",  overflowY: "auto"}}>
+                <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px", maxHeight: "65vh", overflowY: "auto" }}>
                     {hasSignals ? (
                         data.signals.map((sig) => {
                             const sigKey = sig.key || sig;
@@ -477,15 +477,15 @@ function PressStationPage({ user, onSelectSubmenu, configMode: propConfigMode = 
         if (!tagId) return "no tag";
         const tagName = tagIdToName[tagId];
         if (!tagName) return "no tag";
-        
+
         // Priority 1: WebSocket (Real-time SCADA Speed)
         if (tags && tags[tagName] && tags[tagName].value !== undefined) {
             return tags[tagName].value;
         }
-        
+
         // Priority 2: HTTP Polling Fallback
         if (liveValues[tagName] !== undefined) return liveValues[tagName];
-        
+
         return "--";
     }, [tagMap, tagIdToName, liveValues, tags]);
 
@@ -529,7 +529,7 @@ function PressStationPage({ user, onSelectSubmenu, configMode: propConfigMode = 
             }
             setTagMap((prev) => ({ ...prev, ...updatedTags }));
             // await loadMappings();
-      setTagEdit(null);
+            setTagEdit(null);
         } catch (err) {
             alert("Failed to save tag configuration.");
         } finally {
@@ -660,133 +660,133 @@ function PressStationPage({ user, onSelectSubmenu, configMode: propConfigMode = 
                     />
                 ) : (
                     <div className="som-press-layout">
-                    <div className="som-press-flow-card" style={{ position: 'relative' }}>
-                        {/* SVG Tinting Filters (feColorMatrix) */}
-                        <svg width="0" height="0" style={{ position: 'absolute' }}>
-                            <defs>
-                                <filter id="tint-red" colorInterpolationFilters="sRGB">
-                                    <feColorMatrix type="matrix" values="
+                        <div className="som-press-flow-card" style={{ position: 'relative' }}>
+                            {/* SVG Tinting Filters (feColorMatrix) */}
+                            <svg width="0" height="0" style={{ position: 'absolute' }}>
+                                <defs>
+                                    <filter id="tint-red" colorInterpolationFilters="sRGB">
+                                        <feColorMatrix type="matrix" values="
                                         0.244 0.822 0.083 0 0
                                         0     0     0     0 0
                                         0     0     0     0 0
                                         0 0 0 1 0" />
-                                </filter>
-                                <filter id="tint-green" colorInterpolationFilters="sRGB">
-                                    <feColorMatrix type="matrix" values="
+                                    </filter>
+                                    <filter id="tint-green" colorInterpolationFilters="sRGB">
+                                        <feColorMatrix type="matrix" values="
                                         0.0638 0.2146 0.0216 0 0
                                         0.2551 0.8582 0.0867 0 0
                                         0.0425 0.1430 0.0144 0 0
                                         0 0 0 1 0" />
-                                </filter>
-                                <filter id="tint-brown" colorInterpolationFilters="sRGB">
-                                    <feColorMatrix type="matrix" values="
+                                    </filter>
+                                    <filter id="tint-brown" colorInterpolationFilters="sRGB">
+                                        <feColorMatrix type="matrix" values="
                                         0.186 0.626 0.063 0 0
                                         0.132 0.443 0.045 0 0
                                         0.106 0.356 0.036 0 0
                                         0 0 0 1 0" />
-                                </filter>
-                            </defs>
-                        </svg>
-                        <div className="som-press-flow-body">
-                            <div
-                                ref={canvasContainerRef}
-                                style={{
-                                    position: 'relative',
-                                    width: activeTab === 'digester-press' ? 1485 : 720,
-                                    height: activeTab === 'digester-press' ? 585 : 375,
-                                    transform: activeTab === 'digester-press' ? `scale(${canvasScale}) translateX(-50px)` : `scale(${canvasScale})`,
-                                    transformOrigin: 'center center'
-                                }}
-                            >
-                                {activeTab === 'digester-press' ? (
-                                    <DigesterPressTab
-                                        viewMode={viewMode}
-                                        pressStatus={pressStatus}
-                                        configMode={configMode}
-                                        handleEquipmentClick={handleEquipmentClick}
-                                        lv={lv}
-                                        getTag={getTag}
-                                        flowBuilder={flowBuilder}
-                                    />
-                                ) : (
-                                    <WaterDilutionTab
-                                        viewMode={viewMode}
-                                        pressStatus={pressStatus}
-                                        configMode={configMode}
-                                        handleEquipmentClick={handleEquipmentClick}
-                                        lv={lv}
-                                        getTag={getTag}
-                                        flowBuilder={flowBuilder}
-                                    />
-                                )}
-                                {activeTab === 'digester-press' && (
-                                    <>
-                                        <StationCard id="fd1" onClick={(id) => handleEquipmentClick(id, [], ['AMP'])} title="FRUIT DIST" badge="MANUAL" initialX={290} initialY={10} scale={0.45} data={[{ label: 'AMP', value: lv('fd1', 'AMP'), unit: 'A', color: isFd1Running ? 'green' : 'red' }]} isRunning={isFd1Running} canvasScale={canvasScale} />
-                                        <StationCard id="retconv" onClick={(id) => handleEquipmentClick(id, [], ['AMP'])} title="RETURN CONV" badge="MANUAL" initialX={275} initialY={80} scale={0.45} data={[{ label: 'AMP', value: lv('retconv', 'AMP'), unit: 'A', color: isRetconvRunning ? 'green' : 'red' }]} isRunning={isRetconvRunning} canvasScale={canvasScale} />
-                                        <StationCard id="botconv" onClick={(id) => handleEquipmentClick(id, [], ['AMP'])} title="BOTTOM CONV" badge="MANUAL" initialX={280} initialY={537} scale={0.45} data={[{ label: 'AMP', value: lv('botconv', 'AMP'), unit: 'A', color: isBotconvRunning ? 'green' : 'red' }]} isRunning={isBotconvRunning} canvasScale={canvasScale} />
-                                        <StationCard id="dig1" onClick={(id) => handleEquipmentClick(id, [], ['LOAD', 'LEVEL', 'TEMP'])} title="DIGESTER NO.1" badge="MANUAL" initialX={415} initialY={45} scale={0.65} data={[{ label: 'LOAD', value: lv('dig1', 'LOAD'), unit: 'A', color: isDig1Running ? 'green' : 'red' }, { label: 'LEVEL', value: lv('dig1', 'LEVEL'), unit: '%', color: parseFloat(lv('dig1', 'LEVEL')) > 0 ? 'green' : 'red' }, { label: 'TEMP', value: lv('dig1', 'TEMP'), unit: '°C', color: parseFloat(lv('dig1', 'TEMP')) > 0 ? 'green' : 'red' }]} isRunning={isDig1Running} canvasScale={canvasScale} />
-                                        <StationCard id="dig2" onClick={(id) => handleEquipmentClick(id, [], ['LOAD', 'LEVEL', 'TEMP'])} title="DIGESTER NO.2" badge="MANUAL" initialX={700} initialY={45} scale={0.65} data={[{ label: 'LOAD', value: lv('dig2', 'LOAD'), unit: 'A', color: isDig2Running ? 'green' : 'red' }, { label: 'LEVEL', value: lv('dig2', 'LEVEL'), unit: '%', color: parseFloat(lv('dig2', 'LEVEL')) > 0 ? 'green' : 'red' }, { label: 'TEMP', value: lv('dig2', 'TEMP'), unit: '°C', color: parseFloat(lv('dig2', 'TEMP')) > 0 ? 'green' : 'red' }]} isRunning={isDig2Running} canvasScale={canvasScale} />
-                                        <StationCard id="dig3" onClick={(id) => handleEquipmentClick(id, [], ['LOAD', 'LEVEL', 'TEMP'])} title="DIGESTER NO.3" badge="MANUAL" initialX={980} initialY={45} scale={0.65} data={[{ label: 'LOAD', value: lv('dig3', 'LOAD'), unit: 'A', color: isDig3Running ? 'green' : 'red' }, { label: 'LEVEL', value: lv('dig3', 'LEVEL'), unit: '%', color: parseFloat(lv('dig3', 'LEVEL')) > 0 ? 'green' : 'red' }, { label: 'TEMP', value: lv('dig3', 'TEMP'), unit: '°C', color: parseFloat(lv('dig3', 'TEMP')) > 0 ? 'green' : 'red' }]} isRunning={isDig3Running} canvasScale={canvasScale} />
-                                        <StationCard id="dig4" onClick={(id) => handleEquipmentClick(id, [], ['LOAD', 'LEVEL', 'TEMP'])} title="DIGESTER NO.4" badge="MANUAL" initialX={1260} initialY={45} scale={0.65} data={[{ label: 'LOAD', value: lv('dig4', 'LOAD'), unit: 'A', color: isDig4Running ? 'green' : 'red' }, { label: 'LEVEL', value: lv('dig4', 'LEVEL'), unit: '%', color: parseFloat(lv('dig4', 'LEVEL')) > 0 ? 'green' : 'red' }, { label: 'TEMP', value: lv('dig4', 'TEMP'), unit: '°C', color: parseFloat(lv('dig4', 'TEMP')) > 0 ? 'green' : 'red' }]} isRunning={isDig4Running} canvasScale={canvasScale} />
-                                        <StationCard id="prs1" onClick={(id) => handleEquipmentClick(id, [], ['AMP', 'LOAD', 'PRES', { key: "ACTIVE_SET", label: "Active Set (0=Set 1, 1=Set 2, 2=Set 3, 3=Set 4)" }])} title="PRESS NO.1" badge="MANUAL" initialX={280} initialY={360} scale={0.65} data={[{ label: 'PRESS AMP', value: lv('prs1', 'AMP'), unit: 'A', color: isPrs1Running ? 'green' : 'red' }, { label: 'LOAD', value: lv('prs1', 'LOAD'), unit: '%', color: parseFloat(lv('prs1', 'LOAD')) > 0 ? 'green' : 'red' }, { label: 'PRESS.DISC', value: lv('prs1', 'PRES'), unit: 'Bar', color: parseFloat(lv('prs1', 'PRES')) > 0 ? 'green' : 'red' }]} isRunning={isPrs1Running} canvasScale={canvasScale} />
-                                        <StationCard id="prs2" onClick={(id) => handleEquipmentClick(id, [], ['AMP', 'LOAD', 'PRES', { key: "ACTIVE_SET", label: "Active Set (0=Set 1, 1=Set 2, 2=Set 3, 3=Set 4)" }])} title="PRESS NO.2" badge="MANUAL" initialX={550} initialY={360} scale={0.65} data={[{ label: 'PRESS AMP', value: lv('prs2', 'AMP'), unit: 'A', color: isPrs2Running ? 'green' : 'red' }, { label: 'LOAD', value: lv('prs2', 'LOAD'), unit: '%', color: parseFloat(lv('prs2', 'LOAD')) > 0 ? 'green' : 'red' }, { label: 'PRESS.DISC', value: lv('prs2', 'PRES'), unit: 'Bar', color: parseFloat(lv('prs2', 'PRES')) > 0 ? 'green' : 'red' }]} isRunning={isPrs2Running} canvasScale={canvasScale} />
-                                        <StationCard id="prs3" onClick={(id) => handleEquipmentClick(id, [], ['AMP', 'LOAD', 'PRES', { key: "ACTIVE_SET", label: "Active Set (0=Set 1, 1=Set 2, 2=Set 3, 3=Set 4)" }])} title="PRESS NO.3" badge="MANUAL" initialX={820} initialY={360} scale={0.65} data={[{ label: 'PRESS AMP', value: lv('prs3', 'AMP'), unit: 'A', color: isPrs3Running ? 'green' : 'red' }, { label: 'LOAD', value: lv('prs3', 'LOAD'), unit: '%', color: parseFloat(lv('prs3', 'LOAD')) > 0 ? 'green' : 'red' }, { label: 'PRESS.DISC', value: lv('prs3', 'PRES'), unit: 'Bar', color: parseFloat(lv('prs3', 'PRES')) > 0 ? 'green' : 'red' }]} isRunning={isPrs3Running} canvasScale={canvasScale} />
-                                        <StationCard id="prs4" onClick={(id) => handleEquipmentClick(id, [], ['AMP', 'LOAD', 'PRES', { key: "ACTIVE_SET", label: "Active Set (0=Set 1, 1=Set 2, 2=Set 3, 3=Set 4)" }])} title="PRESS NO.4" badge="MANUAL" initialX={1110} initialY={360} scale={0.65} data={[{ label: 'PRESS AMP', value: lv('prs4', 'AMP'), unit: 'A', color: isPrs4Running ? 'green' : 'red' }, { label: 'LOAD', value: lv('prs4', 'LOAD'), unit: '%', color: parseFloat(lv('prs4', 'LOAD')) > 0 ? 'green' : 'red' }, { label: 'PRESS.DISC', value: lv('prs4', 'PRES'), unit: 'Bar', color: parseFloat(lv('prs4', 'PRES')) > 0 ? 'green' : 'red' }]} isRunning={isPrs4Running} canvasScale={canvasScale} />
+                                    </filter>
+                                </defs>
+                            </svg>
+                            <div className="som-press-flow-body">
+                                <div
+                                    ref={canvasContainerRef}
+                                    style={{
+                                        position: 'relative',
+                                        width: activeTab === 'digester-press' ? 1485 : 720,
+                                        height: activeTab === 'digester-press' ? 585 : 375,
+                                        transform: activeTab === 'digester-press' ? `scale(${canvasScale}) translateX(-50px)` : `scale(${canvasScale})`,
+                                        transformOrigin: 'center center'
+                                    }}
+                                >
+                                    {activeTab === 'digester-press' ? (
+                                        <DigesterPressTab
+                                            viewMode={viewMode}
+                                            pressStatus={pressStatus}
+                                            configMode={configMode}
+                                            handleEquipmentClick={handleEquipmentClick}
+                                            lv={lv}
+                                            getTag={getTag}
+                                            flowBuilder={flowBuilder}
+                                        />
+                                    ) : (
+                                        <WaterDilutionTab
+                                            viewMode={viewMode}
+                                            pressStatus={pressStatus}
+                                            configMode={configMode}
+                                            handleEquipmentClick={handleEquipmentClick}
+                                            lv={lv}
+                                            getTag={getTag}
+                                            flowBuilder={flowBuilder}
+                                        />
+                                    )}
+                                    {activeTab === 'digester-press' && (
+                                        <>
+                                            <StationCard id="fd1" onClick={(id) => handleEquipmentClick(id, [], ['AMP'])} title="FRUIT DIST" badge="MANUAL" initialX={290} initialY={10} scale={0.45} data={[{ label: 'AMP', value: lv('fd1', 'AMP'), unit: 'A', color: isFd1Running ? 'green' : 'red' }]} isRunning={isFd1Running} canvasScale={canvasScale} />
+                                            <StationCard id="retconv" onClick={(id) => handleEquipmentClick(id, [], ['AMP'])} title="RETURN CONV" badge="MANUAL" initialX={275} initialY={80} scale={0.45} data={[{ label: 'AMP', value: lv('retconv', 'AMP'), unit: 'A', color: isRetconvRunning ? 'green' : 'red' }]} isRunning={isRetconvRunning} canvasScale={canvasScale} />
+                                            <StationCard id="botconv" onClick={(id) => handleEquipmentClick(id, [], ['AMP'])} title="CBC" badge="MANUAL" initialX={280} initialY={537} scale={0.45} data={[{ label: 'AMP', value: lv('botconv', 'AMP'), unit: 'A', color: isBotconvRunning ? 'green' : 'red' }]} isRunning={isBotconvRunning} canvasScale={canvasScale} />
+                                            <StationCard id="dig1" onClick={(id) => handleEquipmentClick(id, [], ['LOAD', 'LEVEL', 'TEMP', { key: 'DISCH_PV', label: 'Discharge PV' }])} title="DIGESTER NO.1" badge="MANUAL" initialX={348} initialY={195} scale={0.53} data={[{ label: 'LOAD', value: lv('dig1', 'LOAD'), unit: 'A', color: isDig1Running ? 'green' : 'red' }, { label: 'LEVEL', value: lv('dig1', 'LEVEL'), unit: '%', color: parseFloat(lv('dig1', 'LEVEL')) > 0 ? 'green' : 'red' }, { label: 'TEMP', value: lv('dig1', 'TEMP'), unit: '°C', color: parseFloat(lv('dig1', 'TEMP')) > 0 ? 'green' : 'red' }, { label: 'DISCH PV', value: lv('dig1', 'DISCH_PV'), unit: '%', color: parseFloat(lv('dig1', 'DISCH_PV')) > 0 ? 'green' : 'red' }]} isRunning={isDig1Running} canvasScale={canvasScale} />
+                                            <StationCard id="dig2" onClick={(id) => handleEquipmentClick(id, [], ['LOAD', 'LEVEL', 'TEMP', { key: 'DISCH_PV', label: 'Discharge PV' }])} title="DIGESTER NO.2" badge="MANUAL" initialX={627} initialY={195} scale={0.53} data={[{ label: 'LOAD', value: lv('dig2', 'LOAD'), unit: 'A', color: isDig2Running ? 'green' : 'red' }, { label: 'LEVEL', value: lv('dig2', 'LEVEL'), unit: '%', color: parseFloat(lv('dig2', 'LEVEL')) > 0 ? 'green' : 'red' }, { label: 'TEMP', value: lv('dig2', 'TEMP'), unit: '°C', color: parseFloat(lv('dig2', 'TEMP')) > 0 ? 'green' : 'red' }, { label: 'DISCH PV', value: lv('dig2', 'DISCH_PV'), unit: '%', color: parseFloat(lv('dig2', 'DISCH_PV')) > 0 ? 'green' : 'red' }]} isRunning={isDig2Running} canvasScale={canvasScale} />
+                                            <StationCard id="dig3" onClick={(id) => handleEquipmentClick(id, [], ['LOAD', 'LEVEL', 'TEMP', { key: 'DISCH_PV', label: 'Discharge PV' }])} title="DIGESTER NO.3" badge="MANUAL" initialX={910} initialY={195} scale={0.53} data={[{ label: 'LOAD', value: lv('dig3', 'LOAD'), unit: 'A', color: isDig3Running ? 'green' : 'red' }, { label: 'LEVEL', value: lv('dig3', 'LEVEL'), unit: '%', color: parseFloat(lv('dig3', 'LEVEL')) > 0 ? 'green' : 'red' }, { label: 'TEMP', value: lv('dig3', 'TEMP'), unit: '°C', color: parseFloat(lv('dig3', 'TEMP')) > 0 ? 'green' : 'red' }, { label: 'DISCH PV', value: lv('dig3', 'DISCH_PV'), unit: '%', color: parseFloat(lv('dig3', 'DISCH_PV')) > 0 ? 'green' : 'red' }]} isRunning={isDig3Running} canvasScale={canvasScale} />
+                                            <StationCard id="dig4" onClick={(id) => handleEquipmentClick(id, [], ['LOAD', 'LEVEL', 'TEMP', { key: 'DISCH_PV', label: 'Discharge PV' }])} title="DIGESTER NO.4" badge="MANUAL" initialX={1189} initialY={195} scale={0.53} data={[{ label: 'LOAD', value: lv('dig4', 'LOAD'), unit: 'A', color: isDig4Running ? 'green' : 'red' }, { label: 'LEVEL', value: lv('dig4', 'LEVEL'), unit: '%', color: parseFloat(lv('dig4', 'LEVEL')) > 0 ? 'green' : 'red' }, { label: 'TEMP', value: lv('dig4', 'TEMP'), unit: '°C', color: parseFloat(lv('dig4', 'TEMP')) > 0 ? 'green' : 'red' }, { label: 'DISCH PV', value: lv('dig4', 'DISCH_PV'), unit: '%', color: parseFloat(lv('dig4', 'DISCH_PV')) > 0 ? 'green' : 'red' }]} isRunning={isDig4Running} canvasScale={canvasScale} />
+                                            <StationCard id="prs1" onClick={(id) => handleEquipmentClick(id, [], ['AMP', 'LOAD', 'PRES', { key: "ACTIVE_SET", label: "Active Set (0=Set 1, 1=Set 2, 2=Set 3, 3=Set 4)" }])} title="PRESS NO.1" badge="MANUAL" initialX={280} initialY={400} scale={0.56} data={[{ label: 'PRESS AMP', value: lv('prs1', 'AMP'), unit: 'A', color: isPrs1Running ? 'green' : 'red' }, { label: 'LOAD', value: lv('prs1', 'LOAD'), unit: '%', color: parseFloat(lv('prs1', 'LOAD')) > 0 ? 'green' : 'red' }, { label: 'PRESS.DISC', value: lv('prs1', 'PRES'), unit: 'Bar', color: parseFloat(lv('prs1', 'PRES')) > 0 ? 'green' : 'red' }]} isRunning={isPrs1Running} canvasScale={canvasScale} />
+                                            <StationCard id="prs2" onClick={(id) => handleEquipmentClick(id, [], ['AMP', 'LOAD', 'PRES', { key: "ACTIVE_SET", label: "Active Set (0=Set 1, 1=Set 2, 2=Set 3, 3=Set 4)" }])} title="PRESS NO.2" badge="MANUAL" initialX={560} initialY={400} scale={0.56} data={[{ label: 'PRESS AMP', value: lv('prs2', 'AMP'), unit: 'A', color: isPrs2Running ? 'green' : 'red' }, { label: 'LOAD', value: lv('prs2', 'LOAD'), unit: '%', color: parseFloat(lv('prs2', 'LOAD')) > 0 ? 'green' : 'red' }, { label: 'PRESS.DISC', value: lv('prs2', 'PRES'), unit: 'Bar', color: parseFloat(lv('prs2', 'PRES')) > 0 ? 'green' : 'red' }]} isRunning={isPrs2Running} canvasScale={canvasScale} />
+                                            <StationCard id="prs3" onClick={(id) => handleEquipmentClick(id, [], ['AMP', 'LOAD', 'PRES', { key: "ACTIVE_SET", label: "Active Set (0=Set 1, 1=Set 2, 2=Set 3, 3=Set 4)" }])} title="PRESS NO.3" badge="MANUAL" initialX={842} initialY={400} scale={0.56} data={[{ label: 'PRESS AMP', value: lv('prs3', 'AMP'), unit: 'A', color: isPrs3Running ? 'green' : 'red' }, { label: 'LOAD', value: lv('prs3', 'LOAD'), unit: '%', color: parseFloat(lv('prs3', 'LOAD')) > 0 ? 'green' : 'red' }, { label: 'PRESS.DISC', value: lv('prs3', 'PRES'), unit: 'Bar', color: parseFloat(lv('prs3', 'PRES')) > 0 ? 'green' : 'red' }]} isRunning={isPrs3Running} canvasScale={canvasScale} />
+                                            <StationCard id="prs4" onClick={(id) => handleEquipmentClick(id, [], ['AMP', 'LOAD', 'PRES', { key: "ACTIVE_SET", label: "Active Set (0=Set 1, 1=Set 2, 2=Set 3, 3=Set 4)" }])} title="PRESS NO.4" badge="MANUAL" initialX={1121} initialY={400} scale={0.56} data={[{ label: 'PRESS AMP', value: lv('prs4', 'AMP'), unit: 'A', color: isPrs4Running ? 'green' : 'red' }, { label: 'LOAD', value: lv('prs4', 'LOAD'), unit: '%', color: parseFloat(lv('prs4', 'LOAD')) > 0 ? 'green' : 'red' }, { label: 'PRESS.DISC', value: lv('prs4', 'PRES'), unit: 'Bar', color: parseFloat(lv('prs4', 'PRES')) > 0 ? 'green' : 'red' }]} isRunning={isPrs4Running} canvasScale={canvasScale} />
 
-                                        <StationCard id="dc1" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="DISCH PV 1" badge="MANUAL" initialX={340} initialY={250} scale={0.55} data={[{ label: 'DISCH PV', value: lv('dc1', 'CV'), unit: '%', color: isDc1Running ? 'green' : 'red' }]} isRunning={isDc1Running} canvasScale={canvasScale} />
-                                        <StationCard id="dc2" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="DISCH PV 2" badge="MANUAL" initialX={615} initialY={250} scale={0.55} data={[{ label: 'DISCH PV', value: lv('dc2', 'CV'), unit: '%', color: isDc2Running ? 'green' : 'red' }]} isRunning={isDc2Running} canvasScale={canvasScale} />
-                                        <StationCard id="dc3" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="DISCH PV 3" badge="MANUAL" initialX={902} initialY={250} scale={0.55} data={[{ label: 'DISCH PV', value: lv('dc3', 'CV'), unit: '%', color: isDc3Running ? 'green' : 'red' }]} isRunning={isDc3Running} canvasScale={canvasScale} />
-                                        <StationCard id="dc4" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="DISCH PV 4" badge="MANUAL" initialX={1180} initialY={250} scale={0.55} data={[{ label: 'DISCH PV', value: lv('dc4', 'CV'), unit: '%', color: isDc4Running ? 'green' : 'red' }]} isRunning={isDc4Running} canvasScale={canvasScale} />
+                                            <StationCard id="dc1" onClick={(id) => handleEquipmentClick(id, [], [{ key: 'CV', label: 'VALVE PV 1' }])} title="BOTTOM DRAIN 1" badge="MANUAL" initialX={389} initialY={467} scale={0.55} data={[{ label: 'VALVE PV 1', value: lv('dc1', 'CV'), unit: '%', color: isDc1Running ? 'green' : 'red' }]} isRunning={isDc1Running} canvasScale={canvasScale} />
+                                            <StationCard id="dc2" onClick={(id) => handleEquipmentClick(id, [], [{ key: 'CV', label: 'VALVE PV 2' }])} title="BOTTOM DRAIN 2" badge="MANUAL" initialX={669} initialY={467} scale={0.55} data={[{ label: 'VALVE PV 2', value: lv('dc2', 'CV'), unit: '%', color: isDc2Running ? 'green' : 'red' }]} isRunning={isDc2Running} canvasScale={canvasScale} />
+                                            <StationCard id="dc3" onClick={(id) => handleEquipmentClick(id, [], [{ key: 'CV', label: 'VALVE PV 3' }])} title="BOTTOM DRAIN 3" badge="MANUAL" initialX={946} initialY={467} scale={0.55} data={[{ label: 'VALVE PV 3', value: lv('dc3', 'CV'), unit: '%', color: isDc3Running ? 'green' : 'red' }]} isRunning={isDc3Running} canvasScale={canvasScale} />
+                                            <StationCard id="dc4" onClick={(id) => handleEquipmentClick(id, [], [{ key: 'CV', label: 'VALVE PV 4' }])} title="BOTTOM DRAIN 4" badge="MANUAL" initialX={1236} initialY={467} scale={0.55} data={[{ label: 'VALVE PV 4', value: lv('dc4', 'CV'), unit: '%', color: isDc4Running ? 'green' : 'red' }]} isRunning={isDc4Running} canvasScale={canvasScale} />
 
-                                        <StationCard id="tc1" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="STEAM CV 1" badge="MANUAL" initialX={445} initialY={190} scale={0.55} data={[{ label: 'STEAM CV', value: lv('tc1', 'CV'), unit: '%', color: isTc1Running ? 'green' : 'red' }]} isRunning={isTc1Running} canvasScale={canvasScale} />
-                                        <StationCard id="tc2" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="STEAM CV 2" badge="MANUAL" initialX={720} initialY={190} scale={0.55} data={[{ label: 'STEAM CV', value: lv('tc2', 'CV'), unit: '%', color: isTc2Running ? 'green' : 'red' }]} isRunning={isTc2Running} canvasScale={canvasScale} />
-                                        <StationCard id="tc3" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="STEAM CV 3" badge="MANUAL" initialX={1004} initialY={190} scale={0.55} data={[{ label: 'STEAM CV', value: lv('tc3', 'CV'), unit: '%', color: isTc3Running ? 'green' : 'red' }]} isRunning={isTc3Running} canvasScale={canvasScale} />
-                                        <StationCard id="tc4" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="STEAM CV 4" badge="MANUAL" initialX={1284} initialY={190} scale={0.55} data={[{ label: 'STEAM CV', value: lv('tc4', 'CV'), unit: '%', color: isTc4Running ? 'green' : 'red' }]} isRunning={isTc4Running} canvasScale={canvasScale} />
+                                            <StationCard id="tc1" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="STEAM CV 1" badge="MANUAL" initialX={445} initialY={190} scale={0.55} data={[{ label: 'STEAM CV', value: lv('tc1', 'CV'), unit: '%', color: isTc1Running ? 'green' : 'red' }]} isRunning={isTc1Running} canvasScale={canvasScale} />
+                                            <StationCard id="tc2" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="STEAM CV 2" badge="MANUAL" initialX={720} initialY={190} scale={0.55} data={[{ label: 'STEAM CV', value: lv('tc2', 'CV'), unit: '%', color: isTc2Running ? 'green' : 'red' }]} isRunning={isTc2Running} canvasScale={canvasScale} />
+                                            <StationCard id="tc3" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="STEAM CV 3" badge="MANUAL" initialX={1004} initialY={190} scale={0.55} data={[{ label: 'STEAM CV', value: lv('tc3', 'CV'), unit: '%', color: isTc3Running ? 'green' : 'red' }]} isRunning={isTc3Running} canvasScale={canvasScale} />
+                                            <StationCard id="tc4" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="STEAM CV 4" badge="MANUAL" initialX={1284} initialY={190} scale={0.55} data={[{ label: 'STEAM CV', value: lv('tc4', 'CV'), unit: '%', color: isTc4Running ? 'green' : 'red' }]} isRunning={isTc4Running} canvasScale={canvasScale} />
 
-                                        <StationMotor initialX={200} initialY={525} scale={0.6} isRunning={isBotconvRunning} canvasScale={canvasScale} />
-                                        <StationMotor initialX={328} initialY={77} initialRotation={270} isRunning={isDig1Running} canvasScale={canvasScale} />
-                                        <StationMotor initialX={610} initialY={77} initialRotation={270} isRunning={isDig2Running} canvasScale={canvasScale} />
-                                        <StationMotor initialX={890} initialY={77} initialRotation={270} isRunning={isDig3Running} canvasScale={canvasScale} />
-                                        <StationMotor initialX={1170} initialY={77} initialRotation={270} isRunning={isDig4Running} canvasScale={canvasScale} />
-                                        <StationMotor initialX={200} initialY={0} initialRotation={360} scale={0.6} isRunning={isFd1Running} canvasScale={canvasScale} />
-                                        <StationMotor initialX={200} initialY={68} initialRotation={360} scale={0.6} isRunning={isRetconvRunning} canvasScale={canvasScale} />
+                                            <StationMotor initialX={203} initialY={521} scale={0.95} isRunning={isBotconvRunning} canvasScale={canvasScale} />
+                                            <StationMotor initialX={328} initialY={77} initialRotation={270} isRunning={isDig1Running} canvasScale={canvasScale} />
+                                            <StationMotor initialX={610} initialY={77} initialRotation={270} isRunning={isDig2Running} canvasScale={canvasScale} />
+                                            <StationMotor initialX={890} initialY={77} initialRotation={270} isRunning={isDig3Running} canvasScale={canvasScale} />
+                                            <StationMotor initialX={1170} initialY={77} initialRotation={270} isRunning={isDig4Running} canvasScale={canvasScale} />
+                                            <StationMotor initialX={203} initialY={-5} initialRotation={360} scale={0.95} isRunning={isFd1Running} canvasScale={canvasScale} />
+                                            <StationMotor initialX={203} initialY={63} initialRotation={360} scale={0.95} isRunning={isRetconvRunning} canvasScale={canvasScale} />
 
-                                        <StationValve initialX={270} initialY={240} scale={0.8} isRunning={isPrs1Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={550} initialY={240} scale={0.8} isRunning={isPrs2Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={830} initialY={240} scale={0.8} isRunning={isPrs3Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={1110} initialY={240} scale={0.8} isRunning={isPrs4Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={360} initialY={400} scale={0.8} initialRotation={180} isRunning={isDc1Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={640} initialY={400} scale={0.8} initialRotation={180} isRunning={isDc2Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={920} initialY={400} scale={0.8} initialRotation={180} isRunning={isDc3Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={1200} initialY={400} scale={0.8} initialRotation={180} isRunning={isDc4Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={420} initialY={215} scale={0.8} initialRotation={180} isRunning={isTc1Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={696} initialY={215} scale={0.8} initialRotation={180} isRunning={isTc2Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={978} initialY={215} scale={0.8} initialRotation={180} isRunning={isTc3Running} canvasScale={canvasScale} />
-                                        <StationValve initialX={1256} initialY={215} scale={0.8} initialRotation={180} isRunning={isTc4Running} canvasScale={canvasScale} />
-                                        
+                                            <StationValve initialX={270} initialY={240} scale={0.8} isRunning={isPrs1Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={550} initialY={240} scale={0.8} isRunning={isPrs2Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={830} initialY={240} scale={0.8} isRunning={isPrs3Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={1110} initialY={240} scale={0.8} isRunning={isPrs4Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={360} initialY={400} scale={0.8} initialRotation={180} isRunning={isDc1Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={640} initialY={400} scale={0.8} initialRotation={180} isRunning={isDc2Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={920} initialY={400} scale={0.8} initialRotation={180} isRunning={isDc3Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={1200} initialY={400} scale={0.8} initialRotation={180} isRunning={isDc4Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={420} initialY={215} scale={0.8} initialRotation={180} isRunning={isTc1Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={696} initialY={215} scale={0.8} initialRotation={180} isRunning={isTc2Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={978} initialY={215} scale={0.8} initialRotation={180} isRunning={isTc3Running} canvasScale={canvasScale} />
+                                            <StationValve initialX={1256} initialY={215} scale={0.8} initialRotation={180} isRunning={isTc4Running} canvasScale={canvasScale} />
 
-                                        <StationMotorCrooked initialX={410} initialY={390} scale={0.55} isRunning={isPrs1Running} canvasScale={canvasScale} />
-                                        <StationMotorCrooked initialX={690} initialY={390} scale={0.55} isRunning={isPrs2Running} canvasScale={canvasScale} />
-                                        <StationMotorCrooked initialX={970} initialY={390} scale={0.55} isRunning={isPrs3Running} canvasScale={canvasScale} />
-                                        <StationMotorCrooked initialX={1250} initialY={390} scale={0.55} isRunning={isPrs4Running} canvasScale={canvasScale} />
-                                    </>
-                                )}
-                                {activeTab === 'water-dilution' && (
-                                    <>
-                                        <StationCard id="w_lvl" onClick={(id) => handleEquipmentClick(id, [], ['LEVEL'])} title="WATER TANK" badge="MANUAL" initialX={450} initialY={30} scale={0.45} data={[{ label: 'LEVEL', value: lv('w_lvl', 'LEVEL'), unit: '%', color: parseFloat(lv('w_lvl', 'LEVEL')) > 0 ? 'green' : 'red' }]} isRunning={isWLvlRunning} canvasScale={canvasScale} />
-                                        <StationCard id="c_lvl" onClick={(id) => handleEquipmentClick(id, [], ['LEVEL'])} title="COND TANK" badge="MANUAL" initialX={450} initialY={235} scale={0.45} data={[{ label: 'LEVEL', value: lv('c_lvl', 'LEVEL'), unit: '%', color: parseFloat(lv('c_lvl', 'LEVEL')) > 0 ? 'green' : 'red' }]} isRunning={isCLvlRunning} canvasScale={canvasScale} />
-                                        
-                                        <StationCard id="flow" onClick={(id) => handleEquipmentClick(id, [], [{ key: 'FLOW_SP', label: 'FLOW SP' }, { key: 'FLOW_PV', label: 'FLOW PV' }])} title="FLOWRATE" badge="MANUAL" initialX={10} initialY={70} scale={0.45} data={[{ label: 'FLOW SP', value: lv('flow', 'FLOW_SP'), unit: 'm3/h', color: isFlowRunning ? 'green' : 'red' }, { label: 'FLOW PV', value: lv('flow', 'FLOW_PV'), unit: 'm3/h', color: isFlowRunning ? 'green' : 'red' }]} isRunning={isFlowRunning} canvasScale={canvasScale} />
-                                        <StationCard id="vcv" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="VALVE CV" badge="MANUAL" initialX={180} initialY={210} scale={0.45} data={[{ label: 'CV', value: lv('vcv', 'CV'), unit: '%', color: isVcvRunning ? 'green' : 'red' }]} isRunning={isVcvRunning} canvasScale={canvasScale} />
-                                        
-                                        <StationFlowmeter initialX={55} initialY={75} initialRotation={-90} scale={0.75} isRunning={isFlowRunning} canvasScale={canvasScale} />
-                                        <StationValveControl initialX={255} initialY={279} scale={1.4} isRunning={isVcvRunning} canvasScale={canvasScale} />
-                                    </>
-                                )}
+
+                                            <StationMotorCrooked initialX={410} initialY={390} scale={0.55} isRunning={isPrs1Running} canvasScale={canvasScale} />
+                                            <StationMotorCrooked initialX={690} initialY={390} scale={0.55} isRunning={isPrs2Running} canvasScale={canvasScale} />
+                                            <StationMotorCrooked initialX={970} initialY={390} scale={0.55} isRunning={isPrs3Running} canvasScale={canvasScale} />
+                                            <StationMotorCrooked initialX={1250} initialY={390} scale={0.55} isRunning={isPrs4Running} canvasScale={canvasScale} />
+                                        </>
+                                    )}
+                                    {activeTab === 'water-dilution' && (
+                                        <>
+                                            <StationCard id="w_lvl" onClick={(id) => handleEquipmentClick(id, [], ['LEVEL'])} title="WATER TANK" badge="MANUAL" initialX={450} initialY={30} scale={0.45} data={[{ label: 'LEVEL', value: lv('w_lvl', 'LEVEL'), unit: '%', color: parseFloat(lv('w_lvl', 'LEVEL')) > 0 ? 'green' : 'red' }]} isRunning={isWLvlRunning} canvasScale={canvasScale} />
+                                            <StationCard id="c_lvl" onClick={(id) => handleEquipmentClick(id, [], ['LEVEL'])} title="COND TANK" badge="MANUAL" initialX={450} initialY={235} scale={0.45} data={[{ label: 'LEVEL', value: lv('c_lvl', 'LEVEL'), unit: '%', color: parseFloat(lv('c_lvl', 'LEVEL')) > 0 ? 'green' : 'red' }]} isRunning={isCLvlRunning} canvasScale={canvasScale} />
+
+                                            <StationCard id="flow" onClick={(id) => handleEquipmentClick(id, [], [{ key: 'FLOW_SP', label: 'FLOW SP' }, { key: 'FLOW_PV', label: 'FLOW PV' }])} title="FLOWRATE" badge="MANUAL" initialX={10} initialY={70} scale={0.45} data={[{ label: 'FLOW SP', value: lv('flow', 'FLOW_SP'), unit: 'm3/h', color: isFlowRunning ? 'green' : 'red' }, { label: 'FLOW PV', value: lv('flow', 'FLOW_PV'), unit: 'm3/h', color: isFlowRunning ? 'green' : 'red' }]} isRunning={isFlowRunning} canvasScale={canvasScale} />
+                                            <StationCard id="vcv" onClick={(id) => handleEquipmentClick(id, [], ['CV'])} title="VALVE CV" badge="MANUAL" initialX={180} initialY={210} scale={0.45} data={[{ label: 'CV', value: lv('vcv', 'CV'), unit: '%', color: isVcvRunning ? 'green' : 'red' }]} isRunning={isVcvRunning} canvasScale={canvasScale} />
+
+                                            <StationFlowmeter initialX={55} initialY={75} initialRotation={-90} scale={0.75} isRunning={isFlowRunning} canvasScale={canvasScale} />
+                                            <StationValveControl initialX={255} initialY={279} scale={1.4} isRunning={isVcvRunning} canvasScale={canvasScale} />
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
                 )}
             </div>
 
@@ -851,7 +851,7 @@ export function StationCard({ title, badge, data, initialX = 0, initialY = 0, sc
         >
             <div className="som-station-header">
                 <div className="som-station-title">{title}</div>
-                <div 
+                <div
                     className="som-station-status-dot"
                     style={{
                         backgroundColor: isRunning === null ? '#22c55e' : isRunning ? '#22c55e' : '#ef4444',

@@ -10,6 +10,18 @@ import ProofModal from './components/ProofModal.jsx'
 import CctvModal from './components/CctvModal.jsx'
 
 function SecurityStationPage() {
+    // ── Detect ?mode=mobile from URL — render bare Patrol Map for Flutter WebView ──
+    const urlParams = new URLSearchParams(window.location.search);
+    const isMobileEmbed = urlParams.get('mode') === 'mobile';
+
+    // If mobile embed: inject stored token from URL param (Flutter passes it)
+    useEffect(() => {
+        const tokenFromUrl = urlParams.get('token');
+        if (tokenFromUrl) {
+            localStorage.setItem('kip_token', tokenFromUrl);
+        }
+    }, []);
+
     const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString())
     const [activeTab, setActiveTab] = useState('dashboard')
     
@@ -82,6 +94,35 @@ function SecurityStationPage() {
         return () => clearInterval(interval);
     }, []);
 
+    // ══════════════════════════════════════════════════════════════
+    // MOBILE EMBED MODE — Flutter WebView renders ONLY PatrolMapTab
+    // URL: http://host:5177/security?mode=mobile&token=<jwt>
+    // ══════════════════════════════════════════════════════════════
+    if (isMobileEmbed) {
+        return (
+            <div style={{
+                width: '100vw',
+                height: '100vh',
+                overflow: 'hidden',
+                background: '#0f172a',
+                position: 'fixed',
+                top: 0, left: 0, right: 0, bottom: 0,
+            }}>
+                <PatrolMapTab
+                    mapStations={mapStations}
+                    patrolGuards={patrolGuards}
+                    stationCheckpoints={stationCheckpoints}
+                    patrolTracks={patrolTracks}
+                    cctvCameras={cctvCameras}
+                    setProofIndex={setProofIndex}
+                    setActiveProof={setActiveProof}
+                    replaySessionId={replaySessionId}
+                    setReplaySessionId={setReplaySessionId}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="som-security-station">
             <header className="som-security-header">
@@ -124,13 +165,15 @@ function SecurityStationPage() {
                     {activeTab === 'queues' && <TruckQueuesTab />}
                 </div>
 
-                <SecurityAside 
-                    patrolGuards={patrolGuards} 
-                    stationCheckpoints={stationCheckpoints}
-                    patrolHistory={patrolHistory}
-                    replaySessionId={replaySessionId}
-                    setReplaySessionId={setReplaySessionId}
-                />
+                {activeTab === 'overview' && (
+                    <SecurityAside 
+                        patrolGuards={patrolGuards} 
+                        stationCheckpoints={stationCheckpoints}
+                        patrolHistory={patrolHistory}
+                        replaySessionId={replaySessionId}
+                        setReplaySessionId={setReplaySessionId}
+                    />
+                )}
             </main>
 
             <ProofModal 

@@ -113,6 +113,7 @@ export default defineConfig({
   },
   assetsInclude: ["**/*.glb", "**/*.gltf"],
   server: {
+    host: '0.0.0.0',
     fs: {
       allow: ["../.."],
     },

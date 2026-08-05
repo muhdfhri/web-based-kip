@@ -26,6 +26,8 @@ const MONITOR_POINTS = [
   { id: "st1_status", label: "S1 Status", defaultUnit: "" },
   { id: "st1_step", label: "S1 Current Step", defaultUnit: "" },
   { id: "st1_total_time", label: "S1 Total Time", defaultUnit: "min" },
+  { id: "card_inlet_steam", label: "Card Inlet Steam 1", defaultUnit: "" },
+  { id: "card_inlet_steam_2", label: "Card Inlet Steam 2", defaultUnit: "" },
 ];
 
 // Load bindings dari localStorage

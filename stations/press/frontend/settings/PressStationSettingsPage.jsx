@@ -5,6 +5,43 @@ import './PressStationSettingsModal.css'
 import pressImg from '../assets/press.svg'
 import dilutionImg from '../assets/dilution.webp'
 
+const ValBox = ({ value, unit, decimals = 1, onClick, isEdited, style }) => (
+  <div
+    className={`som-val-box ${onClick ? 'som-val-box--editable' : ''}`}
+    onClick={onClick}
+    style={{
+      whiteSpace: 'nowrap',
+      ...(isEdited ? { background: '#fef08a', color: '#854d0e', borderColor: '#eab308' } : {}),
+      ...style
+    }}
+  >
+    {typeof value === 'number' ? value.toFixed(decimals) : value}
+    {unit && <span className="som-val-unit" style={{ marginLeft: '2px' }}>{unit}</span>}
+  </div>
+);
+
+const ScadaRow = ({ label, val, unit, id, type, decimals = 1, configMode, handleBoxClick, getDisplayVal }) => {
+  const allowedKeys = ['LOW_SP', 'HIGH_SP', 'FLOW_PER_PRESS', 'CV_MIN', 'CV_MAX', 'PID_P', 'PID_I', 'PID_D', 'MIN_HZ', 'MAX_HZ'];
+  const canEdit = configMode || allowedKeys.includes(type);
+  
+  return (
+    <div className="som-overview-param-row" style={{ marginBottom: '4px', padding: '2px 0', borderBottom: '1px dashed #e2e8f0', width: '100%' }}>
+      <span className="som-overview-param-label" style={{ fontSize: '11px', flex: 1, whiteSpace: 'nowrap', marginRight: '8px' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <ValBox 
+          value={val} 
+          unit={unit} 
+          decimals={decimals} 
+          onClick={canEdit ? (e) => { 
+             e.stopPropagation(); 
+             handleBoxClick(e, id, type, getDisplayVal(id, type), { label }); 
+          } : null} 
+        />
+      </div>
+    </div>
+  );
+};
+
 function PressStationSettingsPage({ onClose, configMode, tagMap, getLiveValue, handleEquipmentClick }) {
   const sendCommand = usePlcStore(state => state.sendCommand);
   const [activeSlide, setActiveSlide] = useState('overview');
@@ -160,37 +197,20 @@ function PressStationSettingsPage({ onClose, configMode, tagMap, getLiveValue, h
 
   const isChanged = Object.keys(localSettings).length > 0;
 
-  const ValBox = ({ value, unit, decimals = 1, onClick }) => (
-    <div className={`som-val-box ${onClick ? 'som-val-box--editable' : ''}`} onClick={onClick} style={{ whiteSpace: 'nowrap' }}>
-      {typeof value === 'number' ? value.toFixed(decimals) : value}
-      {unit && <span className="som-val-unit" style={{ marginLeft: '2px' }}>{unit}</span>}
-    </div>
+  const renderScadaRow = (label, val, unit, id, type, decimals = 1) => (
+    <ScadaRow
+      key={`${id}__${type}`}
+      label={label}
+      val={val}
+      unit={unit}
+      id={id}
+      type={type}
+      decimals={decimals}
+      configMode={configMode}
+      handleBoxClick={handleBoxClick}
+      getDisplayVal={getDisplayVal}
+    />
   );
-
-  // ==========================================
-  //  OVERVIEW SLIDE
-  // ==========================================
-  const ScadaRow = ({ label, val, unit, id, type, decimals = 1 }) => {
-    const allowedKeys = ['LOW_SP', 'HIGH_SP', 'FLOW_PER_PRESS', 'CV_MIN', 'CV_MAX', 'PID_P', 'PID_I', 'PID_D', 'MIN_HZ', 'MAX_HZ'];
-    const canEdit = configMode || allowedKeys.includes(type);
-    
-    return (
-      <div className="som-overview-param-row" style={{ marginBottom: '4px', padding: '2px 0', borderBottom: '1px dashed #e2e8f0', width: '100%' }}>
-        <span className="som-overview-param-label" style={{ fontSize: '11px', flex: 1, whiteSpace: 'nowrap', marginRight: '8px' }}>{label}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <ValBox 
-            value={val} 
-            unit={unit} 
-            decimals={decimals} 
-            onClick={canEdit ? (e) => { 
-               e.stopPropagation(); 
-               handleBoxClick(e, id, type, getDisplayVal(id, type), { label }); 
-            } : null} 
-          />
-        </div>
-      </div>
-    );
-  };
 
   const getUserRole = () => {
     try {
@@ -302,12 +322,12 @@ function PressStationSettingsPage({ onClose, configMode, tagMap, getLiveValue, h
                   <img src={pressImg} alt="Press" style={{ height: '65px', marginBottom: '8px', objectFit: 'contain' }} />
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <ScadaRow label="Low SP" val={getDisplayVal(id, 'LOW_SP')} unit="A" id={id} type="LOW_SP" />
-                      <ScadaRow label="High SP" val={getDisplayVal(id, 'HIGH_SP')} unit="A" id={id} type="HIGH_SP" />
+                      {renderScadaRow("Low SP", getDisplayVal(id, 'LOW_SP'), "A", id, "LOW_SP")}
+                      {renderScadaRow("High SP", getDisplayVal(id, 'HIGH_SP'), "A", id, "HIGH_SP")}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <ScadaRow label="PV" val={getVal(id, 'AMP')} unit="A" id={id} type="AMP" />
-                      <ScadaRow label="Load" val={getVal(id, 'LOAD')} unit="%" id={id} type="LOAD" />
+                      {renderScadaRow("PV", getVal(id, 'AMP'), "A", id, "AMP")}
+                      {renderScadaRow("Load", getVal(id, 'LOAD'), "%", id, "LOAD")}
                     </div>
                   </div>
                 </div>
@@ -324,24 +344,24 @@ function PressStationSettingsPage({ onClose, configMode, tagMap, getLiveValue, h
           <div className="som-ps-card-header"><h3 className="som-ps-card-title">Dilution</h3></div>
           <div className="som-ps-card-body" style={{ padding: '8px 12px' }}>
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <ScadaRow label="Flow Per Press" val={getDisplayVal('dilution', 'FLOW_PER_PRESS')} unit="M3/HR" id="dilution" type="FLOW_PER_PRESS" decimals={3} />
+              {renderScadaRow("Flow Per Press", getDisplayVal('dilution', 'FLOW_PER_PRESS'), "M3/HR", "dilution", "FLOW_PER_PRESS", 3)}
               <div style={{ height: '4px' }}></div>
-              <ScadaRow label="Press No.1 Flow Rate" val={getVal('dilution', 'FLOW_RATE_1')} unit="M3/HR" id="dilution" type="FLOW_RATE_1" decimals={3} />
-              <ScadaRow label="Press No.2 Flow Rate" val={getVal('dilution', 'FLOW_RATE_2')} unit="M3/HR" id="dilution" type="FLOW_RATE_2" decimals={3} />
-              <ScadaRow label="Press No.3 Flow Rate" val={getVal('dilution', 'FLOW_RATE_3')} unit="M3/HR" id="dilution" type="FLOW_RATE_3" decimals={3} />
-              <ScadaRow label="Press No.4 Flow Rate" val={getVal('dilution', 'FLOW_RATE_4')} unit="M3/HR" id="dilution" type="FLOW_RATE_4" decimals={3} />
+              {renderScadaRow("Press No.1 Flow Rate", getVal('dilution', 'FLOW_RATE_1'), "M3/HR", "dilution", "FLOW_RATE_1", 3)}
+              {renderScadaRow("Press No.2 Flow Rate", getVal('dilution', 'FLOW_RATE_2'), "M3/HR", "dilution", "FLOW_RATE_2", 3)}
+              {renderScadaRow("Press No.3 Flow Rate", getVal('dilution', 'FLOW_RATE_3'), "M3/HR", "dilution", "FLOW_RATE_3", 3)}
+              {renderScadaRow("Press No.4 Flow Rate", getVal('dilution', 'FLOW_RATE_4'), "M3/HR", "dilution", "FLOW_RATE_4", 3)}
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', fontSize: '11px', color: '#333' }}>
                 <span style={{ fontWeight: 'bold' }}>Control Valve SP</span>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <ScadaRow label="Min" val={getDisplayVal('dilution', 'CV_MIN')} unit="%" id="dilution" type="CV_MIN" />
-                  <ScadaRow label="Max" val={getDisplayVal('dilution', 'CV_MAX')} unit="%" id="dilution" type="CV_MAX" />
+                  {renderScadaRow("Min", getDisplayVal('dilution', 'CV_MIN'), "%", "dilution", "CV_MIN")}
+                  {renderScadaRow("Max", getDisplayVal('dilution', 'CV_MAX'), "%", "dilution", "CV_MAX")}
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '2px' }}>
-                <ScadaRow label="P" val={getDisplayVal('dilution', 'PID_P')} id="dilution" type="PID_P" />
-                <ScadaRow label="I" val={getDisplayVal('dilution', 'PID_I')} id="dilution" type="PID_I" />
-                <ScadaRow label="D" val={getDisplayVal('dilution', 'PID_D')} id="dilution" type="PID_D" />
+                {renderScadaRow("P", getDisplayVal('dilution', 'PID_P'), undefined, "dilution", "PID_P")}
+                {renderScadaRow("I", getDisplayVal('dilution', 'PID_I'), undefined, "dilution", "PID_I")}
+                {renderScadaRow("D", getDisplayVal('dilution', 'PID_D'), undefined, "dilution", "PID_D")}
               </div>
             </div>
           </div>
@@ -352,20 +372,20 @@ function PressStationSettingsPage({ onClose, configMode, tagMap, getLiveValue, h
           <div className="som-ps-card-header"><h3 className="som-ps-card-title">Depericarper</h3></div>
           <div className="som-ps-card-body" style={{ padding: '8px 12px' }}>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '8px' }}>
-              <ScadaRow label="Min" val={getDisplayVal('depericarper', 'MIN_HZ')} unit="Hz" id="depericarper" type="MIN_HZ" />
-              <ScadaRow label="Max" val={getDisplayVal('depericarper', 'MAX_HZ')} unit="Hz" id="depericarper" type="MAX_HZ" />
+              {renderScadaRow("Min", getDisplayVal('depericarper', 'MIN_HZ'), "Hz", "depericarper", "MIN_HZ")}
+              {renderScadaRow("Max", getDisplayVal('depericarper', 'MAX_HZ'), "Hz", "depericarper", "MAX_HZ")}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', width: '100%', background: '#f8fafc', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <ScadaRow label="0 - 10 %" val={getDisplayVal('depericarper', 'HZ_0_10')} unit="Hz" id="depericarper" type="HZ_0_10" />
-              <ScadaRow label="10 - 20 %" val={getDisplayVal('depericarper', 'HZ_10_20')} unit="Hz" id="depericarper" type="HZ_10_20" />
-              <ScadaRow label="21 - 30 %" val={getDisplayVal('depericarper', 'HZ_21_30')} unit="Hz" id="depericarper" type="HZ_21_30" />
-              <ScadaRow label="31 - 40 %" val={getDisplayVal('depericarper', 'HZ_31_40')} unit="Hz" id="depericarper" type="HZ_31_40" />
-              <ScadaRow label="41 - 50 %" val={getDisplayVal('depericarper', 'HZ_41_50')} unit="Hz" id="depericarper" type="HZ_41_50" />
-              <ScadaRow label="51 - 60 %" val={getDisplayVal('depericarper', 'HZ_51_60')} unit="Hz" id="depericarper" type="HZ_51_60" />
-              <ScadaRow label="61 - 70 %" val={getDisplayVal('depericarper', 'HZ_61_70')} unit="Hz" id="depericarper" type="HZ_61_70" />
-              <ScadaRow label="71 - 80 %" val={getDisplayVal('depericarper', 'HZ_71_80')} unit="Hz" id="depericarper" type="HZ_71_80" />
-              <ScadaRow label="81 - 90 %" val={getDisplayVal('depericarper', 'HZ_81_90')} unit="Hz" id="depericarper" type="HZ_81_90" />
-              <ScadaRow label="91 - 100 %" val={getDisplayVal('depericarper', 'HZ_91_100')} unit="Hz" id="depericarper" type="HZ_91_100" />
+              {renderScadaRow("0 - 10 %", getDisplayVal('depericarper', 'HZ_0_10'), "Hz", "depericarper", "HZ_0_10")}
+              {renderScadaRow("10 - 20 %", getDisplayVal('depericarper', 'HZ_10_20'), "Hz", "depericarper", "HZ_10_20")}
+              {renderScadaRow("21 - 30 %", getDisplayVal('depericarper', 'HZ_21_30'), "Hz", "depericarper", "HZ_21_30")}
+              {renderScadaRow("31 - 40 %", getDisplayVal('depericarper', 'HZ_31_40'), "Hz", "depericarper", "HZ_31_40")}
+              {renderScadaRow("41 - 50 %", getDisplayVal('depericarper', 'HZ_41_50'), "Hz", "depericarper", "HZ_41_50")}
+              {renderScadaRow("51 - 60 %", getDisplayVal('depericarper', 'HZ_51_60'), "Hz", "depericarper", "HZ_51_60")}
+              {renderScadaRow("61 - 70 %", getDisplayVal('depericarper', 'HZ_61_70'), "Hz", "depericarper", "HZ_61_70")}
+              {renderScadaRow("71 - 80 %", getDisplayVal('depericarper', 'HZ_71_80'), "Hz", "depericarper", "HZ_71_80")}
+              {renderScadaRow("81 - 90 %", getDisplayVal('depericarper', 'HZ_81_90'), "Hz", "depericarper", "HZ_81_90")}
+              {renderScadaRow("91 - 100 %", getDisplayVal('depericarper', 'HZ_91_100'), "Hz", "depericarper", "HZ_91_100")}
             </div>
           </div>
         </div>
@@ -375,20 +395,20 @@ function PressStationSettingsPage({ onClose, configMode, tagMap, getLiveValue, h
           <div className="som-ps-card-header"><h3 className="som-ps-card-title">Destoner</h3></div>
           <div className="som-ps-card-body" style={{ padding: '8px 12px' }}>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginBottom: '8px' }}>
-              <ScadaRow label="Min" val={getDisplayVal('destoner', 'MIN_HZ')} unit="Hz" id="destoner" type="MIN_HZ" />
-              <ScadaRow label="Max" val={getDisplayVal('destoner', 'MAX_HZ')} unit="Hz" id="destoner" type="MAX_HZ" />
+              {renderScadaRow("Min", getDisplayVal('destoner', 'MIN_HZ'), "Hz", "destoner", "MIN_HZ")}
+              {renderScadaRow("Max", getDisplayVal('destoner', 'MAX_HZ'), "Hz", "destoner", "MAX_HZ")}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', width: '100%', background: '#f8fafc', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <ScadaRow label="0 - 10 %" val={getDisplayVal('destoner', 'HZ_0_10')} unit="Hz" id="destoner" type="HZ_0_10" />
-              <ScadaRow label="10 - 20 %" val={getDisplayVal('destoner', 'HZ_10_20')} unit="Hz" id="destoner" type="HZ_10_20" />
-              <ScadaRow label="21 - 30 %" val={getDisplayVal('destoner', 'HZ_21_30')} unit="Hz" id="destoner" type="HZ_21_30" />
-              <ScadaRow label="31 - 40 %" val={getDisplayVal('destoner', 'HZ_31_40')} unit="Hz" id="destoner" type="HZ_31_40" />
-              <ScadaRow label="41 - 50 %" val={getDisplayVal('destoner', 'HZ_41_50')} unit="Hz" id="destoner" type="HZ_41_50" />
-              <ScadaRow label="51 - 60 %" val={getDisplayVal('destoner', 'HZ_51_60')} unit="Hz" id="destoner" type="HZ_51_60" />
-              <ScadaRow label="61 - 70 %" val={getDisplayVal('destoner', 'HZ_61_70')} unit="Hz" id="destoner" type="HZ_61_70" />
-              <ScadaRow label="71 - 80 %" val={getDisplayVal('destoner', 'HZ_71_80')} unit="Hz" id="destoner" type="HZ_71_80" />
-              <ScadaRow label="81 - 90 %" val={getDisplayVal('destoner', 'HZ_81_90')} unit="Hz" id="destoner" type="HZ_81_90" />
-              <ScadaRow label="91 - 100 %" val={getDisplayVal('destoner', 'HZ_91_100')} unit="Hz" id="destoner" type="HZ_91_100" />
+              {renderScadaRow("0 - 10 %", getDisplayVal('destoner', 'HZ_0_10'), "Hz", "destoner", "HZ_0_10")}
+              {renderScadaRow("10 - 20 %", getDisplayVal('destoner', 'HZ_10_20'), "Hz", "destoner", "HZ_10_20")}
+              {renderScadaRow("21 - 30 %", getDisplayVal('destoner', 'HZ_21_30'), "Hz", "destoner", "HZ_21_30")}
+              {renderScadaRow("31 - 40 %", getDisplayVal('destoner', 'HZ_31_40'), "Hz", "destoner", "HZ_31_40")}
+              {renderScadaRow("41 - 50 %", getDisplayVal('destoner', 'HZ_41_50'), "Hz", "destoner", "HZ_41_50")}
+              {renderScadaRow("51 - 60 %", getDisplayVal('destoner', 'HZ_51_60'), "Hz", "destoner", "HZ_51_60")}
+              {renderScadaRow("61 - 70 %", getDisplayVal('destoner', 'HZ_71_80'), "Hz", "destoner", "HZ_61_70")}
+              {renderScadaRow("71 - 80 %", getDisplayVal('destoner', 'HZ_71_80'), "Hz", "destoner", "HZ_71_80")}
+              {renderScadaRow("81 - 90 %", getDisplayVal('destoner', 'HZ_81_90'), "Hz", "destoner", "HZ_81_90")}
+              {renderScadaRow("91 - 100 %", getDisplayVal('destoner', 'HZ_91_100'), "Hz", "destoner", "HZ_91_100")}
             </div>
           </div>
         </div>

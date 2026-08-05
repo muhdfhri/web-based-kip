@@ -28,7 +28,7 @@ const getShiftStartTimeStr = () => {
  * GET /api/security/patrol/active
  * Fetch currently active patrols (guards)
  */
-router.get('/active', async (req, res) => {
+const getActiveGuardsHandler = async (req, res) => {
   try {
     // Tampilkan HANYA guard yang sedang memiliki sesi patroli AKTIF (status = 'active')
     const [rows] = await dbPool.query(`
@@ -55,7 +55,10 @@ router.get('/active', async (req, res) => {
     console.error('Error fetching active guards:', error);
     res.status(500).json({ error: 'Failed to fetch active guards' });
   }
-});
+};
+
+router.get('/active', getActiveGuardsHandler);
+router.get('/guards', getActiveGuardsHandler);
 
 /**
  * GET /api/security/patrol/sessions
@@ -77,7 +80,7 @@ router.get('/sessions', async (req, res) => {
  * GET /api/security/patrol/checkpoints
  * Fetch patrol checkpoints (photos/notes uploaded by guards)
  */
-router.get('/checkpoints', async (req, res) => {
+const getCheckpointsHandler = async (req, res) => {
   try {
     const startTimeStr = getShiftStartTimeStr();
 
@@ -94,7 +97,10 @@ router.get('/checkpoints', async (req, res) => {
     console.error('Error fetching patrol checkpoints:', error);
     res.status(500).json({ error: 'Failed to fetch patrol checkpoints' });
   }
-});
+};
+
+router.get('/checkpoints', getCheckpointsHandler);
+router.get('/logs', getCheckpointsHandler);
 
 /**
  * POST /api/security/patrol/sessions/start
@@ -180,33 +186,53 @@ router.post('/sessions/start', async (req, res) => {
  * End a patrol session from mobile app
  */
 router.post('/sessions/end', async (req, res) => {
-  const { session_id } = req.body;
-  
-  if (!session_id) {
-    return res.status(400).json({ error: 'session_id is required' });
+  let { session_id } = req.body;
+  let guard_id = null;
+
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.decode(token);
+      if (decoded && decoded.userId) guard_id = decoded.userId;
+    } catch (_) {}
   }
-  
+
   try {
+    if (!session_id && guard_id) {
+      const [activeSess] = await dbPool.query(
+        'SELECT id FROM security_patrol_sessions WHERE guard_id = ? AND status = "active" ORDER BY id DESC LIMIT 1',
+        [guard_id]
+      );
+      if (activeSess.length > 0) {
+        session_id = activeSess[0].id;
+      }
+    }
+
+    if (!session_id) {
+      return res.status(400).json({ error: 'session_id is required or no active session found' });
+    }
+
     // 1. Set status sesi menjadi completed
     await dbPool.query(
       'UPDATE security_patrol_sessions SET status = "completed", completed_at = CURRENT_TIMESTAMP WHERE id = ?',
       [session_id]
     );
-    
+
     // 2. Ambil guard_id dan reset status guard di security_guards_status
     const [sess] = await dbPool.query('SELECT guard_id FROM security_patrol_sessions WHERE id = ?', [session_id]);
     if (sess.length > 0) {
-        const guard_id = sess[0].guard_id;
-        await dbPool.query(
-          'UPDATE security_guards_status SET status = "completed", latitude = NULL, longitude = NULL, last_update = CURRENT_TIMESTAMP WHERE user_id = ?',
-          [guard_id]
-        );
+      const gId = sess[0].guard_id;
+      await dbPool.query(
+        'UPDATE security_guards_status SET status = "standby", latitude = NULL, longitude = NULL, last_update = CURRENT_TIMESTAMP WHERE user_id = ?',
+        [gId]
+      );
     }
-    
+
     res.json({ success: true, message: 'Patrol session ended' });
   } catch (error) {
     console.error('Error ending patrol session:', error);
-    res.status(500).json({ error: 'Failed to end patrol session' });
+    res.status(500).json({ error: 'Failed to end patrol session: ' + error.message });
   }
 });
 
@@ -297,6 +323,29 @@ router.post('/checkpoints', async (req, res) => {
       'INSERT INTO security_session_checkpoints (session_id, checkpoint_code, station_name, status, verified_at, verification_photo, verification_notes, latitude, longitude, gps_accuracy) VALUES (?, ?, ?, "verified", CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)',
       [session_id, checkpoint_code, station_name, verification_photo || null, verification_notes || null, latitude, longitude, gps_accuracy]
     );
+
+    // 🚀 AUTOMATIC ANOMALY INCIDENT ROUTING: If notes exist (finding recorded during patrol checkpoint),
+    // automatically generate an Incident Report for Operator Validation & Maintenance Ticketing!
+    if (verification_notes && verification_notes.trim().length > 0) {
+      try {
+        let guard_name = 'Security Officer';
+        if (guard_id) {
+          const [uRows] = await dbPool.query('SELECT username FROM mewah_auth.users WHERE id = ?', [guard_id]);
+          if (uRows.length > 0) guard_name = uRows[0].username;
+        }
+
+        const incCode = `INC-${Date.now()}`;
+        await dbPool.query(
+          `INSERT INTO security_incidents 
+           (incident_code, incident_type, location, reported_by, reported_by_name, status, priority, description, photo_path, created_at) 
+           VALUES (?, 'Patrol Anomaly Finding', ?, ?, ?, 'SUBMITTED', 'MEDIUM', ?, ?, CURRENT_TIMESTAMP)`,
+          [incCode, station_name, guard_id || 1, guard_name, verification_notes.trim(), verification_photo || null]
+        );
+        console.log(`[INCIDENT ROUTER] Auto-created incident ticket ${incCode} for station: ${station_name}`);
+      } catch (incErr) {
+        console.error('[INCIDENT ROUTER] Error auto-creating incident ticket:', incErr);
+      }
+    }
     
     // Auto update guard status location (use UPSERT with subquery for user_id)
     try {

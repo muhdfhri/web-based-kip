@@ -3,10 +3,15 @@ import LoginPage from './core/layout/LoginPage.jsx'
 import DashboardPage from './DashboardPage.jsx'
 import OrientationGuard from './core/components/OrientationGuard.jsx'
 import ForcePasswordChangePage from './core/layout/ForcePasswordChangePage.jsx'
+import SecurityStationPage from '@stations/security/SecurityStationPage.jsx'
 
 function App() {
   const [user, setUser] = useState(null)
   const [checkingSession, setCheckingSession] = useState(true)
+
+  // Direct Mobile Embed Bypass: If ?mode=mobile is present in URL, render SecurityStationPage directly
+  const urlParams = new URLSearchParams(window.location.search);
+  const isMobileEmbed = urlParams.get('mode') === 'mobile';
 
   // Enforce light theme globally (MEWAH Standard)
   useEffect(() => {
@@ -68,6 +73,10 @@ function App() {
 
   const handleProfileUpdate = (updatedUser) => {
     setUser(updatedUser)
+  }
+
+  if (isMobileEmbed) {
+    return <SecurityStationPage />;
   }
 
   if (checkingSession) {

@@ -88,7 +88,7 @@ const STATION_PAGE_MAP = {
   "Boiler House": BoilerHousePage,
   "EFB Plant": ComingSoonPage, // Locked/inactive
   "Engine Room": EngineRoomPage,
-  "Security": SecurityStationPage, 
+  "Security": SecurityStationPage,
   Weighbridge: ComingSoonPage, // Locked/inactive
   "Loading Ramp": ComingSoonPage, // Locked/inactive
   "Oil Clarification Room": ComingSoonPage, // Locked/inactive
@@ -156,7 +156,7 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
       if (activeMenu === "Dashboard" && STATION_PAGE_MAP[activeSubmenu]) {
         setActiveMenu("Station View");
       }
-      return; 
+      return;
     }
 
     const perms = user?.permissions || [];
@@ -181,13 +181,13 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
       if (!currentPerm) {
         currentPerm = perms.find(p => {
           if (p.endsWith(`:${cleanSubmenu}`)) return true;
-          
+
           const st = stations.find(s => s.title === cleanSubmenu);
           if (st && p.startsWith(`${st.slug}:`)) return true;
-          
+
           if (cleanSubmenu === "Production Dashboard" && (p.startsWith("menu_dashboard:") || p.startsWith("Dashboard:"))) return true;
           if (cleanSubmenu === "Home Overview" && (p.startsWith("menu_home:") || p.startsWith("Overview:"))) return true;
-          
+
           return false;
         });
       }
@@ -433,11 +433,11 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
     const StationComponent = STATION_PAGE_MAP[activeSubmenu];
     if (StationComponent) {
       const stationSlug =
-        stations.find((s) => s.title === activeSubmenu)?.slug || 
-        (activeSubmenu === "Press Station" ? "press" : 
-         activeSubmenu === "Kernel Plant" ? "kernel-plant" : 
-         activeSubmenu === "Threshing Station" ? "threshing" : 
-         activeSubmenu === "Boiler House" ? "boiler-house" : "sterilizer");
+        stations.find((s) => s.title === activeSubmenu)?.slug ||
+        (activeSubmenu === "Press Station" ? "press" :
+          activeSubmenu === "Kernel Plant" ? "kernel-plant" :
+            activeSubmenu === "Threshing Station" ? "threshing" :
+              activeSubmenu === "Boiler House" ? "boiler-house" : "sterilizer");
       const StationPlcConfig = STATION_PLC_CONFIG_MAP[activeSubmenu];
 
       if (StationPlcConfig && StationPlcConfig !== ComingSoonPage) {
@@ -447,12 +447,11 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
               <StationPlcConfig key={stationSlug} stationSlug={stationSlug} user={user} />
             </div>
             <div style={{ display: viewPlcConfig ? "none" : "block", height: "100%", width: "100%" }}>
-              <div 
-                className={`som-station-container ${
-                  (user?.userRole?.toLowerCase() === 'developer' || user?.role?.toLowerCase() === 'developer' || (user?.permissions || []).includes(`Setting:${activeSubmenu}`))
-                    ? 'has-setting-permission' 
+              <div
+                className={`som-station-container ${(user?.userRole?.toLowerCase() === 'developer' || user?.role?.toLowerCase() === 'developer' || (user?.permissions || []).includes(`Setting:${activeSubmenu}`))
+                    ? 'has-setting-permission'
                     : 'no-setting-permission'
-                }`}
+                  }`}
                 style={{ height: '100%' }}
               >
                 <StationComponent
@@ -466,12 +465,11 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
         );
       }
       return (
-        <div 
-          className={`som-station-container ${
-            (user?.userRole?.toLowerCase() === 'developer' || user?.role?.toLowerCase() === 'developer' || (user?.permissions || []).includes(`Setting:${activeSubmenu}`))
-              ? 'has-setting-permission' 
+        <div
+          className={`som-station-container ${(user?.userRole?.toLowerCase() === 'developer' || user?.role?.toLowerCase() === 'developer' || (user?.permissions || []).includes(`Setting:${activeSubmenu}`))
+              ? 'has-setting-permission'
               : 'no-setting-permission'
-          }`}
+            }`}
           style={{ height: '100%' }}
         >
           <StationComponent

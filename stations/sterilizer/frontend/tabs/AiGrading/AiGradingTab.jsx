@@ -1,433 +1,365 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import "./AiGradingTab.css";
-import usePlcStore from "@core/store/usePlcStore.js";
 
-export default function AiGradingTab({ configMode, availableTags = [], tagMap = {} }) {
-  const [isAutoPilot, setIsAutoPilot] = useState(true);
-  const [totalFfb, setTotalFfb] = useState(0);
-  const [distribution, setDistribution] = useState({
-    ripe: 0,
-    unripe: 0,
-    overripe: 0,
-    empty: 0,
-    abnormal: 0,
-  });
+const CATEGORY_META = [
+  { id: "all", label: "ALL", color: "#0f172a" },
+  { id: "ripe", label: "RIPE", color: "#10b981" },
+  { id: "unripe", label: "UNRIPE", color: "#f59e0b" },
+  { id: "overripe", label: "OVERRIPE", color: "#f97316" },
+];
 
-  const [logs, setLogs] = useState([]);
-  const [message, setMessage] = useState("");
+const getDefaultApiBase = () => {
+  return "";
+};
 
-  // Developer settings state (persisted in localStorage)
+const initialCounts = { ripe: 0, unripe: 0, overripe: 0 };
+const initialMetrics = { average_confidence: 0, detections_per_minute: 0 };
+
+const CameraOffIcon = () => (
+  <svg viewBox="0 0 64 64" width="52" height="52" aria-hidden="true">
+    <rect x="10" y="19" width="31" height="26" rx="5" />
+    <path d="m41 27 13-7v24l-13-7" />
+    <path d="M9 9 55 55" />
+  </svg>
+);
+
+export default function AiGradingTab({ configMode }) {
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState("DAY");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedLine, setSelectedLine] = useState(1);
+  const [availableLines, setAvailableLines] = useState([1, 2]);
+  const [categoryCounts, setCategoryCounts] = useState(initialCounts);
+  const [metrics, setMetrics] = useState(initialMetrics);
+  const [currentDecision, setCurrentDecision] = useState(null);
+  const [runtimeStatus, setRuntimeStatus] = useState(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [rtspUrl, setRtspUrl] = useState(() => localStorage.getItem("som_ffb_rtsp_url") || "");
-  const [streamUrl, setStreamUrl] = useState(() => localStorage.getItem("som_ffb_stream_url") || "");
-  const [ffbTag, setFfbTag] = useState(() => localStorage.getItem("som_ffb_plc_tag") || "");
-  const [pilotTag, setPilotTag] = useState(() => localStorage.getItem("som_ffb_pilot_tag") || "");
+  const [message, setMessage] = useState("");
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [apiBaseUrl, setApiBaseUrl] = useState(
+    () => localStorage.getItem("som_ffb_ai_api_base") ?? getDefaultApiBase()
+  );
+  const [rtspUrl, setRtspUrl] = useState("");
+  const [cameraName, setCameraName] = useState("FFB Conveyor Inlet Line 1");
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [serverConfig, setServerConfig] = useState(null);
 
-  // PLC Store for writing autopilot commands
-  const plcStore = usePlcStore();
+  const apiUrl = useCallback(
+    (path) => `${apiBaseUrl.replace(/\/$/, "")}/api/sterilizer-ai${path}`,
+    [apiBaseUrl]
+  );
 
-  // Fetch real FFB stats from grading-service
-  const fetchStats = async () => {
+  const loadRuntimeData = useCallback(async () => {
     try {
-      const res = await fetch("/api/grading/stats?period=DAY", { credentials: "include" });
-      if (res.ok) {
-        const stats = await res.json();
-
-        // Sum total detected bunches
-        const total = stats.reduce((sum, s) => sum + s.count, 0);
-
-        const getCount = (cat) => stats.find((s) => s.category === cat)?.count || 0;
-        const getPct = (cat) => (total > 0 ? Math.round((getCount(cat) / total) * 100) : 0);
-
-        setTotalFfb(total);
-        setDistribution({
-          ripe: getPct("ripe"),
-          unripe: getPct("unripe"),
-          overripe: getPct("overripe"),
-          empty: getPct("empty"),
-          abnormal: getPct("abnormal"),
-        });
+      const [healthResponse, statsResponse, currentResponse] = await Promise.all([
+        fetch(apiUrl("/health")),
+        fetch(apiUrl(`/stats?line_no=${selectedLine}&period=${selectedTimeFilter}`)),
+        fetch(apiUrl(`/current?line_no=${selectedLine}`)),
+      ]);
+      if (!healthResponse.ok || !statsResponse.ok || !currentResponse.ok) {
+        throw new Error("AI grading service is unavailable");
       }
-    } catch (err) {
-      console.error("Failed to fetch FFB grading stats:", err);
-    }
-  };
 
-  // Fetch real-time recent AI detections
-  const fetchRecentDetections = async () => {
+      const [health, stats, current] = await Promise.all([
+        healthResponse.json(),
+        statsResponse.json(),
+        currentResponse.json(),
+      ]);
+      setRuntimeStatus(health);
+      setCategoryCounts({ ...initialCounts, ...(stats.counts || {}) });
+      setMetrics({ ...initialMetrics, ...(stats.metrics || {}) });
+      setCurrentDecision(current.data || null);
+    } catch {
+      setRuntimeStatus(null);
+      setCategoryCounts(initialCounts);
+      setMetrics(initialMetrics);
+      setCurrentDecision(null);
+    }
+  }, [apiUrl, selectedLine, selectedTimeFilter]);
+
+  useEffect(() => {
+    loadRuntimeData();
+    const interval = window.setInterval(loadRuntimeData, 2000);
+    return () => window.clearInterval(interval);
+  }, [loadRuntimeData]);
+
+  const openConfiguration = async () => {
+    setRtspUrl("");
     try {
-      const res = await fetch("/api/grading/recent?page=1&limit=5", { credentials: "include" });
-      if (res.ok) {
-        const result = await res.json();
-        if (result?.data && Array.isArray(result.data)) {
-          const formattedLogs = result.data.map((d) => {
-            const timeStr = new Date(d.created_at).toLocaleTimeString("id-ID", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            return {
-              time: timeStr,
-              action: `Detected ${d.category.toUpperCase()} (${d.confidence}% Confidence)`,
-            };
-          });
-          setLogs(formattedLogs);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch recent FFB detections:", err);
+      const response = await fetch(apiUrl("/config"));
+      if (!response.ok) throw new Error("Unable to read AI configuration");
+      const result = await response.json();
+      const config = result.data;
+      const lines = config.lines.map((line) => Number(line.line_no));
+      setServerConfig(config);
+      setAvailableLines(lines);
+      const line = config.lines.find((item) => Number(item.line_no) === selectedLine) || config.lines[0];
+      setSelectedLine(Number(line.line_no));
+      setCameraName(line.camera.camera_name);
+      setCameraEnabled(Boolean(line.enabled));
+    } catch {
+      setServerConfig(null);
+      setMessage("AI service port 4105 is not reachable. Start the Python service first.");
+      window.setTimeout(() => setMessage(""), 5000);
+    }
+    setShowConfigModal(true);
+  };
+
+  const selectConfigLine = (lineNo) => {
+    const numericLine = Number(lineNo);
+    setSelectedLine(numericLine);
+    const line = serverConfig?.lines.find((item) => Number(item.line_no) === numericLine);
+    if (line) {
+      setCameraName(line.camera.camera_name);
+      setCameraEnabled(Boolean(line.enabled));
+      setRtspUrl("");
     }
   };
 
-  // Poll statistics and recent logs every 5 seconds
-  useEffect(() => {
-    fetchStats();
-    fetchRecentDetections();
+  const handleSaveConfig = async () => {
+    localStorage.setItem("som_ffb_ai_api_base", apiBaseUrl);
+    if (!serverConfig) {
+      setShowConfigModal(false);
+      return;
+    }
 
-    const interval = setInterval(() => {
-      fetchStats();
-      fetchRecentDetections();
-    }, 5000);
+    const nextConfig = structuredClone(serverConfig);
+    const line = nextConfig.lines.find((item) => Number(item.line_no) === selectedLine);
+    line.enabled = cameraEnabled;
+    line.camera.camera_name = cameraName.trim();
+    if (rtspUrl.trim()) line.camera.rtsp_url = rtspUrl.trim();
 
-    return () => clearInterval(interval);
-  }, []);
-
-  // Determine suggested recipe based on unripe percentage
-  const getRecipeDetails = () => {
-    const { unripe, overripe } = distribution;
-    if (unripe > 30) {
-      return {
-        name: "Cycle 3 (High Steam / Long Moisture)",
-        code: "CYCLE_3",
-        reason: "High ratio of unripe fruit requires longer steam penetration duration."
-      };
-    } else if (overripe > 15) {
-      return {
-        name: "Cycle 1 (Fast Cycle / Low Pressure)",
-        code: "CYCLE_1",
-        reason: "High ratio of overripe fruit detected, fast cycle recommended to prevent acid contamination."
-      };
-    } else {
-      return {
-        name: "Cycle 2 (Standard Double Peaking)",
-        code: "CYCLE_2",
-        reason: "Normal ripeness distribution, using standard energy-efficient cycle."
-      };
+    setSavingConfig(true);
+    try {
+      const response = await fetch(apiUrl("/config"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nextConfig),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || "Configuration failed");
+      setServerConfig(result.data);
+      setShowConfigModal(false);
+      setMessage(`Line ${selectedLine} camera configuration saved.`);
+      window.setTimeout(() => setMessage(""), 4000);
+      loadRuntimeData();
+    } catch (error) {
+      setMessage(error.message);
+      window.setTimeout(() => setMessage(""), 5000);
+    } finally {
+      setSavingConfig(false);
     }
   };
 
-  const recipe = getRecipeDetails();
+  const cameraStatus = runtimeStatus?.cameras?.[selectedLine] || runtimeStatus?.cameras?.[String(selectedLine)];
+  const liveCamera = Boolean(cameraStatus?.connected);
+  const modelReady = Boolean(runtimeStatus?.model_ready);
+  const databaseReady = Boolean(runtimeStatus?.database_ready);
 
-  // Autopilot logic - send PLC commands when suggested recipe shifts
-  const prevRecipeCode = useRef(recipe.code);
-  useEffect(() => {
-    if (isAutoPilot && prevRecipeCode.current !== recipe.code && totalFfb > 0) {
-      const now = new Date();
-      const timeStr = now.toTimeString().substring(0, 5);
-
-      // Attempt writing to PLC tag if configured
-      if (pilotTag) {
-        // Map recipe code to an integer value (e.g., CYCLE_1 = 1, CYCLE_2 = 2, CYCLE_3 = 3)
-        const plcVal = recipe.code === "CYCLE_1" ? 1 : recipe.code === "CYCLE_2" ? 2 : 3;
-        const targetTag = availableTags.find(t => t.tag_name === pilotTag);
-        if (targetTag) {
-          plcStore.sendCommand(targetTag.id, plcVal, pilotTag, "sterilizer");
-        }
-      }
-
-      const newLog = {
-        time: timeStr,
-        action: `Auto-pilot applied ${recipe.name}`,
-      };
-      setLogs((prev) => [newLog, ...prev.slice(0, 4)]);
-      prevRecipeCode.current = recipe.code;
-
-      setMessage(`System automatically applied recipe: ${recipe.name}`);
-      setTimeout(() => setMessage(""), 5000);
-    }
-  }, [recipe.code, isAutoPilot, recipe.name, pilotTag, availableTags, totalFfb]);
-
-  const handleApplyRecipe = () => {
-    const now = new Date();
-    const timeStr = now.toTimeString().substring(0, 5);
-
-    // Attempt writing to PLC tag manually
-    if (pilotTag) {
-      const plcVal = recipe.code === "CYCLE_1" ? 1 : recipe.code === "CYCLE_2" ? 2 : 3;
-      const targetTag = availableTags.find(t => t.tag_name === pilotTag);
-      if (targetTag) {
-        plcStore.sendCommand(targetTag.id, plcVal, pilotTag, "sterilizer");
-      }
-    }
-
-    const newLog = {
-      time: timeStr,
-      action: `Manually applied ${recipe.name}`,
-    };
-    setLogs((prev) => [newLog, ...prev.slice(0, 4)]);
-
-    setMessage(`Recipe ${recipe.name} successfully applied to Sterilizer!`);
-    setTimeout(() => setMessage(""), 5000);
-  };
-
-  const handleSaveConfig = () => {
-    localStorage.setItem("som_ffb_rtsp_url", rtspUrl);
-    localStorage.setItem("som_ffb_stream_url", streamUrl);
-    localStorage.setItem("som_ffb_plc_tag", ffbTag);
-    localStorage.setItem("som_ffb_pilot_tag", pilotTag);
-    setShowConfigModal(false);
-
-    setMessage("AI Camera & PLC mappings saved successfully!");
-    setTimeout(() => setMessage(""), 4000);
-
-    // Refresh FFB stats immediately
-    fetchStats();
-  };
+  const categoryStats = useMemo(() => {
+    const total = Object.values(categoryCounts).reduce((sum, count) => sum + Number(count || 0), 0);
+    return CATEGORY_META.map((category) => ({
+      ...category,
+      count: category.id === "all" ? total : Number(categoryCounts[category.id] || 0),
+    }));
+  }, [categoryCounts]);
+  const totalCount = categoryStats[0].count;
+  const decisionReady = currentDecision?.decision_status === "READY";
 
   return (
     <div className="som-ai-grading-container">
-      {message && (
-        <div className="som-grading-alert-popup">
-          <span className="som-grading-alert-icon">⚡</span>
-          <span>{message}</span>
-        </div>
-      )}
+      {message && <div className="som-grading-alert-popup">{message}</div>}
 
-      {/* LEFT COLUMN: LIVE CCTV FEED WITH DEPLOYED VIDEO SOURCE */}
-      <div className="som-grading-left-col">
-        <div className="som-minimal-card som-grading-camera-card">
-          <div className="som-minimal-header" style={{ position: "relative" }}>
-            🎥 LIVE AI VIDEO ANALYTICS - CONVEYOR INLET
-
-            {/* Developer Setup Button */}
+      <section className="som-ai-grading-card som-ai-live-card">
+        <header className="som-ai-card-header">
+          <h3>LIVE FFB STREAMING</h3>
+          <div className="som-ai-camera-meta">
+            <span>LINE {selectedLine} | CAM-FFB-{String(selectedLine).padStart(2, "0")} | {liveCamera ? "ACTIVE" : "OFFLINE"}</span>
             {configMode && (
-              <button
-                className="som-dev-config-btn"
-                onClick={() => setShowConfigModal(true)}
-              >
-                ⚙️ Setup CCTV & AI
+              <button type="button" className="som-ai-settings-button" onClick={openConfiguration} aria-label="Setup FFB CCTV and AI" title="Setup FFB CCTV & AI">
+                ⚙
               </button>
             )}
           </div>
-          <div className="som-minimal-body som-grading-camera-body">
-            <div className="som-video-wrapper">
-              {streamUrl ? (
-                <img
-                  src={streamUrl}
-                  alt="AI FFB Camera Feed"
-                  className="som-grading-video-element"
-                />
-              ) : (
-                <div className="som-feed-disconnected">
-                  <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" className="som-disconnected-icon">
-                    <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" />
-                  </svg>
-                  <p className="som-disconnected-title">CCTV STREAM DISCONNECTED</p>
-                  <p className="som-disconnected-subtitle">
-                    {configMode ? "Enter WebSocket or HTTP Stream URL in settings to connect." : "No camera signal. Please contact system administrator."}
-                  </p>
-                </div>
-              )}
+        </header>
 
-              {/* Live overlay banner when connected */}
-              {streamUrl && (
-                <div className="som-video-live-overlay">
-                  <span className="som-live-pulse-dot"></span>
-                  <span>LIVE FEED</span>
-                </div>
-              )}
-
-              {/* Dev Active Overlay Info */}
-              {configMode && (
-                <div className="som-dev-overlay-badge">
-                  🛠_DEV CONFIG MODE
-                </div>
-              )}
-
-              {/* Developer Configuration Modal overlay inside wrapper */}
-              {showConfigModal && (
-                <div className="som-dev-modal-overlay" onClick={() => setShowConfigModal(false)}>
-                  <div className="som-dev-modal" onClick={(e) => e.stopPropagation()}>
-                    <div className="som-dev-modal-header">
-                      ⚙️ CCTV & PLC CONFIGURATION
-                    </div>
-                    <div className="som-dev-modal-body">
-                      <div className="som-dev-form-group">
-                        <label>RTSP Video Source URL</label>
-                        <input
-                          type="text"
-                          value={rtspUrl}
-                          onChange={(e) => setRtspUrl(e.target.value)}
-                          placeholder="rtsp://admin:admin123@192.168.10.50:554/stream1"
-                        />
-                      </div>
-                      <div className="som-dev-form-group">
-                        <label>WebSocket/HTTP Stream URL (Frontend)</label>
-                        <input
-                          type="text"
-                          value={streamUrl}
-                          onChange={(e) => setStreamUrl(e.target.value)}
-                          placeholder="ws://localhost:9999/live/stream (Leave empty for offline)"
-                        />
-                      </div>
-                      <div className="som-dev-form-group">
-                        <label>PLC Tag - FFB Counter</label>
-                        <select value={ffbTag} onChange={(e) => setFfbTag(e.target.value)}>
-                          <option value="">— Select FFB Tag —</option>
-                          {availableTags && availableTags.map((tag) => (
-                            <option key={tag.id} value={tag.tag_name}>
-                              {tag.tag_name} ({tag.tag_address})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="som-dev-form-group">
-                        <label>PLC Tag - Auto-Pilot Signal</label>
-                        <select value={pilotTag} onChange={(e) => setPilotTag(e.target.value)}>
-                          <option value="">— Select Pilot Tag —</option>
-                          {availableTags && availableTags.map((tag) => (
-                            <option key={tag.id} value={tag.tag_name}>
-                              {tag.tag_name} ({tag.tag_address})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="som-dev-modal-footer">
-                      <button className="som-dev-btn-cancel" onClick={() => setShowConfigModal(false)}>
-                        Cancel
-                      </button>
-                      <button className="som-dev-btn-save" onClick={handleSaveConfig}>
-                        Save Settings
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+        <div className="som-ai-video-container">
+          {liveCamera ? (
+            <img src={apiUrl(`/stream?line_no=${selectedLine}`)} alt={`Live AI FFB Camera Line ${selectedLine}`} />
+          ) : (
+            <div className="som-ai-video-placeholder">
+              <CameraOffIcon />
+              <strong>{runtimeStatus ? "CCTV NOT CONNECTED" : "FFB CLASSIFICATION SERVICE OFFLINE"}</strong>
+              <span>
+                {runtimeStatus
+                  ? cameraStatus?.error || "Configure a valid RTSP source to start the live stream."
+                  : "Start the Sterilizer FFB classification service and verify its API address."}
+              </span>
             </div>
+          )}
+
+          <div className="som-ai-stream-overlay">
+            <span className={`som-ai-live-badge ${liveCamera ? "" : "offline"}`}>
+              <i /> {liveCamera ? "LIVE CAM" : "CAMERA OFFLINE"}
+            </span>
+            <span className="som-ai-stream-stats">
+              {liveCamera ? "REALTIME CLASSIFICATION INPUT" : cameraStatus?.error || runtimeStatus?.model_error || "WAITING FOR CCTV CONFIGURATION"}
+            </span>
           </div>
+
+          {showConfigModal && (
+            <div className="som-ai-config-overlay" onClick={() => setShowConfigModal(false)}>
+              <div className="som-ai-config-modal" onClick={(event) => event.stopPropagation()}>
+                <h4>FFB CCTV & AI CONFIGURATION</h4>
+                <div className="som-ai-config-fields">
+                  <label>
+                    AI Service Base URL
+                    <input value={apiBaseUrl} onChange={(event) => setApiBaseUrl(event.target.value)} placeholder="http://localhost:4105" />
+                  </label>
+                  <label>
+                    Sterilizer Line
+                    <select value={selectedLine} onChange={(event) => selectConfigLine(event.target.value)}>
+                      {availableLines.map((lineNo) => <option key={lineNo} value={lineNo}>Line {lineNo}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    Camera Name
+                    <input value={cameraName} onChange={(event) => setCameraName(event.target.value)} placeholder="FFB Conveyor Inlet Line 1" />
+                  </label>
+                  <label>
+                    New RTSP URL
+                    <input type="password" value={rtspUrl} onChange={(event) => setRtspUrl(event.target.value)} placeholder="Leave empty to keep the saved credential" autoComplete="new-password" />
+                  </label>
+                  <label className="som-ai-config-checkbox">
+                    <input type="checkbox" checked={cameraEnabled} onChange={(event) => setCameraEnabled(event.target.checked)} />
+                    Enable camera and AI grading for this line
+                  </label>
+                  <p className="som-ai-config-note">RTSP credentials are stored only in the backend runtime configuration and are never returned to this UI.</p>
+                </div>
+                <footer>
+                  <button type="button" onClick={() => setShowConfigModal(false)}>Cancel</button>
+                  <button type="button" className="primary" disabled={savingConfig || !serverConfig} onClick={handleSaveConfig}>
+                    {savingConfig ? "Saving..." : "Save & Reconnect"}
+                  </button>
+                </footer>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      </section>
 
-      {/* RIGHT COLUMN: BATCH STATS, CHART, RECIPE SUGGESTIONS */}
-      <div className="som-grading-right-col">
-        {/* Card 1: Batch Statistics & Ripeness Breakdown */}
-        <div className="som-minimal-card som-grading-stats-card">
-          <div className="som-minimal-header">📊 BATCH STATISTICS</div>
-          <div className="som-minimal-body">
-            <div className="som-grading-kpi-grid">
-              <div className="som-kpi-item">
-                <span className="som-kpi-label">TOTAL DETECTED FFB</span>
-                <span className="som-kpi-val">{totalFfb}</span>
-              </div>
-              <div className="som-kpi-item">
-                <span className="som-kpi-label">MAJORITY STATUS</span>
-                <span className="som-kpi-val som-text-gold">
-                  {distribution.unripe > 30 ? "UNRIPE" : totalFfb > 0 ? "RIPE" : "N/A"}
-                </span>
-              </div>
-            </div>
-
-            <div className="som-minimal-divider"></div>
-
-            <span className="som-minimal-section-title">RIPENESS DISTRIBUTION</span>
-
-            <div className="som-distribution-list">
-              <div className="som-dist-row">
-                <span className="som-dist-label">Ripe</span>
-                <div className="som-progress-bar-wrapper">
-                  <div className="som-progress-bar ripe" style={{ width: `${distribution.ripe}%` }}></div>
-                </div>
-                <span className="som-dist-pct ripe">{distribution.ripe}%</span>
-              </div>
-
-              <div className="som-dist-row">
-                <span className="som-dist-label">Unripe</span>
-                <div className="som-progress-bar-wrapper">
-                  <div className="som-progress-bar unripe" style={{ width: `${distribution.unripe}%` }}></div>
-                </div>
-                <span className="som-dist-pct unripe">{distribution.unripe}%</span>
-              </div>
-
-              <div className="som-dist-row">
-                <span className="som-dist-label">Overripe</span>
-                <div className="som-progress-bar-wrapper">
-                  <div className="som-progress-bar overripe" style={{ width: `${distribution.overripe}%` }}></div>
-                </div>
-                <span className="som-dist-pct overripe">{distribution.overripe}%</span>
-              </div>
-
-              <div className="som-dist-row">
-                <span className="som-dist-label">Empty Bunch</span>
-                <div className="som-progress-bar-wrapper">
-                  <div className="som-progress-bar empty" style={{ width: `${distribution.empty}%` }}></div>
-                </div>
-                <span className="som-dist-pct empty">{distribution.empty}%</span>
-              </div>
-
-              <div className="som-dist-row">
-                <span className="som-dist-label">Abnormal / Damaged</span>
-                <div className="som-progress-bar-wrapper">
-                  <div className="som-progress-bar abnormal" style={{ width: `${distribution.abnormal}%` }}></div>
-                </div>
-                <span className="som-dist-pct abnormal">{distribution.abnormal}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: AI Recipe Recommendation & Actions */}
-        <div className="som-minimal-card som-grading-actions-card">
-          <div className="som-minimal-header">💡 SMART RECIPE DECISION</div>
-          <div className="som-minimal-body">
-            <div className="som-autopilot-control">
-              <div className="som-autopilot-info">
-                <span className="som-autopilot-label">AUTO-PILOT MODE</span>
-                <p className="som-autopilot-desc">AI automatically adjusts sterilizer recipes in PLC based on FFB ripeness.</p>
-              </div>
-              <label className="som-switch-container">
-                <input
-                  type="checkbox"
-                  checked={isAutoPilot}
-                  onChange={(e) => setIsAutoPilot(e.target.checked)}
-                />
-                <span className="som-switch-slider"></span>
-              </label>
-            </div>
-
-            <div className="som-recipe-sug-panel">
-              <span className="som-sug-badge">RECOMMENDED CYCLE</span>
-              <div className="som-sug-title">{recipe.name}</div>
-              <div className="som-sug-desc">{recipe.reason}</div>
-            </div>
-
-            <button
-              onClick={handleApplyRecipe}
-              disabled={isAutoPilot}
-              className={`som-apply-recipe-btn ${isAutoPilot ? "disabled" : ""}`}
-            >
-              {isAutoPilot ? "Auto-Pilot Active (Read-Only)" : "Apply Recipe To Line"}
-            </button>
-          </div>
-        </div>
-
-        {/* Card 3: Recent Activity Logs */}
-        <div className="som-minimal-card som-grading-logs-card">
-          <div className="som-minimal-header">📝 RECENT LOGS</div>
-          <div className="som-minimal-body som-logs-body">
-            <div className="som-logs-list">
-              {logs.map((log, idx) => (
-                <div key={idx} className="som-log-item">
-                  <span className="som-log-time">{log.time}</span>
-                  <span className="som-log-action">{log.action}</span>
-                </div>
+      <section className="som-ai-grading-card som-ai-analysis-card premium-theme">
+        <header className="som-ai-card-header">
+          <h3>CATEGORY ANALYSIS</h3>
+          <div className="som-ai-header-controls">
+            <select className="som-ai-line-select" value={selectedLine} onChange={(event) => setSelectedLine(Number(event.target.value))}>
+              {availableLines.map((lineNo) => <option key={lineNo} value={lineNo}>LINE {lineNo}</option>)}
+            </select>
+            <div className="som-ai-time-filters">
+              {["DAY", "WEEK", "MONTH"].map((filter) => (
+                <button type="button" key={filter} className={selectedTimeFilter === filter ? "active" : ""} onClick={() => setSelectedTimeFilter(filter)}>
+                  {filter}
+                </button>
               ))}
-              {logs.length === 0 && (
-                <div className="som-log-item-empty">No recent AI grading events logged.</div>
-              )}
+            </div>
+          </div>
+        </header>
+
+        <div className="som-ai-analysis-body">
+          {/* TOP METRICS */}
+          <div className="som-ai-metrics-grid">
+             <div className="som-ai-metric-box glow-green">
+                <div className="metric-content">
+                  <span className="label">QUALITY SCORE</span>
+                  <span className="value">
+                    {totalCount > 0 ? Math.round(((categoryCounts.ripe || 0) / totalCount) * 100) : 0}%
+                  </span>
+                </div>
+             </div>
+             <div className="som-ai-metric-box glow-blue">
+                <div className="metric-content">
+                  <span className="label">THROUGHPUT</span>
+                  <span className="value">{Number(metrics.detections_per_minute || 0).toFixed(0)} <small>FFB/m</small></span>
+                </div>
+             </div>
+             <div className="som-ai-metric-box glow-purple">
+                <div className="metric-content">
+                  <span className="label">AI CONFIDENCE</span>
+                  <span className="value">{Number(metrics.average_confidence || 0).toFixed(1)}%</span>
+                </div>
+             </div>
+          </div>
+
+          {/* VISUAL CHART & STATUS */}
+          <div className="som-ai-chart-section">
+            <div className="som-ai-chart-wrapper">
+               <div className="donut-chart" style={{
+                 background: `conic-gradient(
+                   #10b981 0% ${totalCount ? Math.round((categoryCounts.ripe || 0)/totalCount*100) : 0}%,
+                   #f59e0b ${totalCount ? Math.round((categoryCounts.ripe || 0)/totalCount*100) : 0}% ${totalCount ? Math.round(((categoryCounts.ripe || 0) + (categoryCounts.unripe || 0))/totalCount*100) : 0}%,
+                   #f97316 ${totalCount ? Math.round(((categoryCounts.ripe || 0) + (categoryCounts.unripe || 0))/totalCount*100) : 0}% 100%
+                 )`
+               }}>
+                 <div className="donut-hole">
+                    <strong>{totalCount > 0 ? Math.round(((categoryCounts.ripe || 0) / totalCount) * 100) : 0}%</strong>
+                    <span>RIPE</span>
+                 </div>
+               </div>
+            </div>
+            <div className="som-ai-status-list">
+               <div className="som-ai-status-item"><span className={`som-ai-status-dot ${liveCamera ? "pulse-green" : "pulse-orange"}`}></span> Camera: <strong>{liveCamera ? "ONLINE" : "OFFLINE"}</strong></div>
+               <div className="som-ai-status-item"><span className={`som-ai-status-dot ${modelReady ? "pulse-green" : "pulse-orange"}`}></span> Model: <strong>{modelReady ? "READY" : "WAITING"}</strong></div>
+               <div className="som-ai-status-item"><span className={`som-ai-status-dot ${databaseReady ? "pulse-blue" : "pulse-orange"}`}></span> Database: <strong>{databaseReady ? "SYNCED" : "OFFLINE"}</strong></div>
+            </div>
+          </div>
+
+          {/* CATEGORY LIST */}
+          <div className="som-ai-category-list-wrapper">
+            <h4 className="list-title">CLASSIFICATION RESULT</h4>
+            {categoryStats.map((category) => {
+              const percentage = category.id === "all"
+                ? (totalCount > 0 ? 100 : 0)
+                : (totalCount > 0 ? Math.round((category.count / totalCount) * 100) : 0);
+              const isSelected = selectedCategory === category.id;
+
+              return (
+                <button
+                  type="button"
+                  key={category.id}
+                  className={`som-ai-category-row premium-row ${isSelected ? "active" : ""}`}
+                  onClick={() => setSelectedCategory(category.id)}
+                >
+                  <span className="som-ai-category-heading">
+                    <span className="som-ai-category-name">
+                      <i style={{ backgroundColor: category.color, boxShadow: `0 0 10px ${category.color}` }} />
+                      {category.label}
+                    </span>
+                    <span className="som-ai-category-values">
+                      <strong className={category.id === "all" ? "total" : ""}>{category.count.toLocaleString("en-US")}</strong>
+                      <small className="percentage-badge" style={{ color: category.color, backgroundColor: `${category.color}15` }}>{percentage}%</small>
+                    </span>
+                  </span>
+                  <span className="som-ai-progress-track">
+                    <i style={{ width: `${percentage}%`, backgroundColor: category.color, boxShadow: `0 0 8px ${category.color}` }} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={`som-ai-decision-summary ${decisionReady ? "ready" : "waiting"} premium-decision`}>
+            <div>
+              <span className="label">LINE {selectedLine} MAJORITY</span>
+              <strong>{decisionReady ? currentDecision.majority_category : "WAITING FOR VALID DATA"}</strong>
+              <small>{decisionReady ? `${Number(currentDecision.majority_percentage).toFixed(1)}% in current decision window` : "No recipe will be released until the minimum detection requirement is met."}</small>
+            </div>
+            <div className="som-ai-recipe-result">
+              <span className="label">RECOMMENDED RECIPE</span>
+              <strong>{decisionReady ? currentDecision.recommended_recipe_name : "—"}</strong>
+              <small>{decisionReady ? currentDecision.recommended_recipe_code : "Decision status: INSUFFICIENT DATA"}</small>
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

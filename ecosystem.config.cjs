@@ -48,7 +48,7 @@ module.exports = {
     {
       name: "frontend-shell",
       script: "node_modules/vite/bin/vite.js",
-      args: "--port 5177",
+      args: "--port 5177 --host 0.0.0.0",
       cwd: "./main-service/frontend",
       watch: false,
       autorestart: true,

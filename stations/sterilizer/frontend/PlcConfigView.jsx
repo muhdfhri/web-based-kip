@@ -197,26 +197,44 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
         // Parse address
         const boolRegex = /^DB(\d+)\.DBX(\d+)(?:[.,](\d+))?$/i;
         const otherRegex = /^DB(\d+)\.DB([WD])(\d+)$/i;
+        const miqBoolRegex = /^([MIQ])(\d+)\.(\d+)$/i;
+        const miqOtherRegex = /^([MIQ])([WD])(\d+)$/i;
 
         let db_number,
           byte_offset,
           bit_offset,
+          node_id = "DB",
           data_type = type || "BOOL";
 
         const boolMatch = addr.trim().match(boolRegex);
+        const otherMatch = addr.trim().match(otherRegex);
+        const miqBoolMatch = addr.trim().match(miqBoolRegex);
+        const miqOtherMatch = addr.trim().match(miqOtherRegex);
+
         if (boolMatch) {
           db_number = parseInt(boolMatch[1]);
           byte_offset = parseInt(boolMatch[2]);
           bit_offset = boolMatch[3] !== undefined ? parseInt(boolMatch[3]) : 0;
           data_type = "BOOL";
-        } else {
-          const otherMatch = addr.trim().match(otherRegex);
-          if (otherMatch) {
-            db_number = parseInt(otherMatch[1]);
-            byte_offset = parseInt(otherMatch[3]);
-            data_type = otherMatch[2].toUpperCase() === "W" ? "INT" : "REAL";
-            bit_offset = null;
-          }
+          node_id = "DB";
+        } else if (otherMatch) {
+          db_number = parseInt(otherMatch[1]);
+          byte_offset = parseInt(otherMatch[3]);
+          data_type = otherMatch[2].toUpperCase() === "W" ? "INT" : "REAL";
+          bit_offset = null;
+          node_id = "DB";
+        } else if (miqBoolMatch) {
+          db_number = 0;
+          node_id = miqBoolMatch[1].toUpperCase();
+          byte_offset = parseInt(miqBoolMatch[2]);
+          bit_offset = parseInt(miqBoolMatch[3]);
+          data_type = "BOOL";
+        } else if (miqOtherMatch) {
+          db_number = 0;
+          node_id = miqOtherMatch[1].toUpperCase();
+          byte_offset = parseInt(miqOtherMatch[3]);
+          data_type = miqOtherMatch[2].toUpperCase() === "W" ? "INT" : "REAL";
+          bit_offset = null;
         }
 
         if (db_number !== undefined) {
@@ -244,6 +262,7 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
             bit_offset,
             access: isControl ? "WRITE" : "READ",
             enabled: 1,
+            node_id,
           };
 
           try {
@@ -1056,6 +1075,14 @@ export default PlcConfigView;
 // --- Sub-components & Helpers ---
 
 const formatAddress = (tag) => {
+  if (tag.protocol === 'OPC_UA') return tag.node_id || 'NOT SET';
+  const area = tag.node_id && ['M','I','Q'].includes(tag.node_id.toUpperCase()) ? tag.node_id.toUpperCase() : 'DB';
+  if (area !== 'DB') {
+    if (tag.data_type === "BOOL") return `${area}${tag.byte_offset || 0}.${tag.bit_offset || 0}`;
+    if (tag.data_type === "INT") return `${area}W${tag.byte_offset || 0}`;
+    if (tag.data_type === "DINT" || tag.data_type === "REAL") return `${area}D${tag.byte_offset || 0}`;
+    return `${area}${tag.byte_offset || 0}`;
+  }
   if (!tag.db_number || tag.byte_offset === null) return "N/A";
   if (tag.data_type === "BOOL")
     return `DB${tag.db_number}.DBX${tag.byte_offset}.${tag.bit_offset || 0}`;
@@ -1086,6 +1113,7 @@ const TagModalContent = ({
     access: "READ",
     enabled: true,
     quick_address: "",
+    node_id: "DB",
   });
 
   // Reset form when modal opens with new/edit tag
@@ -1102,6 +1130,7 @@ const TagModalContent = ({
         access: currentTag?.access || "READ",
         enabled: currentTag ? currentTag.enabled : true,
         quick_address: currentTag ? formatAddress(currentTag) : "",
+        node_id: currentTag?.node_id || "DB",
       });
       setShowAdvanced(false);
     }
@@ -1115,21 +1144,39 @@ const TagModalContent = ({
     }
     const boolRegex = /^DB(\d+)\.DBX(\d+)(?:[.,](\d+))?$/i;
     const otherRegex = /^DB(\d+)\.DB([WD])(\d+)$/i;
+    const miqBoolRegex = /^([MIQ])(\d+)\.(\d+)$/i;
+    const miqOtherRegex = /^([MIQ])([WD])(\d+)$/i;
+
     const boolMatch = val.trim().match(boolRegex);
+    const otherMatch = val.trim().match(otherRegex);
+    const miqBoolMatch = val.trim().match(miqBoolRegex);
+    const miqOtherMatch = val.trim().match(miqOtherRegex);
+
     if (boolMatch) {
       newUpdates.db_number = boolMatch[1];
       newUpdates.byte_offset = boolMatch[2];
       newUpdates.bit_offset = boolMatch[3] !== undefined ? boolMatch[3] : "0";
       newUpdates.data_type = "BOOL";
-    } else {
-      const otherMatch = val.trim().match(otherRegex);
-      if (otherMatch) {
-        newUpdates.db_number = otherMatch[1];
-        newUpdates.byte_offset = otherMatch[3];
-        newUpdates.data_type =
-          otherMatch[2].toUpperCase() === "W" ? "INT" : "REAL";
-        newUpdates.bit_offset = "";
-      }
+      newUpdates.node_id = "DB";
+    } else if (otherMatch) {
+      newUpdates.db_number = otherMatch[1];
+      newUpdates.byte_offset = otherMatch[3];
+      newUpdates.data_type =
+        otherMatch[2].toUpperCase() === "W" ? "INT" : "REAL";
+      newUpdates.bit_offset = "";
+      newUpdates.node_id = "DB";
+    } else if (miqBoolMatch) {
+      newUpdates.db_number = "0";
+      newUpdates.node_id = miqBoolMatch[1].toUpperCase();
+      newUpdates.byte_offset = miqBoolMatch[2];
+      newUpdates.bit_offset = miqBoolMatch[3];
+      newUpdates.data_type = "BOOL";
+    } else if (miqOtherMatch) {
+      newUpdates.db_number = "0";
+      newUpdates.node_id = miqOtherMatch[1].toUpperCase();
+      newUpdates.byte_offset = miqOtherMatch[3];
+      newUpdates.data_type = miqOtherMatch[2].toUpperCase() === "W" ? "INT" : "REAL";
+      newUpdates.bit_offset = "";
     }
     setFormData((prev) => ({ ...prev, ...newUpdates }));
   };
@@ -1157,7 +1204,15 @@ const TagModalContent = ({
   };
 
   const getPreview = () => {
-    const { data_type, db_number, byte_offset, bit_offset } = formData;
+    const { data_type, db_number, byte_offset, bit_offset, node_id } = formData;
+    const area = node_id && ['M','I','Q'].includes(node_id.toUpperCase()) ? node_id.toUpperCase() : 'DB';
+    if (area !== 'DB') {
+      if (byte_offset === "") return `${area}?.?`;
+      if (data_type === "BOOL") return `${area}${byte_offset}.${bit_offset || 0}`;
+      if (data_type === "INT") return `${area}W${byte_offset}`;
+      if (data_type === "DINT" || data_type === "REAL") return `${area}D${byte_offset}`;
+      return `${area}${byte_offset}`;
+    }
     if (!db_number || byte_offset === "") return "DB?.???";
     if (data_type === "BOOL")
       return `DB${db_number}.DBX${byte_offset}.${bit_offset || 0}`;
@@ -1172,13 +1227,14 @@ const TagModalContent = ({
     const submissionData = {
       ...formData,
       plc_id: parseInt(formData.plc_id),
-      db_number: parseInt(formData.db_number),
+      db_number: parseInt(formData.db_number || 0),
       byte_offset: parseInt(formData.byte_offset),
       bit_offset:
         formData.data_type === "BOOL"
           ? parseInt(formData.bit_offset || 0)
           : null,
       enabled: formData.enabled ? 1 : 0,
+      node_id: formData.node_id || "DB",
     };
 
     const url = currentTag
@@ -1201,7 +1257,7 @@ const TagModalContent = ({
         fetchData();
       } else {
         const errData = await res.json();
-        alert(`Error: ${errData.message || "Server rejected configuration"}`);
+        alert(`Error: ${errData.message || errData.error || "Server rejected configuration"}`);
       }
     } catch (err) {
       console.error("Failed to save tag:", err);
@@ -1258,7 +1314,7 @@ const TagModalContent = ({
                 <input
                   type="text"
                   className="som-input"
-                  placeholder="e.g. DB44.DBX0.3 or DB44.DBD4"
+                  placeholder="e.g. DB44.DBX0.3 or M0.0 or MW10"
                   value={formData.quick_address}
                   autoFocus
                   onChange={(e) => handleQuickParse(e.target.value)}
@@ -1368,7 +1424,22 @@ const TagModalContent = ({
                     </select>
                   </div>
                   <div>
-                    <label className="som-label">DB</label>
+                    <label className="som-label">Memory Area</label>
+                    <select
+                      className="som-select"
+                      value={formData.node_id || "DB"}
+                      onChange={(e) => setFormData({ ...formData, node_id: e.target.value, db_number: e.target.value !== "DB" ? "0" : formData.db_number })}
+                    >
+                      <option value="DB">Data Block (DB)</option>
+                      <option value="M">Memory Flags (M)</option>
+                      <option value="I">Inputs (I)</option>
+                      <option value="Q">Outputs (Q)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="som-label">
+                      {(!formData.node_id || formData.node_id === "DB") ? "DB Number" : "Number (0)"}
+                    </label>
                     <input
                       type="number"
                       name="db_number"
@@ -1377,7 +1448,8 @@ const TagModalContent = ({
                       onChange={(e) =>
                         setFormData({ ...formData, db_number: e.target.value })
                       }
-                      required
+                      disabled={formData.node_id && formData.node_id !== "DB"}
+                      required={!formData.node_id || formData.node_id === "DB"}
                     />
                   </div>
                   <div>

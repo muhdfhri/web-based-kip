@@ -30,6 +30,8 @@ app.use(`/api/${STATION_SLUG}/cctv`, cctvRoutes);
 app.use(`/api/${STATION_SLUG}/patrol`, patrolRoutes);
 app.use(`/api/${STATION_SLUG}/incidents`, incidentRoutes);
 app.use(`/api/${STATION_SLUG}/queues`, queueRoutes);
+// Mobile app compat alias
+app.use(`/api/${STATION_SLUG}/truck-queue`, queueRoutes);
 app.use(`/api/${STATION_SLUG}/upload`, uploadRoutes);
 // Alias for mobile app that hardcodes /api/upload
 app.use('/api/upload', uploadRoutes);

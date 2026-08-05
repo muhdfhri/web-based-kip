@@ -39,10 +39,7 @@ export default function TrendTab({
         <div className="som-trend-y-axis">
           <div className="som-trend-y-label">BAR PRESSURE</div>
           <div className="som-trend-y-ticks">
-            {[
-              4.0, 3.8, 3.6, 3.4, 3.2, 3.0, 2.8, 2.6, 2.4, 2.2, 2.0,
-              1.8, 1.6, 1.4, 1.2, 1.0, 0.8, 0.6, 0.4, 0.2, 0.0,
-            ].map((t) => (
+            {[4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.0, 0.5, 0.0].map((t) => (
               <span key={t}>{t.toFixed(1)}</span>
             ))}
           </div>
@@ -90,6 +87,7 @@ export default function TrendTab({
               </div>
             )}
           </div>
+
           <div className="som-trend-date-stamp">
             {currentDateTime && currentDateTime.toLocaleDateString("id-ID", {
               day: "2-digit",
@@ -112,15 +110,15 @@ export default function TrendTab({
             onMouseMove={handleTrendMouseMove}
           >
             {/* Horizontal Grid */}
-            {[0, 1, 2, 3, 4, 5].map((i) => (
+            {[0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0].map((val) => (
               <line
-                key={i}
+                key={val}
                 x1="0"
-                y1={300 - i * 50}
+                y1={300 - (val / 4) * 300}
                 x2="1000"
-                y2={300 - i * 50}
-                stroke="#e2e8f0"
-                strokeWidth="1"
+                y2={300 - (val / 4) * 300}
+                stroke={val === 0 ? "#0f172a" : "#e2e8f0"}
+                strokeWidth={val === 0 ? "2" : "1"}
               />
             ))}
 
@@ -142,7 +140,7 @@ export default function TrendTab({
             <polyline
               fill="none"
               stroke="#ef4444"
-              strokeWidth="1.0"
+              strokeWidth="1.5"
               strokeLinejoin="round"
               strokeLinecap="round"
               points={trendData.s1
@@ -155,7 +153,7 @@ export default function TrendTab({
             <polyline
               fill="none"
               stroke="#3b82f6"
-              strokeWidth="1.0"
+              strokeWidth="1.5"
               strokeLinejoin="round"
               strokeLinecap="round"
               points={trendData.s2
@@ -168,7 +166,7 @@ export default function TrendTab({
             <polyline
               fill="none"
               stroke="#22c55e"
-              strokeWidth="1.0"
+              strokeWidth="1.5"
               strokeLinejoin="round"
               strokeLinecap="round"
               points={trendData.s3
@@ -181,7 +179,7 @@ export default function TrendTab({
             <polyline
               fill="none"
               stroke="#f59e0b"
-              strokeWidth="1.0"
+              strokeWidth="1.5"
               strokeLinejoin="round"
               strokeLinecap="round"
               points={trendData.s4
@@ -194,7 +192,7 @@ export default function TrendTab({
             <polyline
               fill="none"
               stroke="#a855f7"
-              strokeWidth="1.0"
+              strokeWidth="1.5"
               strokeLinejoin="round"
               strokeLinecap="round"
               points={trendData.bpv
@@ -388,7 +386,11 @@ export default function TrendTab({
       <div className="som-trend-summary-footer">
         {["1", "2", "3", "4", "BPV"].map((line) => {
           const tempId = line === "BPV" ? "bpv_temp" : `st${line}_temp`;
-          const tempVal = getMappedValue ? getMappedValue(tempId, "MONITOR", "0.0") : "0.0";
+          let tempVal = getMappedValue ? getMappedValue(tempId, "MONITOR", "0.0") : "0.0";
+          if ((tempVal === "No Tag" || tempVal === "--") && getMappedValue) {
+            const altVal = getMappedValue(tempId, "TEMP", "0.0");
+            if (altVal !== "No Tag" && altVal !== "--") tempVal = altVal;
+          }
           return (
             <div key={line} className="som-trend-card">
               <div className="som-trend-card-section">

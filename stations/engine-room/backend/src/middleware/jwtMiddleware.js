@@ -45,3 +45,22 @@ export function authorizePermission(permission) {
     next();
   };
 }
+
+
+export function authorizeRolesOrPermission(roles = [], permission = '') {
+  const allowed = (typeof roles === 'string' ? [roles] : roles).map((r) =>
+    r.toLowerCase(),
+  );
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
+    const userRole = (req.user.userRole || '').toLowerCase();
+    
+    if (userRole === 'developer' || allowed.includes(userRole)) return next();
+    
+    const perms = req.user.permissions || [];
+    
+    if (permission && perms.includes(permission)) return next();
+    
+    return res.status(403).json({ message: 'Forbidden: Insufficient role' });
+  };
+}

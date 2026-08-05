@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import "./OverviewTab.css";
 
 import SterilizerStationSettingsPage from "../../settings/SterilizerStationSettingsPage.jsx";
-import usePlcStore from "@core/store";
 
 // Auth helper (sama seperti di PlcConfigView)
 const authHeaders = () => {
@@ -19,23 +18,318 @@ import sterilizerLineImageUrl from "../../assets/sterilizer-line.webp";
 import bpvImageUrl from "../../assets/bpv.webp";
 import valveActuatorSvg from "../../assets/item/valve_actuator.svg";
 import valvePositionerSvg from "../../assets/item/valve_positioner.svg";
+import topOpenSvg from "../../assets/item/top-open.svg";
+import topCloseSvg from "../../assets/item/top-close.svg";
+import botOpenSvg from "../../assets/item/bot-open.svg";
+import botCloseSvg from "../../assets/item/bot-close.svg";
 
 import {
   IpomasMonitorCardSVG,
   EquipmentIconSVG,
+  TagMonitorCardSVG,
+  SterilizerStatusPanelSVG,
 } from "../../components/SharedComponents.jsx";
-import {
-  CoordinatePickerPanel,
-  CoordinatePickerMarkers,
-} from "@core/components/CoordinatePickerPanel.jsx";
+
+// ==========================================
+// PENGATURAN TESTING UNTUK MANUAL VALVE 5, 6, 7, 12, 13, 14, 20, 21, 26, & 27
+// Ubah "0" (CLOSE) menjadi "1" (OPEN) untuk melihat animasi valve & flow
+export const TEST_MANUAL_VALVE_1 = "0";
+export const TEST_MANUAL_VALVE_2 = "1";
+export const TEST_MANUAL_VALVE_3 = "1";
+export const TEST_MANUAL_VALVE_4 = "0";
+export const TEST_MANUAL_VALVE_5 = "1";
+export const TEST_MANUAL_VALVE_6 = "0";
+export const TEST_MANUAL_VALVE_7 = "1";
+export const TEST_MANUAL_VALVE_8 = "0";
+export const TEST_MANUAL_VALVE_9 = "0";
+export const TEST_MANUAL_VALVE_10 = "1";
+export const TEST_MANUAL_VALVE_11 = "0";
+export const TEST_MANUAL_VALVE_12 = "1";
+export const TEST_MANUAL_VALVE_13 = "0";
+export const TEST_MANUAL_VALVE_14 = "0";
+export const TEST_MANUAL_VALVE_15 = "0";
+export const TEST_MANUAL_VALVE_16 = "0";
+export const TEST_MANUAL_VALVE_17 = "0";
+export const TEST_MANUAL_VALVE_18 = "0";
+export const TEST_MANUAL_VALVE_19 = "1";
+export const TEST_MANUAL_VALVE_20 = "0";
+export const TEST_MANUAL_VALVE_21 = "1";
+export const TEST_MANUAL_VALVE_22 = "0";
+export const TEST_MANUAL_VALVE_23 = "1";
+export const TEST_MANUAL_VALVE_24 = "0";
+export const TEST_MANUAL_VALVE_25 = "1";
+export const TEST_MANUAL_VALVE_26 = "0";
+export const TEST_MANUAL_VALVE_27 = "0";
+export const TEST_MANUAL_VALVE_28 = "1";
+
+export const TEST_INLET_DOOR_ST1 = "CLOSE";
+export const TEST_INLET_DOOR_ST2 = "CLOSE";
+export const TEST_INLET_DOOR_ST3 = "CLOSE";
+export const TEST_INLET_DOOR_ST4 = "CLOSE";
+
+export const TEST_OUTLET_DOOR_ST1 = "OPEN"
+export const TEST_OUTLET_DOOR_ST2 = "CLOSE";
+export const TEST_OUTLET_DOOR_ST3 = "CLOSE"
+export const TEST_OUTLET_DOOR_ST4 = "CLOSE";
+// ==========================================
+
+export function SettingValveModulateSVG({
+  x,
+  y,
+  scale = 1,
+  getMappedValue, // Pass a function to dynamically fetch tags if needed
+  line = 1,
+  handleEquipmentClick,
+  getDeveloperStyle,
+  config
+}) {
+  const cardWidth = 980;
+  const cardHeight = 510;
+
+  // Default config if not provided
+  const defaultConfig = {
+    titleAuto: `SETTING VALVE MODULATE INLET AUTO (LINE ${line})`,
+    titleManual: `SETTING VALVE MODULATE INLET MANUAL (LINE ${line})`,
+    autoValves: [
+      {
+        id: `st${line}_v1_valve_auto`,
+        title: "VALVE 1",
+        rows: [
+          { label: "MIN", signalKey: "MIN", unit: "%" },
+          { label: "MAX", signalKey: "MAX", unit: "%" },
+          { label: "SET POINT", signalKey: "SETPOINT", unit: "Bar" },
+          { label: "CONTROL LOW", signalKey: "CONTROL_RANGE_LOW", unit: "Bar" },
+        ]
+      },
+      {
+        id: `st${line}_v2_valve_auto`,
+        title: "VALVE 2",
+        rows: [
+          { label: "MIN", signalKey: "MIN", unit: "%" },
+          { label: "MAX", signalKey: "MAX", unit: "%" },
+          { label: "SET POINT", signalKey: "SETPOINT", unit: "Bar" },
+          { label: "CONTROL LOW", signalKey: "CONTROL_RANGE_LOW", unit: "Bar" },
+        ]
+      },
+      {
+        id: `st${line}_v3_valve_auto`,
+        title: "VALVE 3",
+        rows: [
+          { label: "MIN", signalKey: "MIN", unit: "%" },
+          { label: "MAX", signalKey: "MAX", unit: "%" },
+          { label: "SET POINT", signalKey: "SETPOINT", unit: "Bar" },
+          { label: "CONTROL LOW", signalKey: "CONTROL_RANGE_LOW", unit: "Bar" },
+        ]
+      }
+    ],
+    manualValves: [
+      { id: `st${line}_mv1_valve_manual`, title: "VALVE 1", label: "SET VALUE", signalKey: "SET_VALUE", unit: "%" },
+      { id: `st${line}_mv2_valve_manual`, title: "VALVE 2", label: "SET VALUE", signalKey: "SET_VALUE", unit: "%" },
+      { id: `st${line}_mv3_valve_manual`, title: "VALVE 3", label: "SET VALUE", signalKey: "SET_VALUE", unit: "%" },
+    ],
+    highTemp: {
+      id: `st${line}_high_temp`,
+      title: "HIGH TEMP",
+      label: "HIGH TEMP",
+      signalKey: "SETPOINT",
+      unit: "°C"
+    }
+  };
+
+  const finalConfig = config || defaultConfig;
+
+  // Helper to fetch value
+  const fetchVal = (cardId, signalKey) => {
+    if (!getMappedValue || !cardId || !signalKey) return "No Tag";
+    const mapped = getMappedValue(cardId, signalKey, "No Tag");
+    if (mapped === "No Tag" || String(mapped).trim().toLowerCase() === "no tag") return "No Tag";
+    if (mapped === "--" || mapped === undefined || mapped === null) return "--";
+    return mapped;
+  };
+
+  // Helper component for a row of data
+  const DataRow = ({ label, value, unit }) => {
+    const isNoTag = !value || String(value).trim().toLowerCase() === "no tag" || String(value).trim() === "--";
+    let valueClass = "";
+    const cleanLabel = String(label).toUpperCase().trim();
+    if (!isNoTag) {
+      if (cleanLabel.includes("SET POINT") || cleanLabel.includes("SET VALUE")) {
+        valueClass = "som-premium-value-sp";
+      } else if (cleanLabel.includes("MIN") || cleanLabel.includes("MAX")) {
+        valueClass = "som-premium-value-minmax";
+      } else if (cleanLabel.includes("CONTROL LOW")) {
+        valueClass = "som-premium-value-cl";
+      }
+    }
+
+    return (
+      <div className="som-premium-row">
+        <span className="som-premium-row-label">{label}</span>
+        <div style={{ display: "flex", alignItems: "baseline" }}>
+          <span
+            className={valueClass}
+            style={{
+              fontStyle: "italic",
+              color: isNoTag ? "#94a3b8" : undefined,
+            }}
+          >
+            {value}
+          </span>
+          <span className="som-premium-row-unit">{!isNoTag ? unit : ""}</span>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <g transform={`translate(${x}, ${y}) scale(${scale})`}>
+      <foreignObject
+        x={0}
+        y={0}
+        width={cardWidth}
+        height={cardHeight}
+        style={{ overflow: "visible" }}
+      >
+        <div className="som-premium-modulate-card" style={{
+          margin: "8px 12px 32px 12px",
+          width: "calc(100% - 24px)",
+          height: "calc(100% - 40px)",
+          boxSizing: "border-box",
+        }}>
+          {/* Header Kuning seperti contoh card */}
+          <div className="som-premium-modulate-header">
+            <span>{finalConfig.titleAuto}</span>
+            <div className="som-status-indicator running" style={{ position: "absolute", right: "16px" }} />
+          </div>
+
+          {/* Body Putih */}
+          <div className="som-minimal-body" style={{
+            padding: "16px 20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            flex: 1,
+            boxSizing: "border-box",
+            background: "transparent"
+          }}>
+            {/* TOP SECTION: AUTO */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "16px" }}>
+                {finalConfig.autoValves.map((vConfig, i) => {
+                  const cardId = vConfig.id || `st${line}_v${i + 1}_valve_auto`;
+                  const cardStyle = getDeveloperStyle ? getDeveloperStyle(cardId) : {};
+                  return (
+                    <div
+                      key={i}
+                      className="som-premium-subcard"
+                      style={{ flex: 1, cursor: "pointer", ...cardStyle }}
+                      onClick={() => handleEquipmentClick && handleEquipmentClick(cardId)}
+                    >
+                      <div className="som-premium-subcard-header">{vConfig.title}</div>
+                      <div style={{ padding: "8px 0" }}>
+                        {vConfig.rows.map((r, rIdx) => (
+                          <DataRow
+                            key={rIdx}
+                            label={r.label}
+                            value={r.tag ? fetchVal(r.tag, "MONITOR") : fetchVal(cardId, r.signalKey)}
+                            unit={r.unit}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Divider untuk Manual */}
+            <div className="som-minimal-divider" style={{ margin: "6px 0", background: "rgba(255,255,255,0.08)" }} />
+
+            {/* BOTTOM SECTION: MANUAL & HIGH TEMP */}
+            <div>
+              <div style={{ fontSize: "12px", fontWeight: 900, color: "#94a3b8", textTransform: "uppercase", textAlign: "center", marginBottom: "8px", letterSpacing: "0.1em" }}>
+                {finalConfig.titleManual}
+              </div>
+              <div style={{ display: "flex", gap: "16px" }}>
+                <div style={{ flex: 3, display: "flex", gap: "16px" }}>
+                  {finalConfig.manualValves.map((vConfig, i) => {
+                    const cardId = vConfig.id || `st${line}_mv${i + 1}_valve_manual`;
+                    const cardStyle = getDeveloperStyle ? getDeveloperStyle(cardId) : {};
+                    return (
+                      <div
+                        key={i}
+                        className="som-premium-subcard"
+                        style={{ flex: 1, cursor: "pointer", ...cardStyle }}
+                        onClick={() => handleEquipmentClick && handleEquipmentClick(cardId)}
+                      >
+                        <div className="som-premium-subcard-header">{vConfig.title}</div>
+                        <div style={{ padding: "8px 0" }}>
+                          <DataRow
+                            label={vConfig.label}
+                            value={vConfig.tag ? fetchVal(vConfig.tag, "MONITOR") : fetchVal(cardId, vConfig.signalKey || "SET_VALUE")}
+                            unit={vConfig.unit}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {(() => {
+                  const htConfig = finalConfig.highTemp || {};
+                  const cardId = htConfig.id || `st${line}_high_temp`;
+                  const cardStyle = getDeveloperStyle ? getDeveloperStyle(cardId) : {};
+                  const htVal = htConfig.tag ? fetchVal(htConfig.tag, "MONITOR") : fetchVal(cardId, htConfig.signalKey || "SETPOINT");
+                  const isNoTag = !htVal || String(htVal).trim().toLowerCase() === "no tag" || String(htVal).trim() === "--";
+                  return (
+                    <div
+                      className="som-premium-subcard-warning"
+                      style={{ flex: 1, cursor: "pointer", ...cardStyle }}
+                      onClick={() => handleEquipmentClick && handleEquipmentClick(cardId)}
+                    >
+                      <div className="som-premium-subcard-warning-header">{htConfig.title}</div>
+                      <div style={{ display: "flex", flex: 1, flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "50px" }}>
+                        <div style={{ display: "flex", alignItems: "baseline" }}>
+                          <span
+                            className={isNoTag ? "" : "som-premium-warning-value"}
+                            style={{
+                              fontStyle: "italic",
+                              color: isNoTag ? "#94a3b8" : undefined,
+                              fontSize: isNoTag ? "20px" : undefined,
+                              fontWeight: 900,
+                            }}
+                          >
+                            {htVal}
+                          </span>
+                          {!isNoTag && (
+                            <span className="som-premium-warning-unit">
+                              {htConfig.unit}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </foreignObject>
+    </g>
+  );
+}
+
 const formatDoorStatus = (rawVal) => {
-  if (rawVal === undefined || rawVal === null) return "CLOSE";
+  if (rawVal === undefined || rawVal === null) return "--";
+  if (rawVal === "No Tag" || String(rawVal).trim().toLowerCase() === "no tag") return "No Tag";
   if (rawVal === "--") return "--";
   if (typeof rawVal === "boolean") {
     return rawVal ? "CLOSE" : "OPEN";
   }
   const str = String(rawVal).toLowerCase().trim();
-  if (str === "no tag") return "NO TAG";
+  if (str === "no tag") return "No Tag";
   if (str === "--") return "--";
   if (str === "true" || str === "1") return "CLOSE";
   if (str === "false" || str === "0") return "OPEN";
@@ -44,13 +338,14 @@ const formatDoorStatus = (rawVal) => {
 };
 
 const formatValveStatus = (rawVal) => {
-  if (rawVal === undefined || rawVal === null) return "CLOSE";
+  if (rawVal === undefined || rawVal === null) return "--";
+  if (rawVal === "No Tag" || String(rawVal).trim().toLowerCase() === "no tag") return "No Tag";
   if (rawVal === "--") return "--";
   if (typeof rawVal === "boolean") {
     return rawVal ? "OPEN" : "CLOSE";
   }
   const str = String(rawVal).toLowerCase().trim();
-  if (str === "no tag") return "NO TAG";
+  if (str === "no tag") return "No Tag";
   if (str === "--") return "--";
   if (str === "true" || str === "1" || str === "open") return "OPEN";
   if (str === "false" || str === "0" || str === "close") return "CLOSE";
@@ -60,6 +355,133 @@ const formatValveStatus = (rawVal) => {
   }
   return "CLOSE";
 };
+
+// 24 Manual Actuators - Ubah x, y, dan size untuk masing-masing valve di bawah ini:
+const MANUAL_VALVES = [
+  { id: "manual_valve_1", x: -246, y: 46, size: 85, rotation: 270 },
+  { id: "manual_valve_2", x: -266, y: 269, size: 92, rotation: 270 },
+  { id: "manual_valve_3", x: -266, y: 485, size: 92, rotation: 270 },
+  { id: "manual_valve_4", x: -266, y: 673, size: 92, rotation: 270 },
+  { id: "manual_valve_5", x: 228, y: 912, size: 85, rotation: 270 },
+  { id: "manual_valve_6", x: 228, y: 1003, size: 85, rotation: 270 },
+  { id: "manual_valve_7", x: 158, y: 800, size: 85, rotation: 0 },
+
+  { id: "manual_valve_8", x: 394, y: 46, size: 85, rotation: 270 },
+  { id: "manual_valve_9", x: 375, y: 269, size: 92, rotation: 270 },
+  { id: "manual_valve_10", x: 375, y: 485, size: 92, rotation: 270 },
+  { id: "manual_valve_11", x: 375, y: 673, size: 92, rotation: 270 },
+  { id: "manual_valve_12", x: 868, y: 912, size: 85, rotation: 270 },
+  { id: "manual_valve_13", x: 868, y: 1003, size: 85, rotation: 270 },
+  { id: "manual_valve_14", x: 797, y: 800, size: 85, rotation: 0 },
+
+  { id: "manual_valve_15", x: 1076, y: 46, size: 85, rotation: 270 },
+  { id: "manual_valve_16", x: 1057, y: 269, size: 92, rotation: 270 },
+  { id: "manual_valve_17", x: 1057, y: 485, size: 92, rotation: 270 },
+  { id: "manual_valve_18", x: 1057, y: 673, size: 92, rotation: 270 },
+  { id: "manual_valve_20", x: 1550, y: 912, size: 85, rotation: 270 },
+  { id: "manual_valve_21", x: 1550, y: 1003, size: 85, rotation: 270 },
+  { id: "manual_valve_19", x: 1480, y: 800, size: 85, rotation: 0 },
+
+  { id: "manual_valve_22", x: 1745, y: 46, size: 85, rotation: 270 },
+  { id: "manual_valve_23", x: 1725, y: 269, size: 92, rotation: 270 },
+  { id: "manual_valve_24", x: 1725, y: 485, size: 92, rotation: 270 },
+  { id: "manual_valve_25", x: 1725, y: 673, size: 92, rotation: 270 },
+  { id: "manual_valve_26", x: 2218, y: 912, size: 85, rotation: 270 },
+  { id: "manual_valve_27", x: 2218, y: 1003, size: 85, rotation: 270 },
+  { id: "manual_valve_28", x: 2147, y: 800, size: 80, rotation: 0 },
+];
+
+// Konfigurasi Top Open dan Top Close Doors - Ubah x, y, size, dan rotation di sini
+const TOP_DOORS = [
+  // Top Open
+  { id: "top_open_1", src: topOpenSvg, x: -135, y: -17, size: 173, rotation: 0 },
+  { id: "top_open_2", src: topOpenSvg, x: 510, y: -17, size: 173, rotation: 0 },
+  { id: "top_open_3", src: topOpenSvg, x: 1193, y: -17, size: 173, rotation: 0 },
+  { id: "top_open_4", src: topOpenSvg, x: 1860, y: -17, size: 173, rotation: 0 },
+
+  // Top Close
+  { id: "top_close_1", src: topCloseSvg, x: -112, y: 15, size: 150, rotation: 0 },
+  { id: "top_close_2", src: topCloseSvg, x: 528, y: 15, size: 150, rotation: 0 },
+  { id: "top_close_3", src: topCloseSvg, x: 1210, y: 15, size: 150, rotation: 0 },
+  { id: "top_close_4", src: topCloseSvg, x: 1880, y: 15, size: 150, rotation: 0 },
+];
+
+// Konfigurasi Bot Open dan Bot Close Doors - Ubah x, y, size, dan rotation di sini
+const BOT_DOORS = [
+  // Bot Open
+  { id: "bot_open_1", src: botOpenSvg, x: 122, y: 580, size: 190, rotation: 0 },
+  { id: "bot_open_2", src: botOpenSvg, x: 768, y: 589, size: 190, rotation: 0 },
+  { id: "bot_open_3", src: botOpenSvg, x: 1444, y: 582, size: 190, rotation: 0 },
+  { id: "bot_open_4", src: botOpenSvg, x: 2115, y: 589, size: 190, rotation: 0 },
+
+  // Bot Close
+  { id: "bot_close_1", src: botCloseSvg, x: 127, y: 609, size: 150, rotation: 0 },
+  { id: "bot_close_2", src: botCloseSvg, x: 767, y: 609, size: 150, rotation: 0 },
+  { id: "bot_close_3", src: botCloseSvg, x: 1447, y: 609, size: 150, rotation: 0 },
+  { id: "bot_close_4", src: botCloseSvg, x: 2115, y: 609, size: 150, rotation: 0 },
+];
+
+
+
+// Konfigurasi Tag Monitor Cards (seperti INLET STEAM, dll) - ubah x, y, title, value, status di sini
+// status: "grey" | "green" | "red" | "yellow" | "blue"
+const TAG_MONITOR_CARDS = [
+  { id: "bpv_pressure", x: -400, y: 30, title: "BPV PRESSURE", defaultVal: "no tag", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
+  { id: "boiler_pressure", x: -400, y: 110, title: "BOILER PRESSURE", defaultVal: "no tag", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
+  { id: "card_inlet_door_st1", x: -25, y: 220, title: "INLET DOOR ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_door_st2", x: 620, y: 220, title: "INLET DOOR ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_door_st3", x: 1300, y: 220, title: "INLET DOOR ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_door_st4", x: 1980, y: 220, title: "INLET DOOR ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam_1_st1", x: -250, y: 200, title: "INLET STEAM 1 ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam_2_st1", x: -250, y: 420, title: "INLET STEAM 2 ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_flashing_st1", x: -250, y: 610, title: "FLASHING ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam", x: 400, y: 200, title: "INLET STEAM 1 ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam", x: 400, y: 420, title: "INLET STEAM 2 ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam", x: 400, y: 610, title: "FLASHING  STEAM  ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam", x: 1070, y: 200, title: "INLET STEAM 1 ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam", x: 1070, y: 420, title: "INLET STEAM 2 ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_flashing_st3", x: 1070, y: 610, title: "FLASHING ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam", x: 1740, y: 200, title: "INLET STEAM 1 ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam", x: 1740, y: 420, title: "INLET STEAM 2 ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_flashing_st4", x: 1740, y: 610, title: "FLASHING ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+
+  // Overview Cards (Pressure & Temperature)
+  { id: "overview_pressure_1", x: -20, y: 370, title: "PRESSURE 1", defaultVal: "0.0", unit: "Bar", status: "grey", width: 180, valueColor: "#ef4444" },
+  { id: "overview_temp_1", x: -20, y: 520, title: "TEMPERATURE 1", defaultVal: "0.0", unit: "°C", status: "grey", width: 180, valueColor: "#ef4444" },
+
+  { id: "overview_pressure_2", x: 620, y: 370, title: "PRESSURE 2", defaultVal: "0.0", unit: "Bar", status: "grey", width: 180, valueColor: "#ef4444" },
+  { id: "overview_temp_2", x: 620, y: 520, title: "TEMPERATURE 2", defaultVal: "0.0", unit: "°C", status: "grey", width: 180, valueColor: "#ef4444" },
+
+  { id: "overview_pressure_3", x: 1300, y: 370, title: "PRESSURE 3", defaultVal: "0.0", unit: "Bar", status: "grey", width: 180, valueColor: "#ef4444" },
+  { id: "overview_temp_3", x: 1300, y: 520, title: "TEMPERATURE 3", defaultVal: "0.0", unit: "°C", status: "grey", width: 180, valueColor: "#ef4444" },
+
+  { id: "overview_pressure_4", x: 1950, y: 370, title: "PRESSURE 4", defaultVal: "0.0", unit: "Bar", status: "grey", width: 180, valueColor: "#ef4444" },
+  { id: "overview_temp_4", x: 1950, y: 520, title: "TEMPERATURE 4", defaultVal: "0.0", unit: "°C", status: "grey", width: 180, valueColor: "#ef4444" },
+
+  { id: "card_outlet_door_st1", x: 200, y: 580, title: "OUTLET DOOR ST1", defaultVal: TEST_OUTLET_DOOR_ST1, unit: "", status: "grey", width: 150 },
+  { id: "card_outlet_door_st2", x: 850, y: 580, title: "OUTLET DOOR ST2", defaultVal: TEST_OUTLET_DOOR_ST2, unit: "", status: "grey", width: 150 },
+  { id: "card_outlet_door_st3", x: 1540, y: 580, title: "OUTLET DOOR ST3", defaultVal: TEST_OUTLET_DOOR_ST3, unit: "", status: "grey", width: 150 },
+  { id: "card_outlet_door_st4", x: 2220, y: 580, title: "OUTLET DOOR ST4", defaultVal: TEST_OUTLET_DOOR_ST4, unit: "", status: "grey", width: 150 },
+  { id: "card_exhaust_steam", x: -240, y: -10, title: "EXHAUST STEAM ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_exhaust_steam", x: 400, y: -30, title: "EXHAUST STEAM ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_exhaust_steam", x: 1080, y: -30, title: "EXHAUST STEAM ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_exhaust_steam", x: 1750, y: -30, title: "EXHAUST STEAM ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "condensate", x: 320, y: 900, title: "RELIEF CONDENSATE VALVE ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "condensate", x: 320, y: 990, title: "CONDENSATE ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "condensate", x: 960, y: 900, title: "RELIEF CONDENSATE VALVE ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "condensate", x: 960, y: 990, title: "CONDENSATE ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "condensate", x: 1645, y: 900, title: "RELIEF CONDENSATE VALVE ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "condensate", x: 1645, y: 990, title: "CONDENSATE ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "condensate", x: 2320, y: 900, title: "RELIEF CONDENSATE VALVE ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "condensate", x: 2320, y: 990, title: "CONDENSATE ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+
+  // D. CONDENSATE Door Cards
+  { id: "d_cond_st1", x: 300, y: 800, title: "D. COND ST1", defaultVal: "OPEN", unit: "", status: "grey", width: 160, scale: 1 },
+  { id: "d_cond_st2", x: 950, y: 800, title: "D. COND ST2", defaultVal: "CLOSE", unit: "", status: "grey", width: 160, scale: 1 },
+  { id: "d_cond_st3", x: 1630, y: 800, title: "D. COND ST3", defaultVal: "OPEN", unit: "", status: "grey", width: 160, scale: 1 },
+  { id: "d_cond_st4", x: 2300, y: 800, title: "D. COND ST4", defaultVal: "OPEN", unit: "", status: "grey", width: 160, scale: 1 },
+];
+
 
 /**
  * Custom hook for hover effects and sound
@@ -129,7 +551,6 @@ function StatusGraphPopup({
   unit = "Bar",
   onMouseEnter,
   onMouseLeave,
-  history = [],
 }) {
   const popupRef = useRef(null);
   const [style, setStyle] = useState({ opacity: 0, pointerEvents: "none" });
@@ -169,57 +590,19 @@ function StatusGraphPopup({
   const plotRight = 360;
   const plotTop = 20;
   const plotBottom = 160;
-  const maxRange = type === "Pressure" ? 3 : 150;
-
-  const yAxisTicks = useMemo(() => {
-    if (type === "Pressure") return [0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0];
-    return [0, 50, 100, 150];
-  }, [type]);
-
-  const xAxisTicks = useMemo(() => {
-    const labels = [];
-    const now = new Date();
-    const ticksCount = 10; // 5 hours / 30 mins
-    for (let i = 0; i <= ticksCount; i++) {
-      const t = new Date(now.getTime() - (ticksCount - i) * 30 * 60000);
-      labels.push({
-        label: t.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }).replace(/\./g, ":"),
-        x: plotLeft + ((plotRight - plotLeft) * i) / ticksCount,
-      });
-    }
-    return labels;
-  }, [plotLeft, plotRight]);
-
-  const isOffline = value === "--";
-
-  const formattedValue = useMemo(() => {
-    if (isOffline) return "--";
-    const num = parseFloat(value);
-    return isNaN(num) ? String(value) : num.toFixed(1);
-  }, [value, isOffline]);
 
   const points = useMemo(() => {
-    if (isOffline) return [];
-
-    // Fallback to flat line if no history data is available
-    const dataPoints = (history && history.length > 0)
-      ? history
-      : Array.from({ length: 20 }).fill(parseFloat(value) || 0);
-
-    const len = dataPoints.length;
-    return dataPoints.map((val, i) => {
-      const x = plotLeft + ((plotRight - plotLeft) * i) / (len - 1 || 1);
-      const yVal = Math.max(0, parseFloat(val) || 0);
-      const maxRange = type === "Pressure" ? 3 : 150;
+    return Array.from({ length: 20 }).map((_, i) => {
+      const x = plotLeft + ((plotRight - plotLeft) * i) / 19;
+      const yVal = Math.max(0, value);
+      const maxRange = type === "Pressure" ? 5 : 200;
       const t = yVal / maxRange;
       const y = plotBottom - t * (plotBottom - plotTop);
       return { x, y };
     });
-  }, [value, type, history, isOffline]);
+  }, [value, type]);
 
-  const polyPoints = useMemo(() => {
-    return points.map((p) => `${p.x},${p.y}`).join(" ");
-  }, [points]);
+  const polyPoints = points.map((p) => `${p.x},${p.y}`).join(" ");
 
   return createPortal(
     <div
@@ -234,7 +617,7 @@ function StatusGraphPopup({
         <div className="som-amp-popup-subtitle">
           <span>{equipmentName}</span>
           <span>
-            Current: {formattedValue} {unit}
+            Current: {value.toFixed(2)} {unit}
           </span>
         </div>
       </div>
@@ -265,68 +648,35 @@ function StatusGraphPopup({
             fill="rgba(248, 250, 252, 0.5)"
             rx="4"
           />
-          {/* Y-Axis & Horizontal Grid */}
-          {yAxisTicks.map((tick, i) => {
-            const y = plotBottom - (tick / maxRange) * (plotBottom - plotTop);
-            return (
-              <g key={`y-${i}`}>
-                <line x1={plotLeft} y1={y} x2={plotRight} y2={y} stroke="#e2e8f0" strokeDasharray="2 2" />
-                <text x={plotLeft - 5} y={y} textAnchor="end" dominantBaseline="middle" fontSize="10" fill="#64748b" fontWeight="600">
-                  {tick}
-                </text>
-              </g>
-            );
-          })}
-          
-          {/* X-Axis & Vertical Grid */}
-          {xAxisTicks.map((tick, i) => (
-            <g key={`x-${i}`}>
-              <line x1={tick.x} y1={plotTop} x2={tick.x} y2={plotBottom} stroke="#e2e8f0" strokeDasharray="2 2" />
-              <text x={tick.x} y={plotBottom + 12} textAnchor="end" fontSize="9" fill="#64748b" fontWeight="600" transform={`rotate(-45, ${tick.x}, ${plotBottom + 12})`}>
-                {tick.label}
-              </text>
-            </g>
+          <line
+            x1={plotLeft}
+            y1={plotBottom}
+            x2={plotRight}
+            y2={plotBottom}
+            stroke="#e2e8f0"
+          />
+          <line
+            x1={plotLeft}
+            y1={plotTop}
+            x2={plotLeft}
+            y2={plotBottom}
+            stroke="#e2e8f0"
+          />
+          <polygon
+            className="som-amp-graph-area"
+            points={`${plotLeft},${plotBottom} ${polyPoints} ${plotRight},${plotBottom}`}
+            style={{ fill: "url(#trendGradient)" }}
+          />
+          <polyline
+            className="som-amp-graph-line-main"
+            points={polyPoints}
+            fill="none"
+            stroke="#d4ac0d"
+            strokeWidth="2"
+          />
+          {points.map((p, idx) => (
+            <circle key={idx} cx={p.x} cy={p.y} r="2.5" fill="#d4ac0d" />
           ))}
-
-          {/* Border lines */}
-          <line x1={plotLeft} y1={plotBottom} x2={plotRight} y2={plotBottom} stroke="#94a3b8" />
-          <line x1={plotLeft} y1={plotTop} x2={plotLeft} y2={plotBottom} stroke="#94a3b8" />
-          {isOffline ? (
-            <text
-              x={(plotLeft + plotRight) / 2}
-              y={(plotTop + plotBottom) / 2}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill="#94a3b8"
-              fontSize="12"
-              fontWeight="800"
-              fontStyle="italic"
-            >
-              OFFLINE / NO CONNECTION
-            </text>
-          ) : (
-            <>
-              {polyPoints && (
-                <>
-                  <polygon
-                    className="som-amp-graph-area"
-                    points={`${plotLeft},${plotBottom} ${polyPoints} ${plotRight},${plotBottom}`}
-                    style={{ fill: "url(#trendGradient)" }}
-                  />
-                  <polyline
-                    className="som-amp-graph-line-main"
-                    points={polyPoints}
-                    fill="none"
-                    stroke="#d4ac0d"
-                    strokeWidth="2"
-                  />
-                </>
-              )}
-              {points.length <= 30 && points.map((p, idx) => (
-                <circle key={idx} cx={p.x} cy={p.y} r="2.5" fill="#d4ac0d" />
-              ))}
-            </>
-          )}
         </svg>
       </div>
     </div>,
@@ -420,7 +770,6 @@ const SensorCardSVG = ({
   onClick,
   size = 90,
   style,
-  trendData = {},
 }) => {
   const {
     cardRef,
@@ -434,24 +783,6 @@ const SensorCardSVG = ({
 
   const isNoTag = value === "No Tag";
   const isActive = !isNoTag && (parseFloat(value) > 0 || String(value).toLowerCase() === "ripe");
-
-  const history = useMemo(() => {
-    if (!trendData) return [];
-    if (id === "main_steam_pipe_flow") return trendData.main_steam || [];
-    if (id === "bpv_pres" || id === "bpv_pressure") return trendData.bpv_press || [];
-
-    const match = id.match(/^st(\d)_(pressure|temp)$/);
-    if (match) {
-      const lineNum = match[1];
-      const type = match[2];
-      if (type === 'pressure') {
-        return trendData[`s${lineNum}_press`] || [];
-      } else {
-        return trendData[`s${lineNum}_temp`] || [];
-      }
-    }
-    return [];
-  }, [id, trendData]);
 
   return (
     <g
@@ -510,7 +841,7 @@ const SensorCardSVG = ({
                     className="som-motor-mini-value"
                     style={{ fontSize: "20px" }}
                   >
-                    {typeof value === 'number' ? value.toFixed(1) : (typeof value === 'string' && value.trim() !== '' && !isNaN(Number(value)) ? Number(value).toFixed(1) : value)}
+                    {value}
                   </span>
                   <span
                     style={{
@@ -527,16 +858,15 @@ const SensorCardSVG = ({
           </div>
         </div>
       </foreignObject>
-      {!isNoTag && isHovered && popupPos && (trendType === "Pressure" || trendType === "Temperature") && !id.includes("inlet_steam") && (
+      {!isNoTag && isHovered && popupPos && (
         <StatusGraphPopup
           position={popupPos}
           equipmentName={equipmentName}
           type={trendType}
-          value={value}
+          value={parseFloat(value) || 0}
           unit={unit}
           onMouseEnter={handlePopupMouseEnter}
           onMouseLeave={handlePopupMouseLeave}
-          history={history}
         />
       )}
     </g>
@@ -549,8 +879,7 @@ const SensorCardSVG = ({
 const DoorCardSVG = ({ x, y, id, label, status, onClick, size = 90, style }) => {
   const s = status.toLowerCase();
   const isNoTag = s === "no tag";
-  const isOffline = s === "--";
-  const isOpen = !isNoTag && !isOffline && (s === "open" || s === "unlock");
+  const isOpen = !isNoTag && (s === "open" || s === "unlock");
 
   return (
     <g id={id} className="svg-equipment door-group" onClick={() => onClick(id)} style={style}>
@@ -568,8 +897,8 @@ const DoorCardSVG = ({ x, y, id, label, status, onClick, size = 90, style }) => 
             <div className="som-motor-mini-header">
               <span className="som-motor-mini-label">{label}</span>
               <div
-                className={`som-status-indicator ${(isNoTag || isOffline) ? "" : isOpen ? "running" : "stop"}`}
-                style={(isNoTag || isOffline) ? { background: '#94a3b8', boxShadow: 'none', animation: 'none' } : {}}
+                className={`som-status-indicator ${isNoTag ? "" : isOpen ? "running" : "stop"}`}
+                style={isNoTag ? { background: '#94a3b8', boxShadow: 'none', animation: 'none' } : {}}
               ></div>
             </div>
             <div
@@ -579,8 +908,8 @@ const DoorCardSVG = ({ x, y, id, label, status, onClick, size = 90, style }) => 
               <span
                 className={`som-motor-mini-value`}
                 style={{
-                  color: (isNoTag || isOffline) ? "#94a3b8" : isOpen ? "#10b981" : "#ef4444",
-                  fontStyle: (isNoTag || isOffline) ? "italic" : "normal",
+                  color: isNoTag ? "#94a3b8" : isOpen ? "#10b981" : "#ef4444",
+                  fontStyle: isNoTag ? "italic" : "normal",
                 }}
               >
                 {status.toUpperCase()}
@@ -597,28 +926,54 @@ const DoorCardSVG = ({ x, y, id, label, status, onClick, size = 90, style }) => 
  * Reusable Flow Animation Component (Liquid Neon Flow)
  * Matched with IPOMAS - 2 layers only (glow + aura)
  */
-const SteamFlowSVG = ({ d, active, mode = "flowing", color = "#a9dbe1ff" }) => {
+const SteamFlowSVG = ({ d, active, color = "#38bdf8", thickness = 8 }) => {
   if (!active) return null;
-
-  let modeClass = "liquid-flow--flowing";
-  if (mode === "standby") modeClass = "liquid-flow--standby";
-  if (mode === "liquid") modeClass = "liquid-flow--liquid";
-
   return (
-    <g className={modeClass}>
+    <g style={{ pointerEvents: "none" }}>
+      <path
+        d={d}
+        style={{
+          stroke: color,
+          strokeWidth: thickness + 6,
+          filter: "blur(4px)",
+          animation: "flow-pulse-opacity 2s ease-in-out infinite",
+          fill: "none",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+        }}
+      />
+      <path
+        d={d}
+        style={{
+          stroke: color,
+          strokeWidth: thickness,
+          animation: "flow-pulse-opacity 2s ease-in-out infinite",
+          fill: "none",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+        }}
+      />
+    </g>
+  );
+};
+
+const LiquidSteamFlowSVG = ({ d, active, mode = "flowing", color = "#38bdf8", thickness = 8 }) => {
+  if (!active) return null;
+  return (
+    <g className={`liquid-flow--${mode}`} style={{ pointerEvents: "none" }}>
       <path
         d={d}
         fill="none"
         stroke={color}
         className="liquid-flow-glow"
-        pointerEvents="none"
+        style={{ strokeWidth: thickness + 6 }}
       />
       <path
         d={d}
         fill="none"
         stroke={color}
         className="liquid-flow-aura"
-        pointerEvents="none"
+        style={{ strokeWidth: thickness }}
       />
     </g>
   );
@@ -670,24 +1025,14 @@ const MaintenanceCardSVG = ({
             </div>
           </div>
           <div className="som-motor-mini-body">
-            {params.map((p, idx) => {
-              let displayValue = p.value;
-              if (p.value !== null && p.value !== undefined) {
-                if (typeof p.value === 'number') {
-                  displayValue = p.value.toFixed(1);
-                } else if (typeof p.value === 'string' && p.value.trim() !== '' && !isNaN(Number(p.value))) {
-                  displayValue = Number(p.value).toFixed(1);
-                }
-              }
-              return (
-                <div key={idx} className="som-motor-param-row">
-                  <span className="som-motor-param-label">{p.label}</span>
-                  <span className="som-motor-mini-value" data-unit={p.unit}>
-                    {displayValue}
-                  </span>
-                </div>
-              )
-            })}
+            {params.map((p, idx) => (
+              <div key={idx} className="som-motor-param-row">
+                <span className="som-motor-param-label">{p.label}</span>
+                <span className="som-motor-mini-value" data-unit={p.unit}>
+                  {p.value}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -726,7 +1071,7 @@ const StationLabelSVG = ({ x, y, label }) => (
  * Summary Table Component
  */
 const SummaryTableSVG = ({ x, y, id, title, data, onClick, style }) => (
-  <foreignObject x={x} y={y} width="320" height="230">
+  <foreignObject x={x} y={y} width="320" height="180">
     <div
       className="som-dig-card"
       id={id}
@@ -737,42 +1082,23 @@ const SummaryTableSVG = ({ x, y, id, title, data, onClick, style }) => (
         {title}
       </div>
       <div className="som-dig-card-body">
-        {data.map((row, i) => {
-          let displayValue = row.value;
-          if (row.label.toLowerCase() === "status") {
-            const s = String(row.value).trim();
-            if (s === "0") displayValue = "EMERGENCY";
-            else if (s === "1") displayValue = "RUN";
-            else if (s === "2") displayValue = "STOP";
-            else if (s === "--") displayValue = "--";
-            else if (s === "no tag") displayValue = "no tag";
-          } else {
-            if (row.value !== null && row.value !== undefined) {
-              if (typeof row.value === 'number') {
-                displayValue = row.value.toFixed(1);
-              } else if (typeof row.value === 'string' && row.value.trim() !== '' && !isNaN(Number(row.value))) {
-                displayValue = Number(row.value).toFixed(1);
-              }
-            }
-          }
-          return (
-            <div key={i} className="som-dig-row">
-              <span className="som-dig-label" style={{ fontSize: "11px" }}>
-                {row.label}
+        {data.map((row, i) => (
+          <div key={i} className="som-dig-row">
+            <span className="som-dig-label" style={{ fontSize: "11px" }}>
+              {row.label}
+            </span>
+            <div
+              style={{ display: "flex", alignItems: "baseline", gap: "4px" }}
+            >
+              <span className="som-dig-value" style={{ fontSize: "15px" }}>
+                {row.value}
               </span>
-              <div
-                style={{ display: "flex", alignItems: "baseline", gap: "4px" }}
-              >
-                <span className="som-dig-value" style={{ fontSize: "15px" }}>
-                  {displayValue}
-                </span>
-                <span className="som-dig-unit" style={{ fontSize: "11px" }}>
-                  {row.unit}
-                </span>
-              </div>
+              <span className="som-dig-unit" style={{ fontSize: "11px" }}>
+                {row.unit}
+              </span>
             </div>
-          )
-        })}
+          </div>
+        ))}
       </div>
     </div>
   </foreignObject>
@@ -859,12 +1185,10 @@ const StatusTableCardSVG = ({
   title,
   data,
   width = 450,
-  height = 650,
   onClick,
-  onInputClick,
   style,
 }) => (
-  <foreignObject x={x} y={y} width={width} height={height}>
+  <foreignObject x={x} y={y} width={width} height="650">
     <div
       className="som-minimal-card"
       id={id}
@@ -873,135 +1197,24 @@ const StatusTableCardSVG = ({
     >
       <div className="som-minimal-header">{title}</div>
       <div className="som-minimal-body">
-        {data.map((row, i) => {
-          let displayValue = row.value;
-          if (row.label.toLowerCase() === "status") {
-            const s = String(row.value).trim();
-            if (s === "0") displayValue = "EMERGENCY";
-            else if (s === "1") displayValue = "RUN";
-            else if (s === "2") displayValue = "STOP";
-            else if (s === "--") displayValue = "--";
-            else if (s === "no tag") displayValue = "no tag";
-          }
-
-          return (
-            <div key={`${id}-${i}`} className="som-minimal-row">
-              <span className="som-minimal-label" style={{ color: "black" }}>{row.label}</span>
-              <div>
-                {row.isInput ? (
-                  <input
-                    type="text"
-                    className="som-minimal-input"
-                    value={displayValue}
-                    readOnly
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onInputClick) onInputClick(row);
-                    }}
-                    style={{
-                      width: "120px",
-                      height: "32px",
-                      textAlign: "right",
-                      color: row.isEdited ? "#1e40af" : "black",
-                      background: row.isEdited ? "#fef08a" : "white",
-                      border: "1.5px solid #94a3b8",
-                      borderRadius: "4px",
-                      padding: "4px 8px",
-                      marginRight: "6px",
-                      fontSize: "20px",
-                      fontWeight: "bold",
-                      outline: "none",
-                      cursor: "pointer",
-                    }}
-                  />
-                ) : (
-                  <span
-                    className="som-minimal-value"
-                    style={{ color: "black" }}
-                  >
-                    {displayValue}
-                  </span>
-                )}
-                {row.unit && <span className="som-minimal-unit" style={{ color: "black", fontSize: "20px", fontWeight: "bold" }}>{row.unit}</span>}
-              </div>
+        {data.map((row, i) => (
+          <div key={i} className="som-minimal-row">
+            <span className="som-minimal-label">{row.label}</span>
+            <div>
+              <span
+                className="som-minimal-value"
+                style={{ color: row.isHighlight ? "#d4ac0d" : "#0f172a" }}
+              >
+                {row.value}
+              </span>
+              {row.unit && <span className="som-minimal-unit">{row.unit}</span>}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   </foreignObject>
 );
-
-function NumericKeypad({ value, onConfirm, onClose, label, unit }) {
-  const [displayValue, setDisplayValue] = useState(() => {
-    if (typeof value === 'number') {
-      return Number.isInteger(value) ? value.toString() : value.toFixed(1);
-    }
-    if (typeof value === 'string' && value.trim() !== '' && !isNaN(Number(value))) {
-      return value;
-    }
-    return '0';
-  });
-
-  const handleNumber = (n) => {
-    setDisplayValue(prev => (prev === '0' ? n.toString() : prev + n.toString()));
-  };
-  const handleDecimal = () => { if (!displayValue.includes('.')) setDisplayValue(displayValue + '.'); };
-  const handleBack = () => setDisplayValue(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
-  const handleEnter = useCallback(() => onConfirm(parseFloat(displayValue) || 0), [displayValue, onConfirm]);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key >= '0' && e.key <= '9') {
-        e.preventDefault();
-        handleNumber(parseInt(e.key));
-      } else if (e.key === '.') {
-        e.preventDefault();
-        handleDecimal();
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        handleBack();
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        handleEnter();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [displayValue, onConfirm, onClose]);
-
-  const btnStyle = { padding: '14px', fontSize: '18px', background: '#f8fafc', border: '1px solid #e2e8f0', color: '#1e293b', borderRadius: '10px', cursor: 'pointer', fontWeight: '600' };
-
-  return createPortal(
-    <div className="som-numeric-keypad-backdrop" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }}>
-      <div className="som-numeric-keypad" onClick={e => e.stopPropagation()} style={{ width: '320px', background: '#ffffff', borderRadius: '16px', border: '1px solid #cbd5e1', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-        <div className="som-numeric-keypad-header" style={{ padding: '14px 18px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="som-numeric-keypad-label" style={{ fontWeight: '800', fontSize: '13px', color: '#1e293b' }}>{label}</span>
-          <button style={{ background: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#64748b' }} onClick={onClose}>✕</button>
-        </div>
-        <div className="som-numeric-keypad-display" style={{ padding: '12px 16px', margin: '14px 16px 0 16px', background: '#ffffff', border: '2px solid #e2e8f0', borderRadius: '12px', color: '#0f172a', fontSize: '28px', fontWeight: '900', textAlign: 'right', display: 'flex', justifyContent: 'flex-end', alignItems: 'baseline', gap: '6px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.03)' }}>
-          <span className="som-numeric-keypad-value" style={{ color: '#0f172a' }}>{displayValue}</span>
-          {unit && <span className="som-numeric-keypad-unit" style={{ fontSize: '15px', color: '#475569', fontWeight: '800' }}>{unit}</span>}
-        </div>
-        <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-          {[7, 8, 9, 4, 5, 6, 1, 2, 3].map(n => (
-            <button type="button" key={n} onClick={() => handleNumber(n)} style={btnStyle}>{n}</button>
-          ))}
-          <button type="button" onClick={handleDecimal} style={btnStyle}>.</button>
-          <button type="button" onClick={() => handleNumber(0)} style={btnStyle}>0</button>
-          <button type="button" onClick={handleBack} style={{ ...btnStyle, background: '#f1f5f9' }}>⌫</button>
-          <button type="button" onClick={() => setDisplayValue('0')} style={{ gridColumn: 'span 1', padding: '12px', background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>CLEAR</button>
-          <button type="button" onClick={handleEnter} style={{ gridColumn: 'span 2', padding: '12px', background: '#F59E0B', border: 'none', color: 'white', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>ENTER (WRITE PLC)</button>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
 
 /** Custom IPOMAS Valve Modern Card */
 const ValveModernCardSVG = ({
@@ -1679,9 +1892,9 @@ const TagEditorModal = ({
           cursor: "pointer",
         }}
       >
-        <option value="" style={{ background: "#0f172a", color: "#e2e8f0" }}>— No Tag —</option>
+        <option value="">— No Tag —</option>
         {tagList.map((tag) => (
-          <option key={tag.id} value={tag.id} style={{ background: "#0f172a", color: "#e2e8f0" }}>
+          <option key={tag.id} value={tag.id}>
             {tag.tag_name}
           </option>
         ))}
@@ -1915,6 +2128,55 @@ const TagEditorModal = ({
   );
 };
 
+export const LiquidFlowSVG = ({
+  d,
+  isRunning,
+  color = "#f59e0b",
+  thickness = 8,
+}) => {
+  if (!isRunning) return null;
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      <path
+        d={d}
+        style={{
+          stroke: color,
+          strokeWidth: thickness + 6,
+          filter: "blur(4px)",
+          animation: "flow-pulse-opacity 2s ease-in-out infinite",
+          fill: "none",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+        }}
+      />
+      <path
+        d={d}
+        style={{
+          stroke: color,
+          strokeWidth: thickness,
+          animation: "flow-pulse-opacity 2s ease-in-out infinite",
+          fill: "none",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+        }}
+      />
+    </g>
+  );
+};
+
+export const CrosshairOverlay = ({ coords }) => {
+  return (
+    <g pointerEvents="none">
+      <line x1={coords.x} y1="-5000" x2={coords.x} y2="5000" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
+      <line x1="-5000" y1={coords.y} x2="5000" y2={coords.y} stroke="#ef4444" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
+      <rect x={coords.x + 10} y={coords.y + 10} width="80" height="24" fill="rgba(0,0,0,0.7)" rx="4" />
+      <text x={coords.x + 16} y={coords.y + 26} fill="#fff" fontSize="12px" fontWeight="bold">
+        {coords.x}, {coords.y}
+      </text>
+    </g>
+  );
+};
+
 export default function OverviewTab({
   activeTab,
   viewMode,
@@ -1927,63 +2189,30 @@ export default function OverviewTab({
   getMappedValue,
   configMode = false,
   tagMap = {},
-  trendData = {},
 }) {
   const svgRef = useRef(null);
-  const [modulateVals, setModulateVals] = useState({});
-  const [activeKeypad, setActiveKeypad] = useState(null);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+  const lv = (eq, sig, def) => getMappedValue(eq, sig, def);
 
-  const getModulateVal = (lineNum, cardId, signalKey, fallback) => {
-    const itemKey = `${cardId}__${signalKey}`;
-    if (modulateVals[itemKey] !== undefined) {
-      return modulateVals[itemKey];
-    }
+  const getSmartValveValue = useCallback((valveId, fallbackTestVar) => {
     if (getMappedValue) {
-      return String(getMappedValue(cardId, signalKey, fallback));
+      const mapped = getMappedValue(valveId, "STATUS", "No Tag");
+      if (mapped !== undefined && mapped !== null && String(mapped).trim().toLowerCase() !== "no tag") {
+        return mapped;
+      }
     }
-    return fallback;
-  };
-
-  const handleOpenKeypad = (cardId, row, lineNum) => {
-    const signalKey = row.signalKey || row.label.replace(/\s+/g, "_");
-    const tagKey = `${cardId}__${signalKey}`;
-    const currentVal = getModulateVal(lineNum, cardId, signalKey, row.value);
-
-    setActiveKeypad({
-      cardId,
-      signalKey,
-      tagKey,
-      lineNum,
-      label: `Sterilizer ${lineNum} ${row.label}`,
-      unit: row.unit,
-      value: currentVal
-    });
-  };
-
-  const handleKeypadConfirm = (newVal) => {
-    if (!activeKeypad) return;
-    const { cardId, signalKey, tagKey } = activeKeypad;
-    const itemKey = `${cardId}__${signalKey}`;
-
-    setModulateVals(prev => ({ ...prev, [itemKey]: newVal }));
-
-    const tagId = tagMap ? tagMap[tagKey] : null;
-    if (tagId) {
-      usePlcStore.getState().sendCommand(tagId, newVal, tagKey, "sterilizer");
-    }
-
-    setActiveKeypad(null);
-  };
+    return fallbackTestVar;
+  }, [getMappedValue]);
 
   const checkMapping = (id) => {
-    return tagMap && Object.keys(tagMap).some(key => key.startsWith(`${id}__`) && tagMap[key]);
+    return tagMap && Object.keys(tagMap).some(key => key.startsWith(`${id}__`) && tagMap[key] && tagMap[key] !== "null" && tagMap[key] !== "undefined" && tagMap[key] !== "");
   };
 
   const getDeveloperStyle = (id) => {
     if (!configMode) return {};
     const hasMapping = checkMapping(id);
     return {
-      outline: hasMapping ? "2px solid #3b82f6" : "2px solid #ef4444",
+      outline: hasMapping ? "2px solid #3b82f6" : "2px dashed #ef4444",
       boxShadow: hasMapping ? "0 0 8px rgba(59, 130, 246, 0.6)" : "0 0 8px rgba(239, 68, 68, 0.6)",
       backgroundColor: hasMapping ? "transparent" : "rgba(239, 68, 68, 0.15)",
       cursor: "pointer",
@@ -1996,11 +2225,25 @@ export default function OverviewTab({
         <div className="som-sterilizer-station-flow-body">
           <svg
             ref={svgRef}
-            viewBox="-450 -20 2800 1150"
+            viewBox="-450 -120 2850 1150"
             className="station-svg-canvas"
             preserveAspectRatio="xMidYMid meet"
           >
             <defs>
+              <filter id="tint-red" color-interpolation-filters="sRGB">
+                <feColorMatrix type="matrix"
+                  values="0.244 0.822 0.083 0 0
+                          0     0     0     0 0
+                          0     0     0     0 0
+                          0     0     0     1 0"/>
+              </filter>
+              <filter id="tint-green" color-interpolation-filters="sRGB">
+                <feColorMatrix type="matrix"
+                  values="0.0638 0.2146 0.0216 0 0
+                          0.2551 0.8582 0.0867 0 0
+                          0.0425 0.1430 0.0144 0 0
+                          0 0 0 1 0"/>
+              </filter>
               <filter
                 id="neon-glow"
                 x="-50%"
@@ -2015,12 +2258,6 @@ export default function OverviewTab({
                   operator="over"
                 />
               </filter>
-              <filter id="tint-green">
-                <feColorMatrix type="matrix" values="0 0 0 0 0   0 1 0 0 0   0 0 0 0 0   0 0 0 1 0" />
-              </filter>
-              <filter id="tint-red">
-                <feColorMatrix type="matrix" values="1 0 0 0 0   0 0 0 0 0   0 0 0 0 0   0 0 0 1 0" />
-              </filter>
             </defs>
 
             {/* ==========================================
@@ -2029,30 +2266,18 @@ export default function OverviewTab({
             {activeTab === "overview" ? (
               <image
                 href={sterilizerStationImageUrl}
-                width="2470"
-                x="-265"
+                width="2650"
+                x="-355"
+                y="-40"
               />
             ) : (
               <image
                 href={sterilizerLineImageUrl}
-                width="2470"
-                x="-265"
+                width="2650"
+                x="35"
+                y="-30"
+                style={{ mixBlendMode: "multiply" }}
               />
-            )}
-
-            {/* --- HUD DIAGNOSTIC BANNER --- */}
-            {viewMode === "maintenance" && (
-              <foreignObject
-                x="650"
-                y="20"
-                width="600"
-                height="60"
-                style={{ overflow: "visible" }}
-              >
-                <div className="som-diagnostic-banner">
-                  TECHNICAL DIAGNOSTIC ACTIVE
-                </div>
-              </foreignObject>
             )}
 
             {/* ==========================================
@@ -2115,1805 +2340,851 @@ export default function OverviewTab({
                   ? getMappedValue("st" + n + "_condensate", "MONITOR", cond)
                   : cond;
 
-                const statusVal = n === 2 ? "STANDBY" : "RUN";
-                const stepVal = n === 1 ? "7" : n === 2 ? "0" : n === 3 ? "3" : "5";
-                const totalTimeVal = n === 1 ? "3.5" : n === 2 ? "0.0" : n === 3 ? "12.4" : "8.2";
-                const stepTimeVal = n === 1 ? "1.2" : n === 2 ? "0.0" : n === 3 ? "4.1" : "2.0";
-                const cycleTimeVal = n === 1 ? "10:30" : n === 2 ? "00:00" : n === 3 ? "15:45" : "08:10";
-                const totalCycleTimeVal = n === 1 ? "45:15" : n === 2 ? "00:00" : n === 3 ? "55:20" : "38:40";
-                const tempVal = n === 1 ? "110.5" : n === 2 ? "30.2" : n === 3 ? "125.8" : "118.4";
+                // Konfigurasi Status Valve untuk Individual Line View
+                const dCondTag = `d_cond_st${n}`;
+                let dCondDisplayLine = "No Tag";
+                if (getMappedValue) {
+                  const mapped = getMappedValue(dCondTag, "STATUS", "No Tag");
+                  dCondDisplayLine = formatDoorStatus(mapped);
+                }
+
+                const reliefCondensateTag = `relief_condensate_valve_st${n}`;
+                let reliefCondensateDisplayLine = "No Tag";
+                if (getMappedValue) {
+                  const mapped = getMappedValue(reliefCondensateTag, "STATUS", "No Tag");
+                  reliefCondensateDisplayLine = formatValveStatus(mapped);
+                }
+
+                const condensateTag = `condensate_valve_st${n}`;
+                let CondensateDisplayLine = "No Tag";
+                if (getMappedValue) {
+                  const mapped = getMappedValue(condensateTag, "STATUS", "No Tag");
+                  CondensateDisplayLine = formatValveStatus(mapped);
+                }
+
+                // Konfigurasi Status Pintu (Inlet & Outlet) untuk Line View
+                let topDoorLineStatus = "No Tag";
+                let botDoorLineStatus = "No Tag";
+
+                if (getMappedValue) {
+                  const mappedTop = getMappedValue(`top_door_st${n}`, "STATUS", "No Tag");
+                  topDoorLineStatus = formatDoorStatus(mappedTop);
+
+                  const mappedBot = getMappedValue(`bot_door_st${n}`, "STATUS", "No Tag");
+                  botDoorLineStatus = formatDoorStatus(mappedBot);
+                }
 
                 // Local coordinates centered in the wide 2470 canvas (around x=1100)
                 return (
                   <g>
-                    <StationLabelSVG
-                      x={880}
-                      y={395}
-                      label={`STERILIZER ${n}`}
-                    />
-
                     {/* PROCESS FLOWS FOR LINE VIEW (Synced with Overview) */}
                     <g className="som-line-flows">
-                      {/* 1. STEAM INLET FLOW (Gating) */}
-                      <SteamFlowSVG
-                        d="M -121 41 L 289 41 L 319 67 L 319 95"
-                        active={true}
-                        mode={
-                          parseFloat(actualInlet) >= 0.1 ? "flowing" : "standby"
+                      {/* Blue Flow 1 */}
+                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
+                        let valveVal2, valveVal3, valveVal4;
+                        if (n === 1) {
+                          valveVal2 = getSmartValveValue("manual_valve_2", TEST_MANUAL_VALVE_2);
+                          valveVal3 = getSmartValveValue("manual_valve_3", TEST_MANUAL_VALVE_3);
+                          valveVal4 = getSmartValveValue("manual_valve_4", TEST_MANUAL_VALVE_4);
+                        } else if (n === 2) {
+                          valveVal2 = getSmartValveValue("manual_valve_9", TEST_MANUAL_VALVE_9);
+                          valveVal3 = getSmartValveValue("manual_valve_10", TEST_MANUAL_VALVE_10);
+                          valveVal4 = getSmartValveValue("manual_valve_11", TEST_MANUAL_VALVE_11);
+                        } else if (n === 3) {
+                          valveVal2 = getSmartValveValue("manual_valve_16", TEST_MANUAL_VALVE_16);
+                          valveVal3 = getSmartValveValue("manual_valve_17", TEST_MANUAL_VALVE_17);
+                          valveVal4 = getSmartValveValue("manual_valve_18", TEST_MANUAL_VALVE_18);
+                        } else {
+                          valveVal2 = getSmartValveValue("manual_valve_23", TEST_MANUAL_VALVE_23);
+                          valveVal3 = getSmartValveValue("manual_valve_24", TEST_MANUAL_VALVE_24);
+                          valveVal4 = getSmartValveValue("manual_valve_25", TEST_MANUAL_VALVE_25);
                         }
-                      />
-                      {parseFloat(actualInlet) >= 0.1 && (
-                        <SteamFlowSVG
-                          d="M 319 151 L 319 232"
-                          active={true}
-                          mode="flowing"
+                        const valve2 = formatValveStatus(valveVal2) === "OPEN";
+                        const valve3 = formatValveStatus(valveVal3) === "OPEN";
+                        const valve4 = formatValveStatus(valveVal4) === "OPEN";
+
+                        return (
+                          <>
+                            {/* Valve 2 Source + Branch */}
+                            {(() => {
+                              if (valve2) {
+                                return (
+                                  <>
+                                    <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                    <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                    <LiquidSteamFlowSVG d="M 147,302 L 512,303" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  </>
+                                );
+                              } else {
+                                return (
+                                  <>
+                                    <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                    <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                  </>
+                                );
+                              }
+                            })()}
+
+                            {/* Valve 3 Source + Branch */}
+                            {(() => {
+                              if (valve3) {
+                                return (
+                                  <>
+                                    <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                    <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                    <LiquidSteamFlowSVG d="M 146,515 L 160,515 Q 174,514 174,500 L 175,472 Q 175,453 194,453 L 194,453 Q 213,452 232,452 L 515,453" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                    <LiquidSteamFlowSVG d="M 145,514 L 160,512 Q 174,510 174,525 L 173,559 Q 173,573 187,576 L 187,576 Q 201,578 215,578 L 341,578 Q 366,578 387,591 L 540,686" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  </>
+                                );
+                              } else {
+                                return (
+                                  <>
+                                    <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                    <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                  </>
+                                );
+                              }
+                            })()}
+
+                            {/* Valve 4 Source + Post */}
+                            <LiquidSteamFlowSVG d="M 47,514 L 46,656 Q 46,671 50,686 L 50,686 Q 54,700 69,701 L 70,703  " active={true} mode={valve4 ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                            {valve4 && (
+                              <LiquidSteamFlowSVG d="M 146,703 L 332,700 Q 357,700 379,712 " active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            )}
+                          </>
+                        );
+                      })()}
+
+                      {/* Blue Flow 8 (Originally n !== 2) */}
+                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
+                        let valve1Val;
+                        if (n === 1) valve1Val = getSmartValveValue("manual_valve_1", TEST_MANUAL_VALVE_1);
+                        else if (n === 2) valve1Val = getSmartValveValue("manual_valve_8", TEST_MANUAL_VALVE_8);
+                        else if (n === 3) valve1Val = getSmartValveValue("manual_valve_15", TEST_MANUAL_VALVE_15);
+                        else valve1Val = getSmartValveValue("manual_valve_22", TEST_MANUAL_VALVE_22);
+
+                        const valve1 = formatValveStatus(valve1Val) === "OPEN";
+                        return (
+                          <>
+                            <LiquidSteamFlowSVG d="M 265,143 L 264,98 Q 263,81 247,78 L 247,78 Q 230,74 213,74 L 171,73" active={true} mode={valve1 ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                            {valve1 && (
+                              <LiquidSteamFlowSVG d="M 171,73 L -9,71" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            )}
+                          </>
+                        );
+                      })()}
+                      {(n === 4) && (true || parseFloat(lv('flow_1784282895579', 'FLOW', '0')) > 0) && (
+                        <LiquidFlowSVG
+                          d="M 265,143 L 264,98 Q 263,81 247,78 L 247,78 Q 230,74 213,74 L 171,73"
+                          isRunning={true}
+                          color="#38bdf8"
+                          thickness={8}
                         />
                       )}
-
-                      {/* 2. STEAM EXHAUST FLOW (Gating) */}
-                      <SteamFlowSVG
-                        d="M 974 232 L 974 172 L 1000 155 L 1191 155"
-                        active={true}
-                        mode={
-                          formatValveStatus(actualExhaust) === "OPEN"
-                            ? "flowing"
-                            : "standby"
-                        }
-                      />
-                      {formatValveStatus(actualExhaust) === "OPEN" && (
-                        <SteamFlowSVG
-                          d="M 1258 153 L 1727 155"
-                          active={true}
-                          mode="flowing"
-                        />
+                      {(n === 3) && (true || parseFloat(lv('flow_1784254637309', 'FLOW', '0')) > 0) && (
+                        <LiquidFlowSVG d="M 265,143 L 266,112 Q 266,98 259,86 L 259,86 Q 252,73 238,73 L 170,73" isRunning={true} color="#38bdf8" thickness={8} />
                       )}
+                      {/* Orange Flows: Steam for Line 1 & 4, Liquid for Line 2 & 3 */}
+                      {/* Orange Flow 1 */}
+                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
+                        let valveVal;
+                        if (n === 1) valveVal = getMappedValue ? getMappedValue("d_cond_st1", "STATUS", TEST_MANUAL_VALVE_7) : TEST_MANUAL_VALVE_7;
+                        else if (n === 2) valveVal = getMappedValue ? getMappedValue("d_cond_st2", "STATUS", TEST_MANUAL_VALVE_14) : TEST_MANUAL_VALVE_14;
+                        else if (n === 3) valveVal = getMappedValue ? getMappedValue("d_cond_st3", "STATUS", TEST_MANUAL_VALVE_19) : TEST_MANUAL_VALVE_19;
+                        else valveVal = getMappedValue ? getMappedValue("d_cond_st4", "STATUS", TEST_MANUAL_VALVE_28) : TEST_MANUAL_VALVE_28;
+                        const isOpen = formatValveStatus(valveVal) === "OPEN";
+                        const openPath = "M 524,729 L 524,1012";
+                        const closedPath = "M 524,729 L 524,783";
+                        if (isOpen) {
+                          return <LiquidSteamFlowSVG d={openPath} active={true} mode="liquid" color="#f59e0b" thickness={8} />;
+                        } else {
+                          return <LiquidSteamFlowSVG d={closedPath} active={true} mode="standby" color="#f59e0b" thickness={8} />;
+                        }
+                      })()}
 
-                      {/* 3. CONDENSATE FLOW (Gating - Dark Orange) */}
-                      <g>
-                        {/* Before Valve - Always visible */}
-                        <SteamFlowSVG
-                          d="M 263 554 L 263 612 L 280 633 L 1870 633"
-                          active={true}
-                          mode={formatValveStatus(actualCond) === "OPEN" ? "liquid" : "standby"}
-                          color={condColor}
-                        />
-                        <SteamFlowSVG
-                          d="M 578 558 L 578 626"
-                          active={true}
-                          mode={formatValveStatus(actualCond) === "OPEN" ? "liquid" : "standby"}
-                          color={condColor}
-                        />
-                        <SteamFlowSVG
-                          d="M 906 558 L 906 628"
-                          active={true}
-                          mode={formatValveStatus(actualCond) === "OPEN" ? "liquid" : "standby"}
-                          color={condColor}
-                        />
-                        <SteamFlowSVG
-                          d="M 1228 554 L 1228 626"
-                          active={true}
-                          mode={formatValveStatus(actualCond) === "OPEN" ? "liquid" : "standby"}
-                          color={condColor}
-                        />
-                        <SteamFlowSVG
-                          d="M 1534 559 L 1534 626"
-                          active={true}
-                          mode={formatValveStatus(actualCond) === "OPEN" ? "liquid" : "standby"}
-                          color={condColor}
-                        />
+                      {/* Orange Flow 2 */}
+                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
+                        let valveVal;
+                        if (n === 1) valveVal = getSmartValveValue("manual_valve_6", TEST_MANUAL_VALVE_6);
+                        else if (n === 2) valveVal = getSmartValveValue("manual_valve_13", TEST_MANUAL_VALVE_13);
+                        else if (n === 3) valveVal = getSmartValveValue("manual_valve_21", TEST_MANUAL_VALVE_21);
+                        else valveVal = getSmartValveValue("manual_valve_27", TEST_MANUAL_VALVE_27);
+                        const isOpen = formatValveStatus(valveVal) === "OPEN";
+                        return isOpen ? (
+                          <LiquidSteamFlowSVG d="M 359,1012 L 365,1022 Q 370,1031 381,1031 L 402,1032" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                        ) : null;
+                      })()}
 
-                        {/* After Valve - Conditional */}
-                        {formatValveStatus(actualCond) === "OPEN" && (
-                          <SteamFlowSVG
-                            d="M 1955 635 L 2149 635"
-                            active={true}
-                            mode="liquid"
-                            color={condColor}
-                          />
-                        )}
-                      </g>
+                      {/* Orange Flow 3 */}
+                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
+                        let valveVal;
+                        if (n === 1) valveVal = getSmartValveValue("manual_valve_6", TEST_MANUAL_VALVE_6);
+                        else if (n === 2) valveVal = getSmartValveValue("manual_valve_13", TEST_MANUAL_VALVE_13);
+                        else if (n === 3) valveVal = getSmartValveValue("manual_valve_21", TEST_MANUAL_VALVE_21);
+                        else valveVal = getSmartValveValue("manual_valve_27", TEST_MANUAL_VALVE_27);
+                        const isOpen = formatValveStatus(valveVal) === "OPEN";
+                        return isOpen ? (
+                          <LiquidSteamFlowSVG d="M 505,1030 L 523,1031 Q 541,1031 559,1031 L 599,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                        ) : null;
+                      })()}
+
+                      {/* Orange Flow 4 */}
+                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
+                        let valveVal;
+                        if (n === 1) valveVal = getSmartValveValue("manual_valve_5", TEST_MANUAL_VALVE_5);
+                        else if (n === 2) valveVal = getSmartValveValue("manual_valve_12", TEST_MANUAL_VALVE_12);
+                        else if (n === 3) valveVal = getSmartValveValue("manual_valve_20", TEST_MANUAL_VALVE_20);
+                        else valveVal = getSmartValveValue("manual_valve_26", TEST_MANUAL_VALVE_26);
+                        const isOpen = formatValveStatus(valveVal) === "OPEN";
+                        if (isOpen) {
+                          return <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />;
+                        } else {
+                          return <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="standby" color="#f59e0b" thickness={8} />;
+                        }
+                      })()}
+
+                      {/* Orange Flow 5 */}
+                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
+                        let valveVal;
+                        if (n === 1) valveVal = getSmartValveValue("manual_valve_5", TEST_MANUAL_VALVE_5);
+                        else if (n === 2) valveVal = getSmartValveValue("manual_valve_12", TEST_MANUAL_VALVE_12);
+                        else if (n === 3) valveVal = getSmartValveValue("manual_valve_20", TEST_MANUAL_VALVE_20);
+                        else valveVal = getSmartValveValue("manual_valve_26", TEST_MANUAL_VALVE_26);
+                        const isOpen = formatValveStatus(valveVal) === "OPEN";
+                        return isOpen && (
+                          <LiquidSteamFlowSVG d="M 641,939 L 761,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                        );
+                      })()}
+
+                      {/* Orange Flow 6 */}
+                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
+                        let valveVal;
+                        if (n === 1) valveVal = TEST_MANUAL_VALVE_6;
+                        else if (n === 2) valveVal = TEST_MANUAL_VALVE_13;
+                        else if (n === 3) valveVal = TEST_MANUAL_VALVE_21;
+                        else valveVal = TEST_MANUAL_VALVE_27;
+                        const isOpen = formatValveStatus(valveVal) === "OPEN";
+                        return isOpen && (
+                          <LiquidSteamFlowSVG d="M 644,1031 L 776,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                        );
+                      })()}
                     </g>
                     {viewMode === "process" ? (
                       <g>
-                        <SensorCardSVG
-                          x={520}
-                          y={130}
-                          label="Inlet Steam"
-                          value={
-                            getMappedValue
-                              ? String(getMappedValue("st" + n + "_inlet_steam", "MONITOR", inlet))
-                              : inlet
+                        {/* Edit posisi X dan Y untuk 7 valve di sini: */}
+                        {[
+                          { x: 145, y: 50, rotate: 270, size: 90 }, // Valve ke-1
+                          { x: 125, y: 275, rotate: 270, size: 100 }, // Valve ke-2
+                          { x: 125, y: 488, rotate: 270, size: 100 }, // Valve ke-3
+                          { x: 125, y: 675, rotate: 270, size: 100 }, // Valve ke-4
+                          { x: 550, y: 800, rotate: 0, size: 90 }, // Valve ke-5
+                          { x: 620, y: 914, rotate: 270, size: 90 }, // Valve ke-6
+                          { x: 620, y: 1005, rotate: 270, size: 90 }, // Valve ke-7
+                        ].map((coord, i) => {
+                          const valveIndex = (n - 1) * 7 + i + 1;
+                          const valveId = `manual_valve_${valveIndex}`;
+                          let valveVal = "0";
+                          switch (valveIndex) {
+                            case 1: valveVal = TEST_MANUAL_VALVE_1; break;
+                            case 2: valveVal = TEST_MANUAL_VALVE_2; break;
+                            case 3: valveVal = TEST_MANUAL_VALVE_3; break;
+                            case 4: valveVal = TEST_MANUAL_VALVE_4; break;
+                            case 5: valveVal = getMappedValue ? getMappedValue("d_cond_st1", "STATUS", TEST_MANUAL_VALVE_7) : TEST_MANUAL_VALVE_7; break;
+                            case 6: valveVal = TEST_MANUAL_VALVE_5; break;
+                            case 7: valveVal = TEST_MANUAL_VALVE_6; break;
+                            case 8: valveVal = TEST_MANUAL_VALVE_8; break;
+                            case 9: valveVal = TEST_MANUAL_VALVE_9; break;
+                            case 10: valveVal = TEST_MANUAL_VALVE_10; break;
+                            case 11: valveVal = TEST_MANUAL_VALVE_11; break;
+                            case 12: valveVal = getMappedValue ? getMappedValue("d_cond_st2", "STATUS", TEST_MANUAL_VALVE_14) : TEST_MANUAL_VALVE_14; break;
+                            case 13: valveVal = TEST_MANUAL_VALVE_12; break;
+                            case 14: valveVal = TEST_MANUAL_VALVE_13; break;
+                            case 15: valveVal = TEST_MANUAL_VALVE_15; break;
+                            case 16: valveVal = TEST_MANUAL_VALVE_16; break;
+                            case 17: valveVal = TEST_MANUAL_VALVE_17; break;
+                            case 18: valveVal = TEST_MANUAL_VALVE_18; break;
+                            case 19: valveVal = getMappedValue ? getMappedValue("d_cond_st3", "STATUS", TEST_MANUAL_VALVE_19) : TEST_MANUAL_VALVE_19; break;
+                            case 20: valveVal = TEST_MANUAL_VALVE_20; break;
+                            case 21: valveVal = TEST_MANUAL_VALVE_21; break;
+                            case 22: valveVal = TEST_MANUAL_VALVE_22; break;
+                            case 23: valveVal = TEST_MANUAL_VALVE_23; break;
+                            case 24: valveVal = TEST_MANUAL_VALVE_24; break;
+                            case 25: valveVal = TEST_MANUAL_VALVE_25; break;
+                            case 26: valveVal = getMappedValue ? getMappedValue("d_cond_st4", "STATUS", TEST_MANUAL_VALVE_28) : TEST_MANUAL_VALVE_28; break; // Valve 5 in layout is Condensate (28)
+                            case 27: valveVal = TEST_MANUAL_VALVE_26; break; // Valve 6 in layout is Steam (26)
+                            case 28: valveVal = TEST_MANUAL_VALVE_27; break; // Valve 7 in layout is Steam Exh (27)
+                            default: valveVal = "0";
                           }
-                          unit={
-                            getMappedValue && getMappedValue("st" + n + "_inlet_steam", "MONITOR", inlet) === "No Tag"
-                              ? ""
-                              : "%"
-                          }
-                          id={`st${n}_inlet_steam`}
-                          equipmentName="Inlet Steam"
-                          trendType="Pressure"
-                          onClick={handleEquipmentClick}
-                          style={getDeveloperStyle(`st${n}_inlet_steam`)}
-                        />
-                        <DoorCardSVG
-                          x={1105}
-                          y={100}
-                          label="Exhaust"
-                          status={
-                            formatValveStatus(
-                              getMappedValue
-                                ? getMappedValue("st" + n + "_exhaust", "MONITOR", exhaust)
-                                : exhaust
-                            )
-                          }
-                          id={`st${n}_exhaust`}
-                          onClick={handleEquipmentClick}
-                          style={getDeveloperStyle(`st${n}_exhaust`)}
-                        />
-                        <SensorCardSVG
-                          x={730}
-                          y={350}
-                          label="Pressure"
-                          value={
-                            getMappedValue
-                              ? String(getMappedValue("st" + n + "_pressure", "MONITOR", "0.0"))
-                              : "0.0"
-                          }
-                          unit="bar"
-                          id={`st${n}_pressure`}
-                          equipmentName={`ST${n} Pressure`}
-                          trendType="Pressure"
-                          onClick={handleEquipmentClick}
-                          style={getDeveloperStyle(`st${n}_pressure`)}
-                          trendData={trendData}
-                        />
-                        <SensorCardSVG
-                          x={1790}
-                          y={690}
-                          label="Temperature"
-                          value={
-                            getMappedValue
-                              ? String(getMappedValue("st" + n + "_temp", "MONITOR", "110.5"))
-                              : "110.5"
-                          }
-                          unit="°C"
-                          id={`st${n}_temp`}
-                          equipmentName={`ST${n} Temperature`}
-                          trendType="Temperature"
-                          onClick={handleEquipmentClick}
-                          style={getDeveloperStyle(`st${n}_temp`)}
-                          trendData={trendData}
-                        />
-                        <DoorCardSVG
-                          x={1785}
-                          y={520}
-                          label="Inlet Door"
-                          status={
-                            formatDoorStatus(
-                              getMappedValue
-                                ? getMappedValue("st" + n + "_door_in", "MONITOR", "Close")
-                                : "Close"
-                            )
-                          }
-                          id={`st${n}_door_in`}
-                          onClick={handleEquipmentClick}
-                          style={getDeveloperStyle(`st${n}_door_in`)}
-                        />
-                        <DoorCardSVG
-                          x={0}
-                          y={520}
-                          label="Outlet Door"
-                          status={
-                            formatDoorStatus(
-                              getMappedValue
-                                ? getMappedValue("st" + n + "_door_out", "MONITOR", "Close")
-                                : "Close"
-                            )
-                          }
-                          id={`st${n}_door_out`}
-                          onClick={handleEquipmentClick}
-                          style={getDeveloperStyle(`st${n}_door_out`)}
-                        />
-                        <DoorCardSVG
-                          x={1970}
-                          y={685}
-                          label="Condensate"
-                          status={
-                            formatValveStatus(
-                              getMappedValue
-                                ? getMappedValue("st" + n + "_condensate", "MONITOR", cond)
-                                : cond
-                            )
-                          }
-                          id={`st${n}_condensate`}
-                          onClick={handleEquipmentClick}
-                          style={getDeveloperStyle(`st${n}_condensate`)}
-                        />
-
-                        {/* Monitoring & Settings Cards at the Bottom side-by-side (Minimalist) */}
-                        <StatusTableCardSVG
-                          x={450}
-                          y={670}
-                          id={`st${n}_status`}
-                          title={`STERILIZER ${n}`}
-                          onClick={handleEquipmentClick}
-                          style={getDeveloperStyle(`st${n}_status`)}
-                          data={[
-                            {
-                              label: "STATUS",
-                              value: getMappedValue
-                                ? String(getMappedValue(`st${n}_status`, "STATUS", statusVal))
-                                : statusVal,
-                              isHighlight: false,
-                            },
-                            {
-                              label: "ACTUAL STEP",
-                              value: getMappedValue
-                                ? String(getMappedValue(`st${n}_status`, "ACTUAL_STEP", stepVal))
-                                : stepVal,
-                              isHighlight: true,
-                            },
-                            {
-                              label: "TOTAL TIME",
-                              value: getMappedValue
-                                ? String(getMappedValue(`st${n}_status`, "TOTAL_TIME", totalTimeVal))
-                                : totalTimeVal,
-                              unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue(`st${n}_status`, "TOTAL_TIME", totalTimeVal)) : "")
-                                ? ""
-                                : "min",
-                              isHighlight: true,
-                            },
-                                                        {
-                              label: "STEP TIME",
-                              value: getMappedValue
-                                ? String(getMappedValue(`st${n}_status`, "STEP_TIME", stepTimeVal))
-                                : stepTimeVal,
-                              unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue(`st${n}_status`, "STEP_TIME", stepTimeVal)) : "")
-                                ? ""
-                                : "min",
-                              isHighlight: true,
-                            },
-                            {
-                              label: "CYCLE TIME",
-                              value: getMappedValue
-                                ? String(getMappedValue(`st${n}_status`, "CYCLE_TIME", cycleTimeVal))
-                                : cycleTimeVal,
-                              isHighlight: false,
-                            },
-                            {
-                              label: "TOTAL CYCLE TIME",
-                              value: getMappedValue
-                                ? String(getMappedValue(`st${n}_status`, "TOTAL_CYCLE_TIME", totalCycleTimeVal))
-                                : totalCycleTimeVal,
-                              isHighlight: false,
-                            },
-                            {
-                              label: "PRESSURE",
-                              value: getMappedValue
-                                ? String(getMappedValue(`st${n}_status`, "PRESSURE", "2.8"))
-                                : "2.8",
-                              unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue(`st${n}_status`, "PRESSURE", "2.8")) : "")
-                                ? ""
-                                : "Bar",
-                              isHighlight: true,
-                            },
-                          ]}
-                        />
-
-                        <StatusTableCardSVG
-                          x={950}
-                          y={670}
-                          id={`st${n}_valve_auto`}
-                          title="SETTING VALVE MODULATE AUTO"
-                          width={580}
-                          height={230}
-                          onClick={handleEquipmentClick}
-                          onInputClick={(row) => handleOpenKeypad(`st${n}_valve_auto`, row, n)}
-                          style={getDeveloperStyle(`st${n}_valve_auto`)}
-                          data={[
-                            {
-                              label: "MIN",
-                              signalKey: "MIN",
-                              value: getModulateVal(n, `st${n}_valve_auto`, "MIN", "0"),
-                              unit: "%",
-                              isHighlight: true,
-                              isInput: true,
-                              isEdited: modulateVals[`st${n}_valve_auto__MIN`] !== undefined,
-                            },
-                            {
-                              label: "MAX",
-                              signalKey: "MAX",
-                              value: getModulateVal(n, `st${n}_valve_auto`, "MAX", "100"),
-                              unit: "%",
-                              isHighlight: true,
-                              isInput: true,
-                              isEdited: modulateVals[`st${n}_valve_auto__MAX`] !== undefined,
-                            },
-                            {
-                              label: "SETPOINT",
-                              signalKey: "SETPOINT",
-                              value: getModulateVal(n, `st${n}_valve_auto`, "SETPOINT", "2.5"),
-                              unit: "bar",
-                              isHighlight: true,
-                              isInput: true,
-                              isEdited: modulateVals[`st${n}_valve_auto__SETPOINT`] !== undefined,
-                            },
-                            {
-                              label: "CONTROL RANGE LOW",
-                              signalKey: "CONTROL_RANGE_LOW",
-                              value: getModulateVal(n, `st${n}_valve_auto`, "CONTROL_RANGE_LOW", "0.5"),
-                              unit: "bar",
-                              isHighlight: true,
-                              isInput: true,
-                              isEdited: modulateVals[`st${n}_valve_auto__CONTROL_RANGE_LOW`] !== undefined,
-                            },
-                          ]}
-                        />
-
-                        <StatusTableCardSVG
-                          x={950}
-                          y={920}
-                          id={`st${n}_valve_manual`}
-                          title="SETTING VALVE MODULATE MANUAL"
-                          width={580}
-                          height={160}
-                          onClick={handleEquipmentClick}
-                          onInputClick={(row) => handleOpenKeypad(`st${n}_valve_manual`, row, n)}
-                          style={getDeveloperStyle(`st${n}_valve_manual`)}
-                          data={[
-                            {
-                              label: "SET VALUE",
-                              signalKey: "SET_VALUE",
-                              value: getModulateVal(n, `st${n}_valve_manual`, "SET_VALUE", "0"),
-                              unit: "%",
-                              isHighlight: true,
-                              isInput: true,
-                              isEdited: modulateVals[`st${n}_valve_manual__SET_VALUE`] !== undefined,
-                            },
-                            {
-                              label: "HIGH TEMP",
-                              signalKey: "HIGH_TEMP",
-                              value: getModulateVal(n, `st${n}_valve_manual`, "HIGH_TEMP", "140.0"),
-                              unit: "°C",
-                              isHighlight: true,
-                              isInput: true,
-                              isEdited: modulateVals[`st${n}_valve_manual__HIGH_TEMP`] !== undefined,
-                            },
-                          ]}
-                        />
-                        <EquipmentIconSVG x={366} y={120} icon={valvePositionerSvg} size={160} rotation={0} isRunning={parseFloat(actualInlet) >= 0.1} />
-                        <EquipmentIconSVG x={1222} y={120} icon={valveActuatorSvg} size={120} rotation={0} isRunning={formatValveStatus(actualExhaust) === "OPEN"} />
-                        <EquipmentIconSVG x={1920} y={599} icon={valveActuatorSvg} size={120} rotation={0} isRunning={formatValveStatus(actualCond) === "OPEN"} />
+                          const isOpen = formatValveStatus(valveVal) === "OPEN";
+                          return (
+                            <EquipmentIconSVG
+                              key={valveId}
+                              x={coord.x}
+                              y={coord.y}
+                              icon={valvePositionerSvg}
+                              size={coord.size || 100}
+                              rotation={coord.rotate || 0}
+                              isRunning={isOpen}
+                            />
+                          );
+                        })}
                       </g>
                     ) : (
                       <g>
-                        <MaintenanceCardSVG
-                          x={500}
-                          y={130}
-                          label="M-INLET"
-                          params={[
-                            { label: "AMP", value: "12.5", unit: "A" },
-                            { label: "HZ", value: "45.0", unit: "Hz" },
-                          ]}
-                          id={`st${n}_mnt_inlet`}
-                          onClick={handleEquipmentClick}
+                      </g>
+                    )}
+
+                    {/* Render Tag Monitor Cards khusus untuk tab LINE 1 */}
+                    {n === 1 && (
+                      <g>
+                        <TagMonitorCardSVG
+                          x={40}
+                          y={20}
+                          title="EXHAUST STEAM ST1"
+                          value={getMappedValue ? String(getMappedValue("card_exhaust_steam_st1", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st1")}
+                          style={getDeveloperStyle("card_exhaust_steam_st1")}
                         />
-                        <MaintenanceCardSVG
-                          x={1120}
-                          y={110}
-                          label="M-EXHAUST"
-                          params={[
-                            { label: "AMP", value: "8.2", unit: "A" },
-                            {
-                              label: "VIB",
-                              value: "0.4",
-                              unit: "mm/s",
-                            },
-                          ]}
-                          id={`st${n}_mnt_exhaust`}
-                          onClick={handleEquipmentClick}
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={200}
+                          title="INLET STEAM 1 ST1"
+                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_1_st1", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st1")}
+                          style={getDeveloperStyle("card_inlet_steam_1_st1")}
                         />
-                        <MaintenanceCardSVG
-                          x={1920}
-                          y={430}
-                          label="M-DOOR (IN)"
-                          params={[
-                            {
-                              label: "VIB",
-                              value: "1.2",
-                              unit: "mm/s",
-                            },
-                            { label: "POS", value: "100", unit: "%" },
-                          ]}
-                          id={`st${n}_mnt_door_in`}
-                          onClick={handleEquipmentClick}
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={415}
+                          title="INLET STEAM 2 ST1"
+                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_2_st1", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st1")}
+                          style={getDeveloperStyle("card_inlet_steam_2_st1")}
                         />
-                        <MaintenanceCardSVG
-                          x={-100}
-                          y={430}
-                          label="M-DOOR (OUT)"
-                          params={[
-                            {
-                              label: "VIB",
-                              value: "1.1",
-                              unit: "mm/s",
-                            },
-                            { label: "POS", value: "100", unit: "%" },
-                          ]}
-                          id={`st${n}_mnt_door_out`}
-                          onClick={handleEquipmentClick}
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={610}
+                          title="FLASHING ST1"
+                          value={getMappedValue ? String(getMappedValue("card_flashing_st1", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st1")}
+                          style={getDeveloperStyle("card_flashing_st1")}
+                        />
+                        <TagMonitorCardSVG
+                          x={740}
+                          y={695}
+                          title="OUTLET ST1"
+                          value={getMappedValue ? String(getMappedValue("card_outlet_st1", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_outlet_st1")}
+                          style={getDeveloperStyle("card_outlet_st1")}
+                        />
+                        <TagMonitorCardSVG
+                          x={725}
+                          y={900}
+                          title="RELIEF CONDENSATE 1 ST1"
+                          value={getMappedValue ? String(getMappedValue("card_condensate_1_st1", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st1")}
+                          style={getDeveloperStyle("card_condensate_1_st1")}
+                        />
+                        <TagMonitorCardSVG
+                          x={725}
+                          y={995}
+                          title="CONDENSATE 2 ST1"
+                          value={getMappedValue ? String(getMappedValue("card_condensate_2_st1", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st1")}
+                          style={getDeveloperStyle("card_condensate_2_st1")}
+                        />
+
+                        {/* PRESSURE & TEMP CARDS FOR LINE 1 */}
+                        <TagMonitorCardSVG
+                          x={380}
+                          y={380}
+                          title="PRESSURE ST1"
+                          value={getMappedValue ? String(getMappedValue("overview_pressure_1", "MONITOR", "No Tag")) : "No Tag"}
+                          unit="Bar"
+                          status="grey"
+                          width={150}
+                          valueColor="#ef4444"
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("st1_pressure_card")}
+                          style={getDeveloperStyle("st1_pressure_card")}
+                        />
+                        <TagMonitorCardSVG
+                          x={380}
+                          y={520}
+                          title="TEMPERATURE ST1"
+                          value={getMappedValue ? String(getMappedValue("overview_temp_1", "MONITOR", "No Tag")) : "No Tag"}
+                          unit="°C"
+                          status="grey"
+                          width={150}
+                          valueColor="#ef4444"
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("st1_temp_card")}
+                          style={getDeveloperStyle("st1_temp_card")}
+                        />
+
+                        {/* D.CONDENSATE DOOR CARDS FOR LINE 1 */}
+                        <TagMonitorCardSVG
+                          x={700}
+                          y={800}
+                          title="D.CONDE DOOR ST1"
+                          value={dCondDisplayLine}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st1_line")}
+                          style={getDeveloperStyle("d_cond_st1_line")}
+                        />
+
+                        {/* VALVE MODULATE SETTINGS (LINE 1 ONLY) */}
+                        <SettingValveModulateSVG
+                          x={800}
+                          y={120}
+                          scale={1}
+                          getMappedValue={getMappedValue}
+                          line={1}
+                          handleEquipmentClick={handleEquipmentClick}
+                          getDeveloperStyle={getDeveloperStyle}
+                        />
+
+                      </g>
+                    )}
+
+                    {/* Render Tag Monitor Cards khusus untuk tab LINE 2 */}
+                    {n === 2 && (
+                      <g>
+                        <TagMonitorCardSVG
+                          x={40}
+                          y={20}
+                          title="EXHAUST STEAM ST2"
+                          value={getMappedValue ? String(getMappedValue("card_exhaust_steam_st2", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st2")}
+                          style={getDeveloperStyle("card_exhaust_steam_st2")}
+                        />
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={200}
+                          title="INLET STEAM 1 ST2"
+                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_1_st2", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st2")}
+                          style={getDeveloperStyle("card_inlet_steam_1_st2")}
+                        />
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={415}
+                          title="INLET STEAM 2 ST2"
+                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_2_st2", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st2")}
+                          style={getDeveloperStyle("card_inlet_steam_2_st2")}
+                        />
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={610}
+                          title="FLASHING ST2"
+                          value={getMappedValue ? String(getMappedValue("card_flashing_st2", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st2")}
+                          style={getDeveloperStyle("card_flashing_st2")}
+                        />
+                        <TagMonitorCardSVG
+                          x={710}
+                          y={695}
+                          title="OUTLET ST2"
+                          value={getMappedValue ? String(getMappedValue("card_outlet_st2", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_outlet_st2")}
+                          style={getDeveloperStyle("card_outlet_st2")}
+                        />
+                        <TagMonitorCardSVG
+                          x={725}
+                          y={900}
+                          title="RELIEF CONDENSATE 1 ST2"
+                          value={getMappedValue ? String(getMappedValue("card_condensate_1_st2", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st2")}
+                          style={getDeveloperStyle("card_condensate_1_st2")}
+                        />
+                        <TagMonitorCardSVG
+                          x={725}
+                          y={995}
+                          title="CONDENSATE 2 ST2"
+                          value={getMappedValue ? String(getMappedValue("card_condensate_2_st2", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st2")}
+                          style={getDeveloperStyle("card_condensate_2_st2")}
+                        />
+
+                        {/* PRESSURE & TEMP CARDS FOR LINE 2 */}
+                        <TagMonitorCardSVG
+                          x={380}
+                          y={380}
+                          title="PRESSURE ST2"
+                          value={getMappedValue ? String(getMappedValue("overview_pressure_2", "MONITOR", "No Tag")) : "No Tag"}
+                          unit="Bar"
+                          status="grey"
+                          width={150}
+                          valueColor="#ef4444"
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("st2_pressure_card")}
+                          style={getDeveloperStyle("st2_pressure_card")}
+                        />
+                        <TagMonitorCardSVG
+                          x={380}
+                          y={520}
+                          title="TEMPERATURE ST2"
+                          value={getMappedValue ? String(getMappedValue("overview_temp_2", "MONITOR", "No Tag")) : "No Tag"}
+                          unit="°C"
+                          status="grey"
+                          width={150}
+                          valueColor="#ef4444"
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("st2_temp_card")}
+                          style={getDeveloperStyle("st2_temp_card")}
+                        />
+
+                        {/* D. CONDENSATE DOOR CARDS FOR LINE 2 */}
+                        <TagMonitorCardSVG
+                          x={700}
+                          y={800}
+                          title="D. COND ST2"
+                          value={dCondDisplayLine}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st2_line")}
+                          style={getDeveloperStyle("d_cond_st2_line")}
+                        />
+
+                        {/* VALVE MODULATE SETTINGS (LINE 2) */}
+                        <SettingValveModulateSVG
+                          x={800}
+                          y={120}
+                          scale={1}
+                          getMappedValue={getMappedValue}
+                          line={2}
+                          handleEquipmentClick={handleEquipmentClick}
+                          getDeveloperStyle={getDeveloperStyle}
                         />
                       </g>
                     )}
+
+                    {/* Render Tag Monitor Cards khusus untuk tab LINE 3 */}
+                    {n === 3 && (
+                      <g>
+                        <TagMonitorCardSVG
+                          x={40}
+                          y={20}
+                          title="EXHAUST STEAM ST3"
+                          value={getMappedValue ? String(getMappedValue("card_exhaust_steam_st3", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st3")}
+                          style={getDeveloperStyle("card_exhaust_steam_st3")}
+                        />
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={200}
+                          title="INLET STEAM 1 ST3"
+                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_1_st3", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st3")}
+                          style={getDeveloperStyle("card_inlet_steam_1_st3")}
+                        />
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={415}
+                          title="INLET STEAM 2 ST3"
+                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_2_st3", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st3")}
+                          style={getDeveloperStyle("card_inlet_steam_2_st3")}
+                        />
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={610}
+                          title="FLASHING ST3"
+                          value={getMappedValue ? String(getMappedValue("card_flashing_st3", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st3")}
+                          style={getDeveloperStyle("card_flashing_st3")}
+                        />
+                        <TagMonitorCardSVG
+                          x={710}
+                          y={695}
+                          title="OUTLET ST3"
+                          value={getMappedValue ? String(getMappedValue("card_outlet_st3", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_outlet_st3")}
+                          style={getDeveloperStyle("card_outlet_st3")}
+                        />
+                        <TagMonitorCardSVG
+                          x={725}
+                          y={900}
+                          title="RELIEF CONDENSATE 1 ST3"
+                          value={getMappedValue ? String(getMappedValue("card_condensate_1_st3", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st3")}
+                          style={getDeveloperStyle("card_condensate_1_st3")}
+                        />
+                        <TagMonitorCardSVG
+                          x={725}
+                          y={995}
+                          title="CONDENSATE 2 ST3"
+                          value={getMappedValue ? String(getMappedValue("card_condensate_2_st3", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st3")}
+                          style={getDeveloperStyle("card_condensate_2_st3")}
+                        />
+
+                        {/* PRESSURE & TEMP CARDS FOR LINE 3 */}
+                        <TagMonitorCardSVG
+                          x={380}
+                          y={380}
+                          title="PRESSURE ST3"
+                          value={getMappedValue ? String(getMappedValue("overview_pressure_3", "MONITOR", "No Tag")) : "No Tag"}
+                          unit="Bar"
+                          status="grey"
+                          width={150}
+                          valueColor="#ef4444"
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("st3_pressure_card")}
+                          style={getDeveloperStyle("st3_pressure_card")}
+                        />
+                        <TagMonitorCardSVG
+                          x={380}
+                          y={520}
+                          title="TEMPERATURE ST3"
+                          value={getMappedValue ? String(getMappedValue("overview_temp_3", "MONITOR", "No Tag")) : "No Tag"}
+                          unit="°C"
+                          status="grey"
+                          width={150}
+                          valueColor="#ef4444"
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("st3_temp_card")}
+                          style={getDeveloperStyle("st3_temp_card")}
+                        />
+
+                        {/* D. CONDENSATE DOOR CARDS FOR LINE 3 */}
+                        <TagMonitorCardSVG
+                          x={700}
+                          y={800}
+                          title="D. COND  ST3"
+                          value={dCondDisplayLine}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st3_line")}
+                          style={getDeveloperStyle("d_cond_st3_line")}
+                        />
+
+                        {/* VALVE MODULATE SETTINGS (LINE 3) */}
+                        <SettingValveModulateSVG
+                          x={800}
+                          y={120}
+                          scale={1}
+                          getMappedValue={getMappedValue}
+                          line={3}
+                          handleEquipmentClick={handleEquipmentClick}
+                          getDeveloperStyle={getDeveloperStyle}
+                        />
+                      </g>
+                    )}
+
+                    {/* Render Tag Monitor Cards khusus untuk tab LINE 4 */}
+                    {n === 4 && (
+                      <g>
+                        <TagMonitorCardSVG
+                          x={40}
+                          y={20}
+                          title="EXHAUST STEAM ST4"
+                          value={getMappedValue ? String(getMappedValue("card_exhaust_steam_st4", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st4")}
+                          style={getDeveloperStyle("card_exhaust_steam_st4")}
+                        />
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={200}
+                          title="INLET STEAM 1 ST4"
+                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_1_st4", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st4")}
+                          style={getDeveloperStyle("card_inlet_steam_1_st4")}
+                        />
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={415}
+                          title="INLET STEAM 2 ST4"
+                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_2_st4", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st4")}
+                          style={getDeveloperStyle("card_inlet_steam_2_st4")}
+                        />
+                        <TagMonitorCardSVG
+                          x={140}
+                          y={610}
+                          title="FLASHING ST4"
+                          value={getMappedValue ? String(getMappedValue("card_flashing_st4", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st4")}
+                          style={getDeveloperStyle("card_flashing_st4")}
+                        />
+                        <TagMonitorCardSVG
+                          x={710}
+                          y={695}
+                          title="OUTLET ST4"
+                          value={getMappedValue ? String(getMappedValue("card_outlet_st4", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_outlet_st4")}
+                          style={getDeveloperStyle("card_outlet_st4")}
+                        />
+                        <TagMonitorCardSVG
+                          x={725}
+                          y={900}
+                          title="RELIEF CONDENSATE 1 ST4"
+                          value={getMappedValue ? String(getMappedValue("card_condensate_1_st4", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st4")}
+                          style={getDeveloperStyle("card_condensate_1_st4")}
+                        />
+                        <TagMonitorCardSVG
+                          x={725}
+                          y={995}
+                          title="CONDENSATE 2 ST4"
+                          value={getMappedValue ? String(getMappedValue("card_condensate_2_st4", "MONITOR", "no tag")) : "no tag"}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st4")}
+                          style={getDeveloperStyle("card_condensate_2_st4")}
+                        />
+
+                        {/* PRESSURE & TEMP CARDS FOR LINE 4 */}
+                        <TagMonitorCardSVG
+                          x={380}
+                          y={380}
+                          title="PRESSURE ST4"
+                          value={getMappedValue ? String(getMappedValue("overview_pressure_4", "MONITOR", "No Tag")) : "No Tag"}
+                          unit="Bar"
+                          status="grey"
+                          width={150}
+                          valueColor="#ef4444"
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("st4_pressure_card")}
+                          style={getDeveloperStyle("st4_pressure_card")}
+                        />
+                        <TagMonitorCardSVG
+                          x={380}
+                          y={520}
+                          title="TEMPERATURE ST4"
+                          value={getMappedValue ? String(getMappedValue("overview_temp_4", "MONITOR", "No Tag")) : "No Tag"}
+                          unit="°C"
+                          status="grey"
+                          width={150}
+                          valueColor="#ef4444"
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("st4_temp_card")}
+                          style={getDeveloperStyle("st4_temp_card")}
+                        />
+
+                        {/* D. CONDENSATE  DOOR CARDS FOR LINE 4 */}
+                        <TagMonitorCardSVG
+                          x={700}
+                          y={800}
+                          title="D. COND ST4"
+                          value={dCondDisplayLine}
+                          unit=""
+                          status="grey"
+                          width={150}
+                          onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st4_line")}
+                          style={getDeveloperStyle("d_cond_st4_line")}
+                        />
+
+                        {/* VALVE MODULATE SETTINGS (LINE 4) */}
+                        <SettingValveModulateSVG
+                          x={800}
+                          y={120}
+                          scale={1}
+                          getMappedValue={getMappedValue}
+                          line={4}
+                          handleEquipmentClick={handleEquipmentClick}
+                          getDeveloperStyle={getDeveloperStyle}
+                        />
+                      </g>
+                    )}
+
+                    {/* GAMBAR PINTU (INLET & OUTLET) UNTUK INDIVIDUAL LINE VIEW */}
+                    <image
+                      href={topDoorLineStatus === "OPEN" ? topOpenSvg : topCloseSvg}
+                      x={265} /* <--- POSISI X PINTU ATAS */
+                      y={10} /* <--- POSISI Y PINTU ATAS */
+                      width="165" /* <--- UKURAN PINTU ATAS */
+                    />
+                    <image
+                      href={botDoorLineStatus === "OPEN" ? botOpenSvg : botCloseSvg}
+                      x={505} /* <--- POSISI X PINTU BAWAH */
+                      y={601} /* <--- POSISI Y PINTU BAWAH */
+                      width="160" /* <--- UKURAN PINTU BAWAH */
+                    />
+
                   </g>
                 );
               })()}
 
-            {/* --- OVERVIEW CARDS (Line 1, 2, 3, 4 together) --- */}
-            {activeTab === "overview" &&
-              (() => {
-                const st1_inlet_val = getMappedValue ? getMappedValue("st1_inlet_steam", "MONITOR", st1_inlet) : st1_inlet;
-                const st2_inlet_val = getMappedValue ? getMappedValue("st2_inlet_steam", "MONITOR", st2_inlet) : st2_inlet;
-                const st3_inlet_val = getMappedValue ? getMappedValue("st3_inlet_steam", "MONITOR", st3_inlet) : st3_inlet;
-                const st4_inlet_val = getMappedValue ? getMappedValue("st4_inlet_steam", "MONITOR", st4_inlet) : st4_inlet;
-
-                const st1_exhaust_val = getMappedValue ? getMappedValue("st1_exhaust", "MONITOR", st1_exhaust) : st1_exhaust;
-                const st2_exhaust_val = getMappedValue ? getMappedValue("st2_exhaust", "MONITOR", st2_exhaust) : st2_exhaust;
-                const st3_exhaust_val = getMappedValue ? getMappedValue("st3_exhaust", "MONITOR", st3_exhaust) : st3_exhaust;
-                const st4_exhaust_val = getMappedValue ? getMappedValue("st4_exhaust", "MONITOR", st4_exhaust) : st4_exhaust;
-
-                const st1_cond_val = getMappedValue ? getMappedValue("st1_condensate", "MONITOR", st1_cond) : st1_cond;
-                const st2_cond_val = getMappedValue ? getMappedValue("st2_condensate", "MONITOR", st2_cond) : st2_cond;
-                const st3_cond_val = getMappedValue ? getMappedValue("st3_condensate", "MONITOR", st3_cond) : st3_cond;
-                const st4_cond_val = getMappedValue ? getMappedValue("st4_condensate", "MONITOR", st4_cond) : st4_cond;
-
-                const anyInletOpen =
-                  parseFloat(st1_inlet_val) >= 0.1 ||
-                  parseFloat(st2_inlet_val) >= 0.1 ||
-                  parseFloat(st3_inlet_val) >= 0.1 ||
-                  parseFloat(st4_inlet_val) >= 0.1;
-
-                return (
-                  <g>
-                    <g className="som-overview-flows">
-                      {/* Main BPV Steam Pipe (Always Standby) */}
-                      <SteamFlowSVG
-                        d="M 2201 29 L -260 29 L -260 29 L -246 32 L -248 583 L -218 613 L 2203 611"
-                        active={true}
-                        mode="standby"
-                      />
-
-                      {/* Line 1 Inlet Steam Flow */}
-                      {parseFloat(st1_inlet_val) >= 0.1 ? (
-                        <SteamFlowSVG
-                          d="M -6 50 L -8 253"
-                          active={true}
-                          mode="flowing"
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M -6 50 L -4 169"
-                          active={true}
-                          mode="standby"
-                        />
-                      )}
-
-                      {/* Line 2 Inlet Steam Flow (Physically Sterilizer 3, now st3) */}
-                      {parseFloat(st3_inlet_val) >= 0.1 ? (
-                        <SteamFlowSVG
-                          d="M 1190 50 L 1188 250"
-                          active={true}
-                          mode="flowing"
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M 1190 50 L 1191 171"
-                          active={true}
-                          mode="standby"
-                        />
-                      )}
-
-                      {/* Line 3 Inlet Steam Flow (Physically Sterilizer 2, now st2) */}
-                      {parseFloat(st2_inlet_val) >= 0.1 ? (
-                        <SteamFlowSVG
-                          d="M -6 637 L -8 807"
-                          active={true}
-                          mode="flowing"
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M -8 636 L -8 725"
-                          active={true}
-                          mode="standby"
-                        />
-                      )}
-
-                      {/* Line 4 Inlet Steam Flow */}
-                      {parseFloat(st4_inlet_val) >= 0.1 ? (
-                        <SteamFlowSVG
-                          d="M 1184 639 L 1183 804"
-                          active={true}
-                          mode="flowing"
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M 1184 636 L 1184 725"
-                          active={true}
-                          mode="standby"
-                        />
-                      )}
-
-                      {/* Line 1 Exhaust Steam Flow */}
-                      {formatValveStatus(st1_exhaust_val) === "OPEN" ? (
-                        <SteamFlowSVG
-                          d="M 369 252 L 369 217 L 383 206 L 431 208 L 788 208 L 834 208"
-                          active={true}
-                          mode="flowing"
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M 369 250 L 369 220 L 380 208 L 402 208 L 494 210"
-                          active={true}
-                          mode="standby"
-                        />
-                      )}
-
-                      {/* Line 2 Exhaust Steam Flow (Physically Sterilizer 3, now st3) */}
-                      {formatValveStatus(st3_exhaust_val) === "OPEN" ? (
-                        <SteamFlowSVG
-                          d="M 1563 250 L 1565 217 L 1577 206 L 1689 206 L 2029 208"
-                          active={true}
-                          mode="flowing"
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M 1563 250 L 1565 217 L 1577 206 L 1689 206"
-                          active={true}
-                          mode="standby"
-                        />
-                      )}
-
-                      {/* Line 3 Exhaust Steam Flow (Physically Sterilizer 2, now st2) */}
-                      {formatValveStatus(st2_exhaust_val) === "OPEN" ? (
-                        <SteamFlowSVG
-                          d="M 369 804 L 369 769 L 383 758 L 494 758 L 832 760"
-                          active={true}
-                          mode="flowing"
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M 369 804 L 369 769 L 383 758 L 494 758"
-                          active={true}
-                          mode="standby"
-                        />
-                      )}
-
-                      {/* Line 4 Exhaust Steam Flow */}
-                      {formatValveStatus(st4_exhaust_val) === "OPEN" ? (
-                        <SteamFlowSVG
-                          d="M 1558 802 L 1560 767 L 1579 760 L 1682 758 L 2021 760"
-                          active={true}
-                          mode="flowing"
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M 1558 802 L 1560 767 L 1579 760 L 1682 758"
-                          active={true}
-                          mode="standby"
-                        />
-                      )}
-
-                      {/* Line 1 Condensate Flow */}
-                      {formatValveStatus(st1_cond_val) === "OPEN" ? (
-                        <SteamFlowSVG
-                          d="M -41 437 L -39 487 L -24 501 L 502 501 L 895 499 L 1041 499 M 143 437 L 143 495 M 331 437 L 331 497 M 515 439 L 516 499 M 692 437 L 692 497"
-                          active={true}
-                          mode="liquid"
-                          color={condColor}
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M -39 437 L -39 483 L -32 495 L -1 497 L 895 499 M 143 437 L 143 495 M 331 437 L 331 497 M 515 439 L 516 499 M 692 437 L 692 497"
-                          active={true}
-                          mode="standby"
-                          color={condColor}
-                        />
-                      )}
-
-                      {/* Line 2 Condensate Flow (Physically Sterilizer 3, now st3) */}
-                      {formatValveStatus(st3_cond_val) === "OPEN" ? (
-                        <SteamFlowSVG
-                          d="M 1155 434 L 1155 485 L 1170 494 L 2089 497 L 2229 497 M 1337 436 L 1339 495 M 1526 437 L 1526 495 M 1710 437 L 1710 495 M 1884 436 L 1887 497"
-                          active={true}
-                          mode="liquid"
-                          color={condColor}
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M 1155 436 L 1156 481 L 1167 494 L 1204 495 L 2093 497 M 1337 436 L 1339 495 M 1526 437 L 1526 495 M 1710 437 L 1710 495 M 1884 436 L 1887 497"
-                          active={true}
-                          mode="standby"
-                          color={condColor}
-                        />
-                      )}
-
-                      {/* Line 3 Condensate Flow (Physically Sterilizer 2, now st2) */}
-                      {formatValveStatus(st2_cond_val) === "OPEN" ? (
-                        <SteamFlowSVG
-                          d="M -41 986 L -41 1034 L -29 1048 L 893 1048 L 1042 1051 M 143 990 L 143 1049 M 331 990 L 331 1048 M 515 990 L 516 1048 M 516 990 L 516 1049 M 692 988 L 692 1049"
-                          active={true}
-                          mode="liquid"
-                          color={condColor}
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M -39 988 L -39 988 L -39 1035 L -31 1046 L 895 1049 M 331 990 L 331 1048 M 515 990 L 516 1048 M 516 990 L 516 1049 M 692 988 L 692 1049"
-                          active={true}
-                          mode="standby"
-                          color={condColor}
-                        />
-                      )}
-
-                      {/* Line 4 Condensate Flow */}
-                      {formatValveStatus(st4_cond_val) === "OPEN" ? (
-                        <SteamFlowSVG
-                          d="M 1149 988 L 1149 1039 L 1167 1048 L 2236 1049 M 1332 990 L 1333 1048 M 1521 991 L 1523 1049 M 1705 988 L 1705 1046 M 1880 990 L 1882 1048"
-                          active={true}
-                          mode="liquid"
-                          color={condColor}
-                        />
-                      ) : (
-                        <SteamFlowSVG
-                          d="M 1148 990 L 1148 1035 L 1160 1049 L 2084 1049 M 1332 990 L 1333 1048 M 1521 991 L 1523 1049 M 1705 988 L 1705 1046 M 1880 990 L 1882 1048"
-                          active={true}
-                          mode="standby"
-                          color={condColor}
-                        />
-                      )}
-                    </g>
-
-                    <SensorCardSVG
-                      x={-118}
-                      y={90}
-                      label="Main Steam Pipe"
-                      value={
-                        getMappedValue
-                          ? String(getMappedValue("main_steam_pipe_flow", "MONITOR", "0.0"))
-                          : "0.0"
-                      }
-                      unit="bar"
-                      id="main_steam_pipe_flow"
-                      equipmentName="MAIN STEAM PIPE FLOW"
-                      trendType="Pressure"
-                      onClick={handleEquipmentClick}
-                      style={getDeveloperStyle("main_steam_pipe_flow")}
-                      trendData={trendData}
-                    />
-
-                    <SensorCardSVG
-                      x={108}
-                      y={90}
-                      label="Recipe Mode"
-                      value="Ripe"
-                      unit=""
-                      id="recipe_mode"
-                      equipmentName="RECIPE MODE"
-                      trendType="Status"
-                      onClick={handleEquipmentClick}
-                      style={getDeveloperStyle("recipe_mode")}
-                    />
-                    <SensorCardSVG
-                      x={1308}
-                      y={90}
-                      label="Recipe Mode"
-                      value="Unriepe"
-                      unit=""
-                      id="recipe_mode"
-                      equipmentName="RECIPE MODE"
-                      trendType="Status"
-                      onClick={handleEquipmentClick}
-                      style={getDeveloperStyle("recipe_mode")}
-                    />
-                    <SensorCardSVG
-                      x={108}
-                      y={670}
-                      label="Recipe Mode"
-                      value="Overripe"
-                      unit=""
-                      id="recipe_mode"
-                      equipmentName="RECIPE MODE"
-                      trendType="Status"
-                      onClick={handleEquipmentClick}
-                      style={getDeveloperStyle("recipe_mode")}
-                    />
-
-                    <SensorCardSVG
-                      x={1308}
-                      y={670}
-                      label="Recipe Mode"
-                      value="Ripe"
-                      unit=""
-                      id="recipe_mode"
-                      equipmentName="RECIPE MODE"
-                      trendType="Status"
-                      onClick={handleEquipmentClick}
-                      style={getDeveloperStyle("recipe_mode")}
-                    />
-
-                    {/* --- STERILIZER 1 (TOP) --- */}
-                    <g>
-                      <StationLabelSVG
-                        x={345}
-                        y={350}
-                        label="STERILIZER 1"
-                      />
-                      {viewMode === "process" ? (
-                        <g>
-                          <SensorCardSVG
-                            x={140}
-                            y={200}
-                            label="Inlet Steam"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st1_inlet_steam", "MONITOR", st1_inlet))
-                                : st1_inlet
-                            }
-                            unit={
-                              getMappedValue && getMappedValue("st1_inlet_steam", "MONITOR", st1_inlet) === "No Tag"
-                                ? ""
-                                : "%"
-                            }
-                            id="st1_inlet_steam"
-                            equipmentName="Inlet Steam"
-                            trendType="Pressure"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_inlet_steam")}
-                          />
-                          <DoorCardSVG
-                            x={410}
-                            y={150}
-                            label="Exhaust"
-                            status={
-                              formatValveStatus(
-                                getMappedValue
-                                  ? getMappedValue("st1_exhaust", "MONITOR", st1_exhaust)
-                                  : st1_exhaust
-                              )
-                            }
-                            id="st1_exhaust"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_exhaust")}
-                          />
-                          <SensorCardSVG
-                            x={180}
-                            y={360}
-                            label="Pressure"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st1_pressure", "MONITOR", "0.0"))
-                                : "0.0"
-                            }
-                            unit="bar"
-                            id="st1_pressure"
-                            equipmentName="ST1 Pressure"
-                            trendType="Pressure"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_pressure")}
-                            trendData={trendData}
-                          />
-                          <SensorCardSVG
-                            x={750}
-                            y={550}
-                            label="Temperature"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st1_temp", "MONITOR", "110.5"))
-                                : "110.5"
-                            }
-                            unit="°C"
-                            id="st1_temp"
-                            equipmentName="ST1 Temperature"
-                            trendType="Temperature"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_temp")}
-                            trendData={trendData}
-                          />
-                          <DoorCardSVG
-                            x={745}
-                            y={380}
-                            label="Inlet Door"
-                            status={
-                              formatDoorStatus(
-                                getMappedValue
-                                  ? getMappedValue("st1_door_in", "MONITOR", "Close")
-                                  : "Close"
-                              )
-                            }
-                            id="st1_door_in"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_door_in")}
-                          />
-                          <DoorCardSVG
-                            x={-60}
-                            y={380}
-                            label="Outlet Door"
-                            status={
-                              formatDoorStatus(
-                                getMappedValue
-                                  ? getMappedValue("st1_door_out", "MONITOR", "Close")
-                                  : "Close"
-                              )
-                            }
-                            id="st1_door_out"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_door_out")}
-                          />
-                          <DoorCardSVG
-                            x={930}
-                            y={545}
-                            label="Condensate"
-                            status={
-                              formatValveStatus(
-                                getMappedValue
-                                  ? getMappedValue("st1_condensate", "MONITOR", st1_cond)
-                                  : st1_cond
-                              )
-                            }
-                            id="st1_condensate"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_condensate")}
-                          />
-                          <SummaryTableSVG
-                            x={750}
-                            y={60}
-                            id="st1_summary"
-                            title="STERILIZER 1"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_summary")}
-                            data={[
-                              {
-                                label: "Status",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st1_summary", "STATUS", "RUN"))
-                                  : "RUN",
-                                unit: "",
-                              },
-                              {
-                                label: "Actual Step",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st1_summary", "ACTUAL_STEP", "7"))
-                                  : "7",
-                                unit: "",
-                              },
-                              {
-                                label: "Total Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st1_summary", "TOTAL_TIME", "3.5"))
-                                  : "3.5",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st1_summary", "TOTAL_TIME", "3.5")) : "")
-                                  ? ""
-                                  : "min",
-                              },
-                              {
-                                label: "Step Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st1_summary", "STEP_TIME", "1.2"))
-                                  : "1.2",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st1_summary", "STEP_TIME", "1.2")) : "")
-                                  ? ""
-                                  : "min",
-                              },
-                              {
-                                label: "Cycle Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st1_summary", "CYCLE_TIME", "10:30"))
-                                  : "10:30",
-                                unit: "",
-                              },
-                              {
-                                label: "Total Cycle Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st1_summary", "TOTAL_CYCLE_TIME", "45:15"))
-                                  : "45:15",
-                                unit: "",
-                              },
-                              {
-                                label: "Pressure",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st1_summary", "PRESSURE", "2.8"))
-                                  : "2.8",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st1_summary", "PRESSURE", "2.8")) : "")
-                                  ? ""
-                                  : "Bar",
-                              },
-                            ]}
-                          />
-                          <EquipmentIconSVG
-                            x={20}
-                            y={187}
-                            icon={valvePositionerSvg}
-                            size={95}
-                            rotation={0}
-                            isRunning={parseFloat(getMappedValue ? getMappedValue("st1_inlet_steam", "MONITOR", st1_inlet) : st1_inlet) >= 0.1}
-                          />
-                          <EquipmentIconSVG
-                            x={1215}
-                            y={187}
-                            icon={valvePositionerSvg}
-                            size={95}
-                            rotation={0}
-                            isRunning={parseFloat(getMappedValue ? getMappedValue("st3_inlet_steam", "MONITOR", st3_inlet) : st3_inlet) >= 0.1}
-                          />
-                          <EquipmentIconSVG
-                            x={20}
-                            y={739}
-                            icon={valvePositionerSvg}
-                            size={95}
-                            rotation={0}
-                            isRunning={parseFloat(getMappedValue ? getMappedValue("st2_inlet_steam", "MONITOR", st2_inlet) : st2_inlet) >= 0.1}
-                          />
-                          <EquipmentIconSVG
-                            x={1210}
-                            y={739}
-                            icon={valvePositionerSvg}
-                            size={95}
-                            rotation={0}
-                            isRunning={parseFloat(getMappedValue ? getMappedValue("st4_inlet_steam", "MONITOR", st4_inlet) : st4_inlet) >= 0.1}
-                          />
-                          <EquipmentIconSVG
-                            x={513}
-                            y={188}
-                            icon={valveActuatorSvg}
-                            size={69}
-                            rotation={0}
-                            isRunning={formatValveStatus(getMappedValue ? getMappedValue("st1_exhaust", "MONITOR", st1_exhaust) : st1_exhaust) === "OPEN"}
-                          />
-                          <EquipmentIconSVG
-                            x={1708}
-                            y={187}
-                            icon={valveActuatorSvg}
-                            size={69}
-                            rotation={0}
-                            isRunning={formatValveStatus(getMappedValue ? getMappedValue("st3_exhaust", "MONITOR", st3_exhaust) : st3_exhaust) === "OPEN"}
-                          />
-                          <EquipmentIconSVG
-                            x={513}
-                            y={739}
-                            icon={valveActuatorSvg}
-                            size={69}
-                            rotation={0}
-                            isRunning={formatValveStatus(getMappedValue ? getMappedValue("st2_exhaust", "MONITOR", st2_exhaust) : st2_exhaust) === "OPEN"}
-                          />
-                          <EquipmentIconSVG
-                            x={1701}
-                            y={739}
-                            icon={valveActuatorSvg}
-                            size={69}
-                            rotation={0}
-                            isRunning={formatValveStatus(getMappedValue ? getMappedValue("st4_exhaust", "MONITOR", st4_exhaust) : st4_exhaust) === "OPEN"}
-                          />
-                          <EquipmentIconSVG
-                            x={914}
-                            y={479}
-                            icon={valveActuatorSvg}
-                            size={69}
-                            rotation={0}
-                            isRunning={formatValveStatus(getMappedValue ? getMappedValue("st1_condensate", "MONITOR", st1_cond) : st1_cond) === "OPEN"}
-                          />
-                          <EquipmentIconSVG
-                            x={2110}
-                            y={478}
-                            icon={valveActuatorSvg}
-                            size={69}
-                            rotation={0}
-                            isRunning={formatValveStatus(getMappedValue ? getMappedValue("st3_condensate", "MONITOR", st3_cond) : st3_cond) === "OPEN"}
-                          />
-                          <EquipmentIconSVG
-                            x={914}
-                            y={1030}
-                            icon={valveActuatorSvg}
-                            size={69}
-                            rotation={0}
-                            isRunning={formatValveStatus(getMappedValue ? getMappedValue("st2_condensate", "MONITOR", st2_cond) : st2_cond) === "OPEN"}
-                          />
-                          <EquipmentIconSVG
-                            x={2104}
-                            y={1030}
-                            icon={valveActuatorSvg}
-                            size={69}
-                            rotation={0}
-                            isRunning={formatValveStatus(getMappedValue ? getMappedValue("st4_condensate", "MONITOR", st4_cond) : st4_cond) === "OPEN"}
-                          />
-                        </g>
-                      ) : (
-                        <g>
-                          <MaintenanceCardSVG
-                            x={120}
-                            y={200}
-                            label="M-INLET"
-                            params={[
-                              {
-                                label: "AMP",
-                                value: "12.5",
-                                unit: "A",
-                              },
-                              {
-                                label: "HZ",
-                                value: "45.0",
-                                unit: "Hz",
-                              },
-                            ]}
-                            id="st1_mnt_inlet"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_mnt_inlet")}
-                          />
-                          <MaintenanceCardSVG
-                            x={445}
-                            y={180}
-                            label="M-EXHAUST"
-                            params={[
-                              { label: "AMP", value: "8.2", unit: "A" },
-                              {
-                                label: "VIB",
-                                value: "0.4",
-                                unit: "mm/s",
-                              },
-                            ]}
-                            id="st1_mnt_exhaust"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_mnt_exhaust")}
-                          />
-                          <MaintenanceCardSVG
-                            x={745}
-                            y={380}
-                            label="M-DOOR"
-                            params={[
-                              {
-                                label: "VIB",
-                                value: "1.2",
-                                unit: "mm/s",
-                              },
-                              { label: "POS", value: "100", unit: "%" },
-                            ]}
-                            id="st1_mnt_door"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st1_mnt_door")}
-                          />
-                        </g>
-                      )}
-                    </g>
-
-                    {/* --- STERILIZER 3 (MIDDLE) --- */}
-                    <g transform="translate(1400, 0)">
-                      <StationLabelSVG
-                        x={140}
-                        y={350}
-                        label="STERILIZER 3"
-                      />
-                      {viewMode === "process" ? (
-                        <g>
-                          <SensorCardSVG
-                            x={-65}
-                            y={200}
-                            label="Inlet Steam"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st3_inlet_steam", "MONITOR", st3_inlet))
-                                : st3_inlet
-                            }
-                            unit="%"
-                            id="st3_inlet_steam"
-                            equipmentName="Inlet Steam"
-                            trendType="Pressure"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_inlet_steam")}
-                          />
-                          <DoorCardSVG
-                            x={200}
-                            y={150}
-                            label="Exhaust"
-                            status={
-                              formatValveStatus(
-                                getMappedValue
-                                  ? getMappedValue("st3_exhaust", "MONITOR", st3_exhaust)
-                                  : st3_exhaust
-                              )
-                            }
-                            id="st3_exhaust"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_exhaust")}
-                          />
-                          <SensorCardSVG
-                            x={-25}
-                            y={360}
-                            label="Pressure"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st3_pressure", "MONITOR", "0.0"))
-                                : "0.0"
-                            }
-                            unit="bar"
-                            id="st3_pressure"
-                            equipmentName="ST3 Pressure"
-                            trendType="Pressure"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_pressure")}
-                            trendData={trendData}
-                          />
-                          <SensorCardSVG
-                            x={550}
-                            y={550}
-                            label="Temperature"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st3_temp", "MONITOR", "110.5"))
-                                : "110.5"
-                            }
-                            unit="°C"
-                            id="st3_temp"
-                            equipmentName="ST3 Temperature"
-                            trendType="Temperature"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_temp")}
-                            trendData={trendData}
-                          />
-                          <DoorCardSVG
-                            x={540}
-                            y={380}
-                            label="Inlet Door"
-                            status={
-                              formatDoorStatus(
-                                getMappedValue
-                                  ? getMappedValue("st3_door_in", "MONITOR", "Close")
-                                  : "Close"
-                              )
-                            }
-                            id="st3_door_in"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_door_in")}
-                          />
-                          <DoorCardSVG
-                            x={-260}
-                            y={380}
-                            label="Outlet Door"
-                            status={
-                              formatDoorStatus(
-                                getMappedValue
-                                  ? getMappedValue("st3_door_out", "MONITOR", "Close")
-                                  : "Close"
-                              )
-                            }
-                            id="st3_door_out"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_door_out")}
-                          />
-                          <DoorCardSVG
-                            x={730}
-                            y={545}
-                            label="Condensate"
-                            status={
-                              formatValveStatus(
-                                getMappedValue
-                                  ? getMappedValue("st3_condensate", "MONITOR", st3_cond)
-                                  : st3_cond
-                              )
-                            }
-                            id="st3_condensate"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_condensate")}
-                          />
-                          <SummaryTableSVG
-                            x={550}
-                            y={60}
-                            id="st3_summary"
-                            title="STERILIZER 3"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_summary")}
-                            data={[
-                              {
-                                label: "Status",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st3_summary", "STATUS", "RUN"))
-                                  : "RUN",
-                                unit: "",
-                              },
-                              {
-                                label: "Actual Step",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st3_summary", "ACTUAL_STEP", "3"))
-                                  : "3",
-                                unit: "",
-                              },
-                              {
-                                label: "Total Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st3_summary", "TOTAL_TIME", "12.4"))
-                                  : "12.4",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st3_summary", "TOTAL_TIME", "12.4")) : "")
-                                  ? ""
-                                  : "min",
-                              },
-                              {
-                                label: "Step Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st3_summary", "STEP_TIME", "4.1"))
-                                  : "4.1",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st3_summary", "STEP_TIME", "4.1")) : "")
-                                  ? ""
-                                  : "min",
-                              },
-                              {
-                                label: "Cycle Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st3_summary", "CYCLE_TIME", "15:45"))
-                                  : "15:45",
-                                unit: "",
-                              },
-                              {
-                                label: "Total Cycle Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st3_summary", "TOTAL_CYCLE_TIME", "55:20"))
-                                  : "55:20",
-                                unit: "",
-                              },
-                              {
-                                label: "Temp",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st3_summary", "TEMP", "125.8"))
-                                  : "125.8",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st3_summary", "TEMP", "125.8")) : "")
-                                  ? ""
-                                  : "°C",
-                              },
-                            ]}
-                          />
-                        </g>
-                      ) : (
-                        <g>
-                          <MaintenanceCardSVG
-                            x={-90}
-                            y={200}
-                            label="M-INLET"
-                            params={[
-                              {
-                                label: "AMP",
-                                value: "14.1",
-                                unit: "A",
-                              },
-                              {
-                                label: "HZ",
-                                value: "50.0",
-                                unit: "Hz",
-                              },
-                            ]}
-                            id="st3_mnt_inlet"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_mnt_inlet")}
-                          />
-                          <MaintenanceCardSVG
-                            x={240}
-                            y={180}
-                            label="M-EXHAUST"
-                            params={[
-                              { label: "AMP", value: "9.5", unit: "A" },
-                              {
-                                label: "VIB",
-                                value: "0.6",
-                                unit: "mm/s",
-                              },
-                            ]}
-                            id="st3_mnt_exhaust"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_mnt_exhaust")}
-                          />
-                          <MaintenanceCardSVG
-                            x={540}
-                            y={380}
-                            label="M-DOOR"
-                            params={[
-                              {
-                                label: "VIB",
-                                value: "0.9",
-                                unit: "mm/s",
-                              },
-                              { label: "POS", value: "100", unit: "%" },
-                            ]}
-                            id="st3_mnt_door"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st3_mnt_door")}
-                          />
-                        </g>
-                      )}
-                    </g>
-
-                    {/* --- STERILIZER 2 (BOTTOM LEFT) --- */}
-                    <g transform="translate(0, 500)">
-                      <StationLabelSVG
-                        x={345}
-                        y={405}
-                        label="STERILIZER 2"
-                      />
-                      {viewMode === "process" ? (
-                        <g>
-                          <SensorCardSVG
-                            x={140}
-                            y={250}
-                            label="Inlet Steam"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st2_inlet_steam", "MONITOR", st2_inlet))
-                                : st2_inlet
-                            }
-                            unit="%"
-                            id="st2_inlet_steam"
-                            equipmentName="Inlet Steam"
-                            trendType="Pressure"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_inlet_steam")}
-                          />
-                          <DoorCardSVG
-                            x={405}
-                            y={200}
-                            label="Exhaust"
-                            status={
-                              formatValveStatus(
-                                getMappedValue
-                                  ? getMappedValue("st2_exhaust", "MONITOR", st2_exhaust)
-                                  : st2_exhaust
-                              )
-                            }
-                            id="st2_exhaust"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_exhaust")}
-                          />
-                          <SensorCardSVG
-                            x={180}
-                            y={410}
-                            label="Pressure"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st2_pressure", "MONITOR", "0.0"))
-                                : "0.0"
-                            }
-                            unit="bar"
-                            id="st2_pressure"
-                            equipmentName="ST2 Pressure"
-                            trendType="Pressure"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_pressure")}
-                            trendData={trendData}
-                          />
-                          <SensorCardSVG
-                            x={750}
-                            y={600}
-                            label="Temperature"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st2_temp", "MONITOR", "110.5"))
-                                : "110.5"
-                            }
-                            unit="°C"
-                            id="st2_temp"
-                            equipmentName="ST2 Temperature"
-                            trendType="Temperature"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_temp")}
-                            trendData={trendData}
-                          />
-                          <DoorCardSVG
-                            x={750}
-                            y={430}
-                            label="Inlet Door"
-                            status={
-                              formatDoorStatus(
-                                getMappedValue
-                                  ? getMappedValue("st2_door_in", "MONITOR", "Close")
-                                  : "Close"
-                              )
-                            }
-                            id="st2_door_in"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_door_in")}
-                          />
-                          <DoorCardSVG
-                            x={-60}
-                            y={430}
-                            label="Outlet Door"
-                            status={
-                              formatDoorStatus(
-                                getMappedValue
-                                  ? getMappedValue("st2_door_out", "MONITOR", "Close")
-                                  : "Close"
-                              )
-                            }
-                            id="st2_door_out"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_door_out")}
-                          />
-                          <DoorCardSVG
-                            x={930}
-                            y={595}
-                            label="Condensate"
-                            status={
-                              formatValveStatus(
-                                getMappedValue
-                                  ? getMappedValue("st2_condensate", "MONITOR", st2_cond)
-                                  : st2_cond
-                              )
-                            }
-                            id="st2_condensate"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_condensate")}
-                          />
-                          <SummaryTableSVG
-                            x={750}
-                            y={140}
-                            id="st2_summary"
-                            title="STERILIZER 2"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_summary")}
-                            data={[
-                              {
-                                label: "Status",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st2_summary", "STATUS", "STANDBY"))
-                                  : "STANDBY",
-                                unit: "",
-                              },
-                              {
-                                label: "Actual Step",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st2_summary", "ACTUAL_STEP", "0"))
-                                  : "0",
-                                unit: "",
-                              },
-                              {
-                                label: "Total Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st2_summary", "TOTAL_TIME", "0.0"))
-                                  : "0.0",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st2_summary", "TOTAL_TIME", "0.0")) : "")
-                                  ? ""
-                                  : "min",
-                              },
-                              {
-                                label: "Step Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st2_summary", "STEP_TIME", "0.0"))
-                                  : "0.0",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st2_summary", "STEP_TIME", "0.0")) : "")
-                                  ? ""
-                                  : "min",
-                              },
-                              {
-                                label: "Cycle Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st2_summary", "CYCLE_TIME", "00:00"))
-                                  : "00:00",
-                                unit: "",
-                              },
-                              {
-                                label: "Total Cycle Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st2_summary", "TOTAL_CYCLE_TIME", "00:00"))
-                                  : "00:00",
-                                unit: "",
-                              },
-                              {
-                                label: "Pressure",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st2_summary", "PRESSURE", "2.8"))
-                                  : "2.8",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st2_summary", "PRESSURE", "2.8")) : "")
-                                  ? ""
-                                  : "Bar",
-                              },
-                            ]}
-                          />
-                        </g>
-                      ) : (
-                        <g>
-                          <MaintenanceCardSVG
-                            x={120}
-                            y={250}
-                            label="M-INLET"
-                            params={[
-                              {
-                                label: "AMP",
-                                value: "11.8",
-                                unit: "A",
-                              },
-                              {
-                                label: "HZ",
-                                value: "42.5",
-                                unit: "Hz",
-                              },
-                            ]}
-                            id="st2_mnt_inlet"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_mnt_inlet")}
-                          />
-                          <MaintenanceCardSVG
-                            x={445}
-                            y={240}
-                            label="M-EXHAUST"
-                            params={[
-                              { label: "AMP", value: "7.9", unit: "A" },
-                              {
-                                label: "VIB",
-                                value: "0.5",
-                                unit: "mm/s",
-                              },
-                            ]}
-                            id="st2_mnt_exhaust"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_mnt_exhaust")}
-                          />
-                          <MaintenanceCardSVG
-                            x={750}
-                            y={430}
-                            label="M-DOOR"
-                            params={[
-                              {
-                                label: "VIB",
-                                value: "1.4",
-                                unit: "mm/s",
-                              },
-                              { label: "POS", value: "100", unit: "%" },
-                            ]}
-                            id="st2_mnt_door"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st2_mnt_door")}
-                          />
-                        </g>
-                      )}
-                    </g>
-
-                    {/* --- STERILIZER 4 (BOTTOM RIGHT) --- */}
-                    <g transform="translate(1400, 500)">
-                      <StationLabelSVG
-                        x={140}
-                        y={405}
-                        label="STERILIZER 4"
-                      />
-                      {viewMode === "process" ? (
-                        <g>
-                          <SensorCardSVG
-                            x={-65}
-                            y={250}
-                            label="Inlet Steam"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st4_inlet_steam", "MONITOR", st4_inlet))
-                                : st4_inlet
-                            }
-                            unit="%"
-                            id="st4_inlet_steam"
-                            equipmentName="Inlet Steam"
-                            trendType="Pressure"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_inlet_steam")}
-                          />
-                          <DoorCardSVG
-                            x={200}
-                            y={200}
-                            label="Exhaust"
-                            status={
-                              formatValveStatus(
-                                getMappedValue
-                                  ? getMappedValue("st4_exhaust", "MONITOR", st4_exhaust)
-                                  : st4_exhaust
-                              )
-                            }
-                            id="st4_exhaust"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_exhaust")}
-                          />
-                          <SensorCardSVG
-                            x={-25}
-                            y={415}
-                            label="Pressure"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st4_pressure", "MONITOR", "0.0"))
-                                : "0.0"
-                            }
-                            unit="bar"
-                            id="st4_pressure"
-                            equipmentName="ST4 Pressure"
-                            trendType="Pressure"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_pressure")}
-                            trendData={trendData}
-                          />
-                          <SensorCardSVG
-                            x={550}
-                            y={600}
-                            label="Temperature"
-                            value={
-                              getMappedValue
-                                ? String(getMappedValue("st4_temp", "MONITOR", "110.5"))
-                                : "110.5"
-                            }
-                            unit="°C"
-                            id="st4_temp"
-                            equipmentName="ST4 Temperature"
-                            trendType="Temperature"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_temp")}
-                            trendData={trendData}
-                          />
-                          <DoorCardSVG
-                            x={540}
-                            y={430}
-                            label="Inlet Door"
-                            status={
-                              formatDoorStatus(
-                                getMappedValue
-                                  ? getMappedValue("st4_door_in", "MONITOR", "Close")
-                                  : "Close"
-                              )
-                            }
-                            id="st4_door_in"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_door_in")}
-                          />
-                          <DoorCardSVG
-                            x={-260}
-                            y={430}
-                            label="Outlet Door"
-                            status={
-                              formatDoorStatus(
-                                getMappedValue
-                                  ? getMappedValue("st4_door_out", "MONITOR", "Close")
-                                  : "Close"
-                              )
-                            }
-                            id="st4_door_out"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_door_out")}
-                          />
-                          <DoorCardSVG
-                            x={730}
-                            y={595}
-                            label="Condensate"
-                            status={
-                              formatValveStatus(
-                                getMappedValue
-                                  ? getMappedValue("st4_condensate", "MONITOR", st4_cond)
-                                  : st4_cond
-                              )
-                            }
-                            id="st4_condensate"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_condensate")}
-                          />
-                          <SummaryTableSVG
-                            x={550}
-                            y={140}
-                            id="st4_summary"
-                            title="STERILIZER 4"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_summary")}
-                            data={[
-                              {
-                                label: "Status",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st4_summary", "STATUS", "RUN"))
-                                  : "RUN",
-                                unit: "",
-                              },
-                              {
-                                label: "Actual Step",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st4_summary", "ACTUAL_STEP", "5"))
-                                  : "5",
-                                unit: "",
-                              },
-                              {
-                                label: "Total Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st4_summary", "TOTAL_TIME", "8.2"))
-                                  : "8.2",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st4_summary", "TOTAL_TIME", "8.2")) : "")
-                                  ? ""
-                                  : "min",
-                              },
-                              {
-                                label: "Step Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st4_summary", "STEP_TIME", "2.0"))
-                                  : "2.0",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st4_summary", "STEP_TIME", "2.0")) : "")
-                                  ? ""
-                                  : "min",
-                              },
-                              {
-                                label: "Cycle Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st4_summary", "CYCLE_TIME", "08:10"))
-                                  : "08:10",
-                                unit: "",
-                              },
-                              {
-                                label: "Total Cycle Time",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st4_summary", "TOTAL_CYCLE_TIME", "38:40"))
-                                  : "38:40",
-                                unit: "",
-                              },
-                              {
-                                label: "Temp",
-                                value: getMappedValue
-                                  ? String(getMappedValue("st4_summary", "TEMP", "118.4"))
-                                  : "118.4",
-                                unit: ["No Tag", "--"].includes(getMappedValue ? String(getMappedValue("st4_summary", "TEMP", "118.4")) : "")
-                                  ? ""
-                                  : "°C",
-                              },
-                            ]}
-                          />
-                        </g>
-                      ) : (
-                        <g>
-                          <MaintenanceCardSVG
-                            x={-90}
-                            y={250}
-                            label="M-INLET"
-                            params={[
-                              {
-                                label: "AMP",
-                                value: "13.4",
-                                unit: "A",
-                              },
-                              {
-                                label: "HZ",
-                                value: "48.0",
-                                unit: "Hz",
-                              },
-                            ]}
-                            id="st4_mnt_inlet"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_mnt_inlet")}
-                          />
-                          <MaintenanceCardSVG
-                            x={240}
-                            y={240}
-                            label="M-EXHAUST"
-                            params={[
-                              { label: "AMP", value: "8.8", unit: "A" },
-                              {
-                                label: "VIB",
-                                value: "0.7",
-                                unit: "mm/s",
-                              },
-                            ]}
-                            id="st4_mnt_exhaust"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_mnt_exhaust")}
-                          />
-                          <MaintenanceCardSVG
-                            x={540}
-                            y={430}
-                            label="M-DOOR"
-                            params={[
-                              {
-                                label: "VIB",
-                                value: "1.1",
-                                unit: "mm/s",
-                              },
-                              { label: "POS", value: "100", unit: "%" },
-                            ]}
-                            id="st4_mnt_door"
-                            onClick={handleEquipmentClick}
-                            style={getDeveloperStyle("st4_mnt_door")}
-                          />
-                        </g>
-                      )}
-                    </g>
-                  </g>
-                );
-              })()}
             <defs>
               <filter
                 id="yellow-glow"
@@ -3937,33 +3208,842 @@ export default function OverviewTab({
                   floodOpacity="0.6"
                 />
               </filter>
-              <filter id="tint-red">
+              <filter id="tint-red" color-interpolation-filters="sRGB">
                 <feColorMatrix type="matrix"
                   values="0.244 0.822 0.083 0 0
-              0     0     0     0 0
-              0     0     0     0 0
-              0     0     0     1 0"/>
+                          0     0     0     0 0
+                          0     0     0     0 0
+                          0     0     0     1 0"/>
               </filter>
-              <filter id="tint-green">
+              <filter id="tint-green" color-interpolation-filters="sRGB">
                 <feColorMatrix type="matrix"
-                  values="0      0      0      0 0
-              0.2445 0.8225 0.0830 0 0
-              0      0      0      0 0
-              0     0     0     1 0"/>
+                  values="0.0638 0.2146 0.0216 0 0
+                          0.2551 0.8582 0.0867 0 0
+                          0.0425 0.1430 0.0144 0 0
+                          0 0 0 1 0"/>
               </filter>
             </defs>
+
+            {activeTab === "overview" && (
+              <>
+                {(true || parseFloat(lv('flow_1784098700116', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const isOpen = formatValveStatus(TEST_MANUAL_VALVE_6) === "OPEN";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d="M -32,1003 L -28,1014 Q -24,1025 -12,1026 L 17,1028" active={true} mode="flowing" color="#f59e0b" thickness={10} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d="M -32,1003 L -28,1014 Q -24,1025 -12,1026 L 17,1028" active={true} mode="standby" color="#f59e0b" thickness={10} />;
+                    }
+                  })()
+                )}
+
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_6;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 118,1027 L 324,1027" : "M 118,1027 L 207,1027";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={10} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={10} />;
+                    }
+                  })()
+                )}
+
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_5;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 152,1019 L 152,965 Q 157,940 182,936 L 324,936" : "M 152,1019 L 152,965 Q 157,940 182,936 L 211,936";
+                    if (isOpen) {
+                      return (
+                        <g className="liquid-flow--flowing" style={{ pointerEvents: "none" }}>
+                          <path
+                            d={pathD}
+                            fill="none"
+                            stroke="#f59e0b"
+                            className="liquid-flow-glow"
+                            style={{ strokeWidth: 16 }}
+                          />
+                          <path
+                            d={pathD}
+                            fill="none"
+                            stroke="#f59e0b"
+                            className="liquid-flow-aura"
+                            style={{ strokeWidth: 10 }}
+                          />
+                        </g>
+                      );
+                    } else {
+                      return (
+                        <LiquidFlowSVG
+                          d={pathD}
+                          isRunning={true}
+                          color="#f59e0b"
+                          thickness={10}
+                        />
+                      );
+                    }
+                  })()
+                )}
+
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const isOpen = formatValveStatus(TEST_MANUAL_VALVE_13) === "OPEN";
+                    const pathD = "M 609,999 L 611,1012 Q 613,1024 626,1025 L 652,1026";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={8} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
+                    }
+                  })()
+                )}
+
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_13;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 758,1028 L 1000,1028" : "M 758,1028 L 845,1028";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={8} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
+                    }
+                  })()
+                )}
+
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_12;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 793,1018 L 793,970 Q 793,965 797,952 L 797,952 Q 804,939 818,938 L 1000,935" : "M 793,1018 L 793,970 Q 793,965 797,952 L 797,952 Q 804,939 818,938 L 849,936";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={8} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
+                    }
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const isOpen = formatValveStatus(TEST_MANUAL_VALVE_21) === "OPEN";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d="M 1289,1004 L 1295,1015 Q 1300,1025 1312,1026 L 1336,1028" active={true} mode="flowing" color="#f59e0b" thickness={10} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d="M 1289,1004 L 1295,1015 Q 1300,1025 1312,1026 L 1336,1028" active={true} mode="standby" color="#f59e0b" thickness={10} />;
+                    }
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_21;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 1441,1027 L 1669,1027" : "M 1441,1027 L 1538,1027";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={10} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={10} />;
+                    }
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_20;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 1474,1020 L 1476,964 Q 1477,939 1502,936 L 1664,935" : "M 1474,1020 L 1476,964 Q 1477,939 1502,936 L 1527,933";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={10} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={10} />;
+                    }
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const isOpen = formatValveStatus(TEST_MANUAL_VALVE_27) === "OPEN";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d="M 1961,1007 L 1964,1016 Q 1970,1028 1984,1027 L 1999,1026" active={true} mode="flowing" color="#f59e0b" thickness={10} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d="M 1961,1007 L 1964,1016 Q 1970,1028 1984,1027 L 1999,1026" active={true} mode="standby" color="#f59e0b" thickness={10} />;
+                    }
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_27;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 2110,1027 L 2330,1027" : "M 2110,1027 L 2204,1027";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={10} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={10} />;
+                    }
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_26;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 2143,1018 L 2144,968 Q 2144,939 2173,937 L 2330,934" : "M 2143,1018 L 2144,968 Q 2144,939 2173,937 L 2202,934";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={8} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
+                    }
+                  })()
+                )}
+
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_7;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 134,731 L 134,1012" : "M 134,731 L 134,783";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="liquid" color="#f59e0b" thickness={8} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
+                    }
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_14;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 773,725 L 773,1012" : "M 773,725 L 773,783";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="liquid" color="#f59e0b" thickness={8} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
+                    }
+                  })()
+                )}
+
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_19;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 1457,722 L 1457,1012" : "M 1457,722 L 1457,786";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="liquid" color="#f59e0b" thickness={8} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
+                    }
+                  })()
+                )}
+
+
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_28;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    const pathD = isOpen ? "M 2125,728 L 2125,1012" : "M 2125,728 L 2125,785";
+                    if (isOpen) {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="liquid" color="#f59e0b" thickness={8} />;
+                    } else {
+                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
+                    }
+                  })()
+                )}
+
+                {(true || parseFloat(lv('flow_1784207451668', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_6;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return isOpen ? (
+                      <LiquidSteamFlowSVG d="M 248,1027 L 360,1027" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                    ) : null;
+                  })()
+                )}
+
+                {(true || parseFloat(lv('flow_1784209025995', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_5;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    if (isOpen) {
+                      return (
+                        <g className="liquid-flow--flowing" style={{ pointerEvents: "none" }}>
+                          <path
+                            d="M 247,935 L 339,935"
+                            fill="none"
+                            stroke="#f59e0b"
+                            className="liquid-flow-glow"
+                          />
+                          <path
+                            d="M 247,935 L 339,935"
+                            fill="none"
+                            stroke="#f59e0b"
+                            className="liquid-flow-aura"
+                          />
+                        </g>
+                      );
+                    }
+                    return null;
+                  })()
+                )}
+
+                {(false || parseFloat(lv('flow_1784207451668', 'FLOW', '0')) > 0) && (
+                  <g className="liquid-flow--flowing" style={{ pointerEvents: "none" }}>
+                    <path
+                      d="M 2241,1027 L 2329,1026"
+                      fill="none"
+                      stroke="#f59e0b"
+                      className="liquid-flow-glow"
+                    />
+                    <path
+                      d="M 2241,1027 L 2329,1026"
+                      fill="none"
+                      stroke="#f59e0b"
+                      className="liquid-flow-aura"
+                    />
+                  </g>
+                )}
+
+                {(false || parseFloat(lv('flow_1784207451668', 'FLOW', '0')) > 0) && (
+                  <g className="liquid-flow--flowing" style={{ pointerEvents: "none" }}>
+                    <path
+                      d="M 2235,936 L 2324,935"
+                      fill="none"
+                      stroke="#f59e0b"
+                      className="liquid-flow-glow"
+                    />
+                    <path
+                      d="M 2235,936 L 2324,935"
+                      fill="none"
+                      stroke="#f59e0b"
+                      className="liquid-flow-aura"
+                    />
+                  </g>
+                )}
+
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_3;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M -342,299 L -344,512" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M -336,511 L -291,511" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M -242,511 L -229,511 Q -217,510 -217,497 L -216,467 Q -216,454 -204,450 L -185,450 M -217,508 L -217,557 Q -217,569 -205,572 L -193,574 M -167,448 L 123,449 M -169,575 L -82,572 Q -29,570 16,598 L 144,679" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_4;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M -344,512 L -344,669 Q -344,697 -330,698" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M -330,698 L -285,698" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M -245,698 L -188,698 M -175,697 L -56,697 Q -30,697 -8,710 L 14,723" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* M -338,511 digabung ke Valve 4 */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_2;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M -357,216 L -350,217 Q -343,217 -343,224 L -342,299" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M -335,297 L -291,297" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M -245,298 L -187,298 M -175,300 L 129,300" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* M -245,298 digabung ke Valve 2 */}
+                {/* M -242,511 & M -217,508 digabung ke Valve 4 */}
+                {/* Path 2 digabung ke Valve 4 */}
+                {/* M -175,300 digabung ke Valve 2 */}
+                {/* M -167,448 & M -169,575 digabung ke Valve 4 */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_1;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M -126,143 L -125,106 Q -125,69 -162,69 L -228,69" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M -228,69 L -400,71" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_8;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    if (isOpen) {
+                      return (
+                        <LiquidSteamFlowSVG d="M 515,139 L 515,105 Q 515,71 481,70 L 412,69 L 373,69 L 220,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                      );
+                    } else {
+                      return (
+                        <SteamFlowSVG d="M 514,143 L 513,97 Q 513,72 488,71 L 417,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                      );
+                    }
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_11;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M 295,512 L 295,668 Q 295,695 322,697" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M 322,697 L 358,699" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 400,698 L 578,696 Q 609,696 636,712 L 662,727" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_9;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M 285,224 L 285,212 Q 298,208 298,215 L 298,299" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M 307,297 L 352,297" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 400,300 L 762,300" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_10;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M 298,299 L 295,512" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M 300,511 L 352,510" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 399,509 L 412,509 Q 425,509 424,496 L 423,479 Q 420,448 451,448 L 765,450 M 425,506 L 422,542 Q 419,577 455,576 L 585,573 Q 608,573 628,584 L 628,584 Q 648,595 667,607 L 797,686" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* M 400,300 digabung ke Valve 9 */}
+                {/* M 399,509 digabung ke Valve 10 */}
+                {/* M 425,506 digabung ke Valve 10 */}
+                {/* M 400,698 digabung ke Valve 11 */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_15;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    if (isOpen) {
+                      return (
+                        <LiquidSteamFlowSVG d="M 1196,143 L 1197,106 Q 1198,68 1160,69 L 1098,70 L 900,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                      );
+                    } else {
+                      return (
+                        <SteamFlowSVG d="M 1196,143 L 1197,106 Q 1198,68 1160,69 L 1098,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                      );
+                    }
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_18;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M 979,520 L 978,666 Q 978,695 1007,698" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M 1007,698 L 1035,700" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 1083,698 L 1265,697 Q 1295,697 1320,714 L 1345,730" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_16;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M 967,217 L 974,218 Q 980,218 980,225 L 979,299" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M 979,299 L 1036,297" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 1078,297 L 1445,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* M 1078,297 digabung ke Valve 16 */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_17;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M 979,299 L 979,520" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M 979,510 L 1042,510" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 1081,510 L 1094,511 Q 1106,511 1106,498 L 1106,479 Q 1105,447 1137,447 L 1447,449 M 1105,511 L 1105,545 Q 1105,578 1138,577 L 1283,574 Q 1300,574 1313,585 L 1313,585 Q 1326,596 1341,605 L 1468,678" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* Extensions merged into Valve 17 */}
+                {/* M 1083,698 digabung ke Valve 18 */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_25;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M 1644,511 L 1644,668 Q 1644,696 1672,698" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M 1672,698 L 1700,700" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 1743,696 L 1936,697 Q 1962,697 1985,710 L 2007,723" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* M 1748,298 digabung ke Valve 23 */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_23;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M 1631,214 L 1639,213 Q 1647,212 1647,220 L 1646,298" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M 1651,298 L 1702,298" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 1748,298 L 2112,298" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* M 1751,509 & M 1773,506 digabung ke Valve 24 */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_24;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        <LiquidSteamFlowSVG d="M 1646,298 L 1644,511" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        <LiquidSteamFlowSVG d="M 1653,511 L 1705,511" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 1751,509 L 1763,511 Q 1774,512 1773,500 L 1773,480 Q 1771,448 1803,448 L 2117,448 M 1773,506 L 1772,541 Q 1771,576 1806,576 L 1936,574 Q 1966,574 1991,592 L 1991,592 Q 2015,609 2041,624 L 2134,679" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* Static paths merged into Valve 23, 24, 25 blocks above */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = TEST_MANUAL_VALVE_22;
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    if (isOpen) {
+                      return (
+                        <LiquidSteamFlowSVG d="M 1864,138 L 1864,104 Q 1863,69 1828,69 L 1773,70 L 1550,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                      );
+                    } else {
+                      return (
+                        <SteamFlowSVG d="M 1864,138 L 1864,104 Q 1863,69 1828,69 L 1765,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                      );
+                    }
+                  })()
+                )}
+                {/* M 1727,69 digabung ke Valve 22 */}
+                {(false || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  <SteamFlowSVG d="M 1053,69 L 975,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                )}
+                <LiquidSteamFlowSVG d="M -268,70 L -346,70" active={false} mode="flowing" color="#38bdf8" thickness={8} />
+
+
+
+
+                {/* ==========================================
+                                    LAYER: TOP OPEN / CLOSE DOORS
+                   ========================================== */}
+                {activeTab === "overview" && (
+                  <>
+                    {TOP_DOORS.map((door) => {
+                      // Ambil state pintu saat ini
+                      let manualState = "CLOSE";
+                      let tagId = "";
+                      if (door.id.includes("_1")) { manualState = formatValveStatus(TEST_INLET_DOOR_ST1); tagId = "card_inlet_door_st1"; }
+                      if (door.id.includes("_2")) { manualState = formatValveStatus(TEST_INLET_DOOR_ST2); tagId = "card_inlet_door_st2"; }
+                      if (door.id.includes("_3")) { manualState = formatValveStatus(TEST_INLET_DOOR_ST3); tagId = "card_inlet_door_st3"; }
+                      if (door.id.includes("_4")) { manualState = formatValveStatus(TEST_INLET_DOOR_ST4); tagId = "card_inlet_door_st4"; }
+
+                      let doorState = manualState;
+                      if (getMappedValue) {
+                        const mapped = getMappedValue(tagId, "MONITOR", manualState);
+                        if (String(mapped).trim().toLowerCase() !== "no tag" && mapped !== undefined && mapped !== null) {
+                          if (mapped === true || mapped === "true" || mapped === "1" || mapped === 1) doorState = "OPEN";
+                          else if (mapped === false || mapped === "false" || mapped === "0" || mapped === 0) doorState = "CLOSE";
+                          else doorState = formatValveStatus(mapped);
+                        }
+                      }
+
+                      const isDoorOpen = doorState === "OPEN";
+                      const isDoorOpenSvg = door.id.includes("top_open");
+
+                      // Jangan render SVG yang salah state
+                      if ((isDoorOpen && !isDoorOpenSvg) || (!isDoorOpen && isDoorOpenSvg)) {
+                        return null;
+                      }
+
+                      return (
+                        <image
+                          key={door.id}
+                          href={door.src}
+                          x={door.x}
+                          y={door.y}
+                          width={door.size}
+                          height={door.size}
+                          transform={`rotate(${door.rotation} ${door.x + door.size / 2} ${door.y + door.size / 2})`}
+                        />
+                      );
+                    })}
+
+                    {BOT_DOORS.map((door) => {
+                      // Ambil state pintu saat ini
+                      let manualState = "CLOSE";
+                      let tagId = "";
+                      if (door.id.includes("_1")) { manualState = formatValveStatus(TEST_OUTLET_DOOR_ST1); tagId = "card_outlet_door_st1"; }
+                      if (door.id.includes("_2")) { manualState = formatValveStatus(TEST_OUTLET_DOOR_ST2); tagId = "card_outlet_door_st2"; }
+                      if (door.id.includes("_3")) { manualState = formatValveStatus(TEST_OUTLET_DOOR_ST3); tagId = "card_outlet_door_st3"; }
+                      if (door.id.includes("_4")) { manualState = formatValveStatus(TEST_OUTLET_DOOR_ST4); tagId = "card_outlet_door_st4"; }
+
+                      let doorState = manualState;
+                      if (getMappedValue) {
+                        const mapped = getMappedValue(tagId, "MONITOR", manualState);
+                        if (String(mapped).trim().toLowerCase() !== "no tag" && mapped !== undefined && mapped !== null) {
+                          if (mapped === true || mapped === "true" || mapped === "1" || mapped === 1) doorState = "OPEN";
+                          else if (mapped === false || mapped === "false" || mapped === "0" || mapped === 0) doorState = "CLOSE";
+                          else doorState = formatValveStatus(mapped);
+                        }
+                      }
+
+                      const isDoorOpen = doorState === "OPEN";
+                      const isDoorOpenSvg = door.id.includes("bot_open");
+
+                      // Jangan render SVG yang salah state
+                      if ((isDoorOpen && !isDoorOpenSvg) || (!isDoorOpen && isDoorOpenSvg)) {
+                        return null;
+                      }
+
+                      return (
+                        <image
+                          key={door.id}
+                          href={door.src}
+                          x={door.x}
+                          y={door.y}
+                          width={door.size}
+                          height={door.size}
+                          transform={`rotate(${door.rotation} ${door.x + door.size / 2} ${door.y + door.size / 2})`}
+                        />
+                      );
+                    })}
+                  </>
+                )}
+
+                {/* ==========================================
+                                    LAYER: TAG MONITOR CARDS (seperti INLET STEAM)
+                   ========================================== */}
+                {activeTab === "overview" && TAG_MONITOR_CARDS.map((card) => {
+                  if (activeTab !== "overview") return null;
+                  return (
+                    <TagMonitorCardSVG
+                      key={card.id}
+                      x={card.x}
+                      y={card.y}
+                      title={card.title}
+                      value={
+                        (() => {
+                          if (!getMappedValue) return "No Tag";
+                          const mapped = getMappedValue(card.id, "MONITOR", "No Tag");
+                          if (String(mapped).trim().toLowerCase() === "no tag" || mapped === undefined || mapped === null) {
+                            return "No Tag";
+                          }
+
+                          // Custom logic for inlet & outlet door (translate boolean to OPEN/CLOSE)
+                          if (card.id.startsWith("card_inlet_door_st") || card.id.startsWith("card_outlet_door_st") || card.id.startsWith("d_cond_st")) {
+                            if (mapped === true || mapped === "true" || mapped === "1" || mapped === 1) return "OPEN";
+                            if (mapped === false || mapped === "false" || mapped === "0" || mapped === 0) return "CLOSE";
+                          }
+                          return String(mapped);
+                        })()
+                      }
+                      unit={
+                        (() => {
+                          if (!getMappedValue) return card.unit;
+                          const mapped = getMappedValue(card.id, "MONITOR", "No Tag");
+                          if (String(mapped).trim().toLowerCase() === "no tag" || mapped === undefined || mapped === null || mapped === "--") return "";
+                          return card.unit;
+                        })()
+                      }
+                      valueColor={card.valueColor}
+                      status={card.status}
+                      width={card.width}
+                      scale={card.scale || 1}
+                      onClick={() => handleEquipmentClick && handleEquipmentClick(card.id)}
+                      style={getDeveloperStyle(card.id)}
+                    />
+                  );
+                })}
+
+                {/* Render 24 Manual Valves */}
+                {activeTab === "overview" && MANUAL_VALVES.map((valve) => {
+                  const getTestFallback = (id) => {
+                    switch (id) {
+                      case "manual_valve_1": return TEST_MANUAL_VALVE_1;
+                      case "manual_valve_2": return TEST_MANUAL_VALVE_2;
+                      case "manual_valve_3": return TEST_MANUAL_VALVE_3;
+                      case "manual_valve_4": return TEST_MANUAL_VALVE_4;
+                      case "manual_valve_5": return TEST_MANUAL_VALVE_5;
+                      case "manual_valve_6": return TEST_MANUAL_VALVE_6;
+                      case "manual_valve_7": return TEST_MANUAL_VALVE_7;
+                      case "manual_valve_8": return TEST_MANUAL_VALVE_8;
+                      case "manual_valve_9": return TEST_MANUAL_VALVE_9;
+                      case "manual_valve_10": return TEST_MANUAL_VALVE_10;
+                      case "manual_valve_11": return TEST_MANUAL_VALVE_11;
+                      case "manual_valve_12": return TEST_MANUAL_VALVE_12;
+                      case "manual_valve_13": return TEST_MANUAL_VALVE_13;
+                      case "manual_valve_14": return TEST_MANUAL_VALVE_14;
+                      case "manual_valve_15": return TEST_MANUAL_VALVE_15;
+                      case "manual_valve_16": return TEST_MANUAL_VALVE_16;
+                      case "manual_valve_17": return TEST_MANUAL_VALVE_17;
+                      case "manual_valve_18": return TEST_MANUAL_VALVE_18;
+                      case "manual_valve_19": return TEST_MANUAL_VALVE_19;
+                      case "manual_valve_20": return TEST_MANUAL_VALVE_20;
+                      case "manual_valve_21": return TEST_MANUAL_VALVE_21;
+                      case "manual_valve_22": return TEST_MANUAL_VALVE_22;
+                      case "manual_valve_23": return TEST_MANUAL_VALVE_23;
+                      case "manual_valve_24": return TEST_MANUAL_VALVE_24;
+                      case "manual_valve_25": return TEST_MANUAL_VALVE_25;
+                      case "manual_valve_26": return TEST_MANUAL_VALVE_26;
+                      case "manual_valve_27": return TEST_MANUAL_VALVE_27;
+                      case "manual_valve_28": return TEST_MANUAL_VALVE_28;
+                      default: return "0";
+                    }
+                  };
+                  const fallbackVar = getTestFallback(valve.id);
+                  let valveVal;
+                  if (valve.id === "manual_valve_7") {
+                    valveVal = getMappedValue ? getMappedValue("d_cond_st1", "STATUS", fallbackVar) : fallbackVar;
+                  } else if (valve.id === "manual_valve_14") {
+                    valveVal = getMappedValue ? getMappedValue("d_cond_st2", "STATUS", fallbackVar) : fallbackVar;
+                  } else if (valve.id === "manual_valve_19") {
+                    valveVal = getMappedValue ? getMappedValue("d_cond_st3", "STATUS", fallbackVar) : fallbackVar;
+                  } else if (valve.id === "manual_valve_28") {
+                    valveVal = getMappedValue ? getMappedValue("d_cond_st4", "STATUS", fallbackVar) : fallbackVar;
+                  } else {
+                    valveVal = getSmartValveValue(valve.id, fallbackVar);
+                  }
+                  const isOpen = formatValveStatus(valveVal) === "OPEN";
+                  return (
+                    <EquipmentIconSVG
+                      key={valve.id}
+                      x={valve.x}
+                      y={valve.y}
+                      icon={valvePositionerSvg}
+                      size={valve.size}
+                      rotation={valve.rotation}
+                      isRunning={isOpen}
+                    />
+                  );
+                })}
+
+                {/* STATUS PANELS FOR ALL 4 STERILIZERS IN OVERVIEW */}
+                {activeTab === "overview" && [1, 2, 3, 4].map((n) => {
+                  const xPos = n === 1 ? 160 : n === 2 ? 810 : n === 3 ? 1490 : 2150;
+                  const purgeSafetyY = 827; // <--- UBAH POSISI Y DI SINI (Contoh: 110 untuk di atas, 690 untuk di bawah)
+
+                  // Konfigurasi D.CONDENSATE  (PLC & Manual)
+                  const dCondTag = `d_cond_st${n}`; // Nama tag PLC
+                  const dCondManual = "CLOSE"; // <--- UBAH NILAI MANUAL DI SINI ("OPEN" atau "CLOSE") jika tidak ada tag PLC
+
+                  let dCondDisplay = dCondManual;
+                  if (getMappedValue) {
+                    const mapped = getMappedValue(dCondTag, "STATUS", dCondManual);
+                    if (String(mapped).trim().toLowerCase() !== "no tag" && mapped !== undefined && mapped !== null) {
+                      dCondDisplay = formatDoorStatus(mapped);
+                    }
+                  }
+
+                  // Konfigurasi Relief Condensate Valve (PLC & Manual)
+                  const reliefCondensateTag = `relief_condensate_valve_st${n}`; // Nama tag PLC
+                  const reliefCondensateManual = "CLOSE";
+
+                  let reliefCondensateDisplay = reliefCondensateManual;
+                  if (getMappedValue) {
+                    const mapped = getMappedValue(reliefCondensateTag, "STATUS", reliefCondensateManual);
+                    if (String(mapped).trim().toLowerCase() !== "no tag" && mapped !== undefined && mapped !== null) {
+                      reliefCondensateDisplay = formatValveStatus(mapped);
+                    }
+                  }
+
+                  // Konfigurasi Condensate Valve (PLC & Manual)
+                  const condensateTag = `condensate_valve_st${n}`; // Nama tag PLC
+                  const condensateManual = "CLOSE";
+
+                  let CondensateDisplay = condensateManual;
+                  if (getMappedValue) {
+                    const mapped = getMappedValue(condensateTag, "STATUS", condensateManual);
+                    if (String(mapped).trim().toLowerCase() !== "no tag" && mapped !== undefined && mapped !== null) {
+                      CondensateDisplay = formatValveStatus(mapped);
+                    }
+                  }
+
+                  return (
+                    <g key={`st${n}_overview_group`}>
+
+                      <SterilizerStatusPanelSVG
+                        key={`st${n}_status`}
+                        x={xPos}
+                        y={10}
+                        title={`STERILIZER ${n}`}
+                        status={getMappedValue ? String(getMappedValue(`st${n}_status`, "STATUS", "EMERGENCY")) : "EMERGENCY"}
+                        recipe={getMappedValue ? String(getMappedValue(`st${n}_recipe`, "STATUS", "NORMAL")) : "NORMAL"}
+                        actualStep={getMappedValue ? String(getMappedValue(`st${n}_status`, "STEP", "No Tag")) : "No Tag"}
+                        totalTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "TOTAL_TIME", "No Tag")) : "No Tag"}
+                        doorIn={formatDoorStatus(getMappedValue ? getMappedValue(`st${n}_status`, "DOOR_IN", "No Tag") : "No Tag")}
+                        doorOut={formatDoorStatus(getMappedValue ? getMappedValue(`st${n}_status`, "DOOR_OUT", "No Tag") : "No Tag")}
+                        pressure={getMappedValue ? String(getMappedValue(`st${n}_status`, "PRESSURE", "No Tag")) : "No Tag"}
+                        temp={getMappedValue ? String(getMappedValue(`st${n}_status`, "TEMP", "No Tag")) : "No Tag"}
+                        scale={0.95}
+                        onClick={() => handleEquipmentClick && handleEquipmentClick(`st${n}_status`)}
+                        style={getDeveloperStyle(`st${n}_status`)}
+                      />
+
+
+                    </g>
+                  );
+                })}
+              </>
+            )}
           </svg>
         </div>
       </div>
-      {activeKeypad && (
-        <NumericKeypad
-          value={activeKeypad.value}
-          label={activeKeypad.label}
-          unit={activeKeypad.unit || ''}
-          onClose={() => setActiveKeypad(null)}
-          onConfirm={handleKeypadConfirm}
-        />
-      )}
-    </div>
+    </div >
   );
 }

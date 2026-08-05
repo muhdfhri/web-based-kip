@@ -39,6 +39,7 @@
   text-transform: uppercase;
   background: linear-gradient(135deg, #0f172a 0%, #ffdb3b 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   border-right: 2px solid #e2e8f0;
   padding-right: 1.5rem;
@@ -464,12 +465,12 @@
 /* MODE 1: FLOWING */
 .liquid-flow--flowing .liquid-flow-glow {
   stroke-dasharray: 20, 40;
-  animation: er-move-liquid 0.6s linear infinite;
+  animation: er-move-liquid 1.0s linear infinite;
 }
 
 .liquid-flow--flowing .liquid-flow-aura {
   stroke-dasharray: 15, 45;
-  animation: er-move-liquid 0.6s linear infinite;
+  animation: er-move-liquid 1.0s linear infinite;
 }
 
 /* MODE 2: STANDBY */
@@ -492,7 +493,7 @@
 .liquid-flow--liquid .liquid-flow-aura {
   stroke-dasharray: 15, 45;
   opacity: 0.8;
-  animation: er-move-liquid 0.6s linear infinite;
+  animation: er-move-liquid 1.0s linear infinite;
 }
 
 @keyframes er-move-liquid {
@@ -505,16 +506,374 @@
   }
 }
 
-@keyframes er-pulse-glow {
+/* ==========================================
+   STERILIZER STATION MATCHED CARD STYLE (UNIFIED MEWAH SCADA THEME)
+   ========================================== */
 
-  0%,
-  100% {
-    opacity: 0.4;
-    stroke-width: 8px;
-  }
+/* 1. TOP STATIONS BAR */
+.som-er-top-pill {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s ease;
+}
 
-  50% {
+.som-er-top-pill:hover {
+  border-color: #ffdb3b;
+  box-shadow: 0 0 12px rgba(255, 219, 59, 0.3);
+}
+
+.som-er-pill-icon-wrap {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+  color: #0f172a;
+}
+
+.som-er-pill-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.som-er-pill-label {
+  font-size: 8.5px;
+  font-weight: 900;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.som-er-pill-val-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.som-er-pill-val {
+  font-size: 11px;
+  font-weight: 950;
+  color: #0f172a;
+}
+
+.som-er-pill-unit {
+  font-size: 7.5px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.som-er-led-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+  flex-shrink: 0;
+}
+
+/* 2. LEFT SIDEBAR PANEL */
+.som-er-left-summary-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.som-er-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.som-er-summary-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #ffdb3b;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.som-er-summary-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.som-er-summary-title {
+  font-size: 8.5px;
+  font-weight: 900;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.som-er-summary-val-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.som-er-summary-val {
+  font-size: 16px;
+  font-weight: 950;
+  color: #0f172a;
+}
+
+.som-er-summary-unit {
+  font-size: 9px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.som-er-power-summary-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+.som-er-power-summary-header {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 950;
+  color: #0f172a;
+  border-bottom: 2px solid #ffdb3b;
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.som-er-power-cat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 8.5px;
+  padding: 3px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.som-er-power-cat-row:last-child {
+  border-bottom: none;
+}
+
+.som-er-power-cat-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.som-er-cat-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffdb3b;
+  flex-shrink: 0;
+}
+
+.som-er-power-cat-val {
+  font-weight: 950;
+  font-size: 11px;
+  color: #0f172a;
+}
+
+/* 3. STERILIZER MATCHED EQUIPMENT CARDS (GENSET & TURBIN) */
+.som-hmi-equipment-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  font-family: 'Inter', sans-serif;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.som-hmi-equipment-card:hover {
+  border-color: #ffdb3b;
+  box-shadow: 0 0 16px rgba(255, 219, 59, 0.25);
+}
+
+.som-hmi-card-header {
+  background: #ffdb3b;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid rgba(15, 23, 42, 0.05);
+}
+
+.som-hmi-card-title {
+  font-size: 11px;
+  font-weight: 950;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.som-hmi-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.som-hmi-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #0f172a;
+}
+
+.som-hmi-status-dot.active {
+  background: #10b981;
+}
+
+.som-hmi-card-body {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.som-hmi-card-params {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.som-hmi-param-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 2px;
+}
+
+.som-hmi-param-row:last-child {
+  border-bottom: none;
+}
+
+.som-hmi-param-label {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.som-hmi-param-val-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.som-hmi-param-val {
+  font-size: 11px;
+  font-weight: 950;
+  color: #0f172a;
+}
+
+.som-hmi-param-unit {
+  font-size: 8px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+/* 4. STERILIZER MATCHED FLOW CARDS (m3/h) */
+.som-hmi-flow-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  font-family: 'Inter', sans-serif;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.som-hmi-flow-card:hover {
+  border-color: #ffdb3b;
+}
+
+.som-hmi-flow-title {
+  text-align: center;
+  font-size: 9px;
+  font-weight: 950;
+  color: #0f172a;
+  text-transform: uppercase;
+  border-bottom: 2px solid #ffdb3b;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.som-hmi-flow-val-wrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+
+.som-hmi-flow-val {
+  font-size: 15px;
+  font-weight: 950;
+  color: #0f172a;
+}
+
+.som-hmi-flow-unit {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+@keyframes er-flow-pulse-opacity {
+  0%, 100% {
     opacity: 0.8;
-    stroke-width: 11px;
+  }
+  50% {
+    opacity: 0.25;
   }
 }

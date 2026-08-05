@@ -6,6 +6,31 @@ import 'leaflet-rotate';
 import './PatrolMapModern.css';
 import { FaCog, FaPlay, FaPause, FaStop, FaTachometerAlt } from 'react-icons/fa';
 
+// ═══════════════════════════════════════════════════════════════
+// MOBILE WEBVIEW BRIDGE — window.updateGuardLocation
+// Flutter injects guard GPS via: _controller.runJavaScript(
+//   "updateGuardLocation(userId, lat, lng, guardName)")
+// ═══════════════════════════════════════════════════════════════
+const _mobileGuardUpdater = { fn: null };
+
+if (typeof window !== 'undefined') {
+  window.updateGuardLocation = (userId, lat, lng, guardName) => {
+    if (_mobileGuardUpdater.fn) {
+      _mobileGuardUpdater.fn(userId, parseFloat(lat), parseFloat(lng), guardName || 'Guard Mobile');
+    }
+  };
+
+  // Flutter can also call this with JSON string
+  window.updateGuardLocationJson = (jsonStr) => {
+    try {
+      const { userId, lat, lng, guardName } = JSON.parse(jsonStr);
+      if (_mobileGuardUpdater.fn) {
+        _mobileGuardUpdater.fn(userId, parseFloat(lat), parseFloat(lng), guardName || 'Guard Mobile');
+      }
+    } catch (e) { console.warn('updateGuardLocationJson parse error:', e); }
+  };
+}
+
 // Helper Haversine Formula (Meter)
 const calculateHaversine = (lat1, lon1, lat2, lon2) => {
     const R = 6371000;
@@ -95,6 +120,19 @@ function PatrolMapTab({ mapStations = [], patrolGuards = [], stationCheckpoints 
     const [bearing, setBearing] = useState(defaultBearing);
     const [gpsOffsetLat, setGpsOffsetLat] = useState(defaultGpsOffsetLat);
     const [gpsOffsetLng, setGpsOffsetLng] = useState(defaultGpsOffsetLng);
+
+    // ── MOBILE WEBVIEW BRIDGE: live guard positions injected from Flutter ──
+    const [mobileGuards, setMobileGuards] = useState({});
+
+    useEffect(() => {
+        _mobileGuardUpdater.fn = (userId, lat, lng, guardName) => {
+            setMobileGuards(prev => ({
+                ...prev,
+                [userId]: { userId, lat, lng, name: guardName, lastUpdate: Date.now() }
+            }));
+        };
+        return () => { _mobileGuardUpdater.fn = null; };
+    }, []);
     
     const [showSettings, setShowSettings] = useState(false);
     const [tempLat, setTempLat] = useState(defaultLat);

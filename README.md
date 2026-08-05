@@ -1,6 +1,6 @@
 # MEWAH-KIP — SCADA CPO Mill
 
-**Mill:** KIP (Kebun Inti Pabrik) | **Version:** 2.0.0 | **Platform:** Node.js + MySQL + Redis
+**Mill:** PT Kencana Inti Perkasa (KIP) | **Version:** 2.0.0 | **Platform:** Node.js + MySQL + Redis
 
 > Sistem monitoring CPO Mill dengan 26 microservices. Setiap stasiun bersifat **self-contained**: punya database, backend, frontend, dan PLC Collector sendiri.
 

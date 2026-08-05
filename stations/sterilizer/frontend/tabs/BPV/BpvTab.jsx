@@ -1,9 +1,8 @@
 import React, { useRef } from "react";
 import "./BpvTab.css";
-import bpvImageUrl from "../../assets/BPV-PT-SKL.webp";
+import bpvImageUrl from "../../assets/BPV-PT-PIS.webp";
 import valvePositionerSvg from "../../assets/item/valve_positioner.svg";
 import { EquipmentIconSVG, IpomasMonitorCardSVG } from "../../components/SharedComponents.jsx";
-// import { WTFlowOverlay } from "../../components/WTFlowBuilder.jsx";
 
 export const SteamFlowSVG = ({ d, active, isRunning, mode = "flowing", color = "#a9dbe1ff", thickness = 8, className = "" }) => {
   const isActive = active || isRunning;
@@ -40,17 +39,24 @@ export const SteamFlowSVG = ({ d, active, isRunning, mode = "flowing", color = "
 };
 
 export const ValveModernCardSVG = ({ x, y, scale = 1, title = "", position = "0.0", onClick, style = {} }) => {
+  const isNoTag = !position || String(position).toLowerCase() === "no tag";
+  const isOffline = String(position) === "--";
+  const displayPos = isNoTag ? "No Tag" : isOffline ? "--" : `${position}%`;
+
   return (
-    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-100, -65)`} onClick={onClick} style={{ cursor: "pointer", ...style }}>
-      <foreignObject width="200" height="90" style={{ overflow: "visible" }}>
-        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", padding: "12px", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column", gap: "8px" }}>
+    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-100, -65)`}>
+      <foreignObject width="200" height="90" style={{ overflow: "visible", pointerEvents: "none" }}>
+        <div 
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
+          onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
+          style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", padding: "12px", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column", gap: "8px", cursor: "pointer", pointerEvents: "auto", ...style }}>
           <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "950", color: "#0f172a", borderBottom: "2px solid #ffdb3b", paddingBottom: "6px", textTransform: "uppercase", letterSpacing: "1px" }}>{title}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "2px" }}>
               <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "800", marginBottom: "2px" }}>POSITION</span>
               <div style={{ position: "relative", width: "100%", height: "24px", background: "#f1f5f9", borderRadius: "6px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
-                <div style={{ width: `${Math.min(100, Math.max(0, parseFloat(position) || 0))}%`, height: "100%", background: `linear-gradient(90deg, #ffdb3b, #d4ac0d)`, transition: "width 0.5s ease" }}></div>
-                <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "950", color: "#0f172a" }}>{position}%</div>
+                <div style={{ width: isNoTag || isOffline ? "0%" : `${Math.min(100, Math.max(0, parseFloat(position) || 0))}%`, height: "100%", background: `linear-gradient(90deg, #ffdb3b, #d4ac0d)`, transition: "width 0.5s ease" }}></div>
+                <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "950", color: isNoTag ? "#64748b" : "#0f172a" }}>{displayPos}</div>
               </div>
             </div>
           </div>
@@ -61,7 +67,6 @@ export const ValveModernCardSVG = ({ x, y, scale = 1, title = "", position = "0.
 };
 
 export const BpvModernStatusCardSVG = ({ x, y, scale = 1, status = "EMERGENCY", makeup = "OPEN", surplus = "OPEN", pressure = "0.0", onClick, style = {} }) => {
-  // 1. Logika penerjemah angka ke teks
   let displayStatus = status;
   const s = String(status).trim();
   if (s === "0") displayStatus = "AUTO";
@@ -70,37 +75,40 @@ export const BpvModernStatusCardSVG = ({ x, y, scale = 1, status = "EMERGENCY", 
   else if (s === "--") displayStatus = "--";
   else if (s.toLowerCase() === "no tag") displayStatus = "No Tag";
 
-  // 2. Logika warna (Diubah menjadi hitam semua kecuali jika No Tag)
   const getStatusColor = (val) => {
     if (val === "No Tag" || val === "--") return "#0f172a";
-    return "#0f172a"; // Warna Hitam
+    return "#0f172a";
   };
   const getValveColor = (val) => {
     if (val === "No Tag" || val === "--") return "#64748b";
-    return "#0f172a"; // Warna Hitam
+    return "#0f172a";
   };
   const getPressureColor = (val) => {
     if (val === "No Tag" || val === "--") return "#0f172a";
-    return "#0f172a"; // Warna Hitam
+    return "#0f172a";
   };
 
   let displayMakeup = makeup;
   if (String(makeup).trim() === "0") displayMakeup = "CLOSE";
   else if (String(makeup).trim() === "1") displayMakeup = "OPEN";
+  else if (String(makeup).toLowerCase() === "no tag") displayMakeup = "No Tag";
 
   let displaySurplus = surplus;
   if (String(surplus).trim() === "0") displaySurplus = "CLOSE";
   else if (String(surplus).trim() === "1") displaySurplus = "OPEN";
+  else if (String(surplus).toLowerCase() === "no tag") displaySurplus = "No Tag";
 
   return (
-    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-160, -90)`} onClick={onClick} style={{ cursor: "pointer", ...style }}>
-      <foreignObject width="320" height="180" style={{ overflow: "visible" }}>
-        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", padding: "15px", fontFamily: "'Inter', sans-serif" }}>
+    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-160, -90)`}>
+      <foreignObject width="320" height="180" style={{ overflow: "visible", pointerEvents: "none" }}>
+        <div 
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
+          onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
+          style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "14px", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "16px", fontFamily: "'Inter', sans-serif", cursor: "pointer", pointerEvents: "auto", ...style }}>
           <div style={{ textAlign: "center", fontSize: "14px", fontWeight: "950", color: "#0f172a", borderBottom: "2px solid #ffdb3b", paddingBottom: "8px", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "1px" }}>BACK PRESSURE VESSEL</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", paddingBottom: "4px" }}>
               <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "800" }}>STATUS</span>
-              {/* 3. Menampilkan displayStatus yang sudah diterjemahkan */}
               <span style={{ fontSize: "14px", color: getStatusColor(displayStatus), fontWeight: "950" }}>{displayStatus}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", paddingBottom: "4px" }}>
@@ -123,7 +131,8 @@ export const BpvModernStatusCardSVG = ({ x, y, scale = 1, status = "EMERGENCY", 
       </foreignObject>
     </g>
   );
-}
+};
+
 export const AtmosphereLabelSVG = ({ x, y }) => (
   <g transform={`translate(${x}, ${y})`}>
     <path d="M -25,-18 L 25,-18 M 15,-25 L 25,-18 L 15,-11" stroke="rgba(255,255,255,0.8)" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -152,9 +161,12 @@ export const BpvControlSwitchPanelSVG = ({
   style = {}
 }) => {
   return (
-    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-180, -75)`} className="bpv-modern-control-group" onClick={onClick} style={{ cursor: "pointer", ...style }}>
-      <foreignObject width="360" height="150" style={{ overflow: "visible" }}>
-        <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", padding: "15px", display: "flex", flexDirection: "column", fontFamily: "'Inter', sans-serif" }}>
+    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-180, -75)`} className="bpv-modern-control-group">
+      <foreignObject width="360" height="150" style={{ overflow: "visible", pointerEvents: "none" }}>
+        <div 
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
+          onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
+          style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", padding: "15px", display: "flex", flexDirection: "column", fontFamily: "'Inter', sans-serif", cursor: "pointer", pointerEvents: "auto", ...style }}>
           <div style={{ textAlign: "center", fontSize: "14px", fontWeight: "950", color: "#0f172a", borderBottom: "2px solid #ffdb3b", paddingBottom: "10px", marginBottom: "15px", textTransform: "uppercase", letterSpacing: "1px" }}>CONTROL PANEL</div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: "8px" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100px" }}>
@@ -237,7 +249,6 @@ export default function BpvTab({
   setBpvMakeupPos,
   setBpvBlowoffPos,
   handleEquipmentClick,
-  flowBuilder,
   getMappedValue,
   configMode = false,
   tagMap = {},
@@ -245,14 +256,14 @@ export default function BpvTab({
   const svgRef = useRef(null);
 
   const checkMapping = (id) => {
-    return tagMap && Object.keys(tagMap).some(key => key.startsWith(`${id}__`) && tagMap[key]);
+    return tagMap && Object.keys(tagMap).some(key => key.startsWith(`${id}__`) && tagMap[key] && tagMap[key] !== "null" && tagMap[key] !== "undefined" && tagMap[key] !== "");
   };
 
   const getDeveloperStyle = (id) => {
     if (!configMode) return {};
     const hasMapping = checkMapping(id);
     return {
-      outline: hasMapping ? "2px solid #3b82f6" : "2px solid #ef4444",
+      outline: hasMapping ? "2px solid #3b82f6" : "2px dashed #ef4444",
       boxShadow: hasMapping ? "0 0 8px rgba(59, 130, 246, 0.6)" : "0 0 8px rgba(239, 68, 68, 0.6)",
       backgroundColor: hasMapping ? "transparent" : "rgba(239, 68, 68, 0.15)",
       cursor: "pointer",
@@ -296,140 +307,117 @@ export default function BpvTab({
               </foreignObject>
             )}
 
-            {flowBuilder && (
-              <WTFlowOverlay
-                flows={flowBuilder.flows}
-                activeFlowIdx={flowBuilder.activeFlowIdx}
-                isActive={flowBuilder.isActive}
-                isPlacing={flowBuilder.isPlacing}
-                onPointDrag={flowBuilder.updatePoint}
-                onInsertPoint={flowBuilder.insertPoint}
-                onDeletePoint={flowBuilder.deletePoint}
-                onSelectFlow={flowBuilder.setActiveFlowIdx}
-                onCanvasClick={flowBuilder.addPointToActiveFlow}
-              />
-            )}
 
-            {/* Group to shift all overlay elements to match the new background image offset (+140px) */}
+
+            {/* BPV Flow Pipe Paths */}
+            <g className="bpv-pipe-flows">
+              {/* Dynamic Make-Up Valve Flow Logic */}
+              {currentMakeupPos > 0.5 ? (
+                /* Flowing Mode when Make-Up Valve OPEN (> 0) */
+                <SteamFlowSVG
+                  d="M -227,654 L -205,657 Q -183,660 -183,682 L -186,919 Q -186,928 -181,935 L -181,935 Q -176,942 -168,944 L -166,944 Q -157,946 -147,946 L 670,944 Q 695,944 695,919 L 694,680 Q 694,655 719,655 L 1008,653 Q 1019,653 1028,660 L 1029,661 Q 1037,667 1037,677 L 1036,686"
+                  active={true}
+                  mode="flowing"
+                  color="#38bdf8"
+                  thickness={14}
+                />
+              ) : (
+                /* Standby Pulsing Mode when Make-Up Valve CLOSED (= 0) */
+                <SteamFlowSVG
+                  d="M -225,656 L -204,659 Q -183,662 -183,683 L -187,906 Q -187,918 -184,930 L -184,930 Q -181,942 -169,945 L -168,945 Q -156,948 -143,948 L 384,945"
+                  active={true}
+                  mode="liquid"
+                  className="pulsing-flow-anim"
+                  color="#38bdf8"
+                  thickness={18}
+                />
+              )}
+              {/* Flow 1 */}
+              <SteamFlowSVG
+                d="M 1106,715 L 1108,534 Q 1108,522 1096,522 L -204,519 Q -216,519 -216,507 L -217,10"
+                active={true}
+                mode="flowing"
+                color="#38bdf8"
+                thickness={15}
+              />
+              {/* Flow 2 */}
+              <SteamFlowSVG
+                d="M 1196,714 L 1194,504 Q 1194,492 1182,492 L -169,492 Q -181,492 -181,480 L -181,11"
+                active={true}
+                mode="flowing"
+                color="#38bdf8"
+                thickness={15}
+              />
+              {/* Flow 3 */}
+              <SteamFlowSVG
+                d="M 1282,714 L 1285,464 Q 1285,449 1270,449 L -119,446 Q -134,446 -134,431 L -136,11"
+                active={true}
+                mode="flowing"
+                color="#38bdf8"
+                thickness={15}
+              />
+              {/* Flow 4 */}
+              <SteamFlowSVG
+                d="M 1373,719 L 1373,430 Q 1373,417 1360,417 L -86,410 Q -99,410 -99,397 L -104,14"
+                active={true}
+                mode="flowing"
+                color="#38bdf8"
+                thickness={15}
+              />
+              {/* Flow 5 */}
+              <SteamFlowSVG
+                d="M 1459,714 L 1461,394 Q 1461,381 1448,381 L -42,378 Q -55,378 -55,365 L -59,10"
+                active={true}
+                mode="flowing"
+                color="#38bdf8"
+                thickness={15}
+              />
+              {/* Flow 6 */}
+              <SteamFlowSVG
+                d="M 2365,424 L 1691,424 Q 1678,424 1668,432 L 1667,433 Q 1657,440 1653,452 L 1653,452 Q 1649,463 1649,475 L 1649,670"
+                active={true}
+                mode="flowing"
+                color="#38bdf8"
+                thickness={20}
+              />
+              {/* Flow 7 */}
+              <SteamFlowSVG
+                d="M 1767,718 L 1766,532 Q 1766,520 1770,509 L 1770,506 Q 1774,495 1786,494 L 1793,494 Q 1805,493 1817,493 L 2363,496"
+                active={true}
+                mode="flowing"
+                color="#38bdf8"
+                thickness={15}
+              />
+              {/* Flow 8 */}
+              <SteamFlowSVG
+                d="M 1856,719 L 1856,550 Q 1856,536 1870,536 L 2367,533"
+                active={true}
+                mode="flowing"
+                color="#38bdf8"
+                thickness={15}
+              />
+              {/* Flow 9 */}
+              <SteamFlowSVG
+                d="M 1959,671 L 1961,625 Q 1961,610 1966,596 L 1966,596 Q 1971,582 1986,581 L 1987,581 Q 2003,579 2019,579 L 2367,577"
+                active={true}
+                mode="flowing"
+                color="#38bdf8"
+                thickness={20}
+              />
+              {/* Dynamic Blow-Off Valve Flow Logic (Hanya flowing jika OPEN > 0) */}
+              {currentBlowoffPos > 0.5 && (
+                <SteamFlowSVG
+                  d="M 2073,775 L 2072,664 Q 2072,639 2097,639 L 2365,638"
+                  active={true}
+                  mode="flowing"
+                  color="#38bdf8"
+                  thickness={12}
+                />
+              )}
+            </g>
+
+            {/* Group to shift all overlay elements to match background image offset (+140px) */}
             <g transform="translate(110, 0)">
-              {/* Pulsing Static Flow when Make-Up Valve is CLOSED */}
-              <SteamFlowSVG
-                d="M -340,657 L -318,657 Q -296,656 -296,678 L -292,920 Q -292,945 -267,945 L -129,945"
-                isRunning={currentMakeupPos <= 0.5}
-                mode="liquid"
-                className="pulsing-flow-anim"
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M -71,947 L 86,947"
-                isRunning={currentMakeupPos <= 0.5}
-                mode="liquid"
-                className="pulsing-flow-anim"
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 163,947 L 275,947"
-                isRunning={currentMakeupPos <= 0.5}
-                mode="liquid"
-                className="pulsing-flow-anim"
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 58,943 L 53,678 Q 53,653 78,653 L 280,651"
-                isRunning={currentMakeupPos <= 0.5}
-                mode="liquid"
-                className="pulsing-flow-anim"
-                color="#38bdf8"
-                thickness={8}
-              />
-
-              <SteamFlowSVG
-                d="M -339,654 L -317,654 Q -295,654 -295,676 L -295,922 Q -295,947 -270,945 L -129,945"
-                isRunning={currentMakeupPos > 0.5}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M -67,945 L 87,945"
-                isRunning={currentMakeupPos > 0.5}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 161,945 L 277,945"
-                isRunning={currentMakeupPos > 0.5}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 347,945 L 381,945"
-                isRunning={currentMakeupPos > 0.5}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 459,947 L 558,946 Q 583,946 583,921 L 583,679 Q 583,654 608,654 L 896,654 Q 905,654 914,657 L 914,657 Q 923,660 924,669 L 926,686"
-                isRunning={currentMakeupPos > 0.5}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 53,941 L 53,678 Q 53,653 78,653 L 272,653"
-                isRunning={currentMakeupPos > 0.5}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 1054,714 L 1053,545 Q 1053,520 1028,520 L -295,521 Q -320,521 -320,496 L -321,-2"
-                isRunning={true}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 1140,715 L 1145,512 Q 1146,487 1121,487 L -259,488 Q -284,488 -284,463 L -282,2"
-                isRunning={true}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 2258,348 L 1313,352 Q 1288,352 1288,377 L 1286,675"
-                isRunning={true}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 1486,711 L 1486,433 Q 1486,408 1511,408 L 2252,408"
-                isRunning={true}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 1589,709 L 1589,470 Q 1589,445 1614,445 L 2245,445"
-                isRunning={true}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 2257,505 L 1723,505 Q 1698,505 1698,530 L 1699,667"
-                isRunning={true}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 1850,669 L 1850,605 Q 1850,580 1875,580 L 2255,580"
-                isRunning={true}
-                color="#38bdf8"
-                thickness={8}
-              />
-              <SteamFlowSVG
-                d="M 1961,741 L 1960,661 Q 1960,636 1985,636 L 2258,636"
-                isRunning={currentBlowoffPos > 0.5}
-                color="#38bdf8"
-                thickness={8}
-              />
 
               <EquipmentIconSVG x={310} y={893} icon={valvePositionerSvg} isRunning={currentMakeupPos > 0.5} size={190} rotation={270} />
               <ValveModernCardSVG 
@@ -437,7 +425,7 @@ export default function BpvTab({
                 y={1080} 
                 scale={1.4} 
                 title="MAKE-UP VALVE" 
-                position={getMappedValue ? getMappedValue("bpv_makeup_valve", "MONITOR", bpvMakeupPos.toFixed(1)) : bpvMakeupPos.toFixed(1)} 
+                position={getMappedValue ? getMappedValue("bpv_makeup_valve", "MONITOR", typeof bpvMakeupPos === "number" ? bpvMakeupPos.toFixed(1) : bpvMakeupPos) : bpvMakeupPos} 
                 onClick={() => handleEquipmentClick && handleEquipmentClick("bpv_makeup_valve")} 
                 style={getDeveloperStyle && getDeveloperStyle("bpv_makeup_valve")} 
               />
@@ -448,7 +436,7 @@ export default function BpvTab({
                 y={740} 
                 scale={1.1} 
                 title="BLOW-OFF VALVE" 
-                position={getMappedValue ? getMappedValue("bpv_blowoff_valve", "MONITOR", bpvBlowoffPos.toFixed(1)) : bpvBlowoffPos.toFixed(1)} 
+                position={getMappedValue ? getMappedValue("bpv_blowoff_valve", "MONITOR", typeof bpvBlowoffPos === "number" ? bpvBlowoffPos.toFixed(1) : bpvBlowoffPos) : bpvBlowoffPos} 
                 onClick={() => handleEquipmentClick && handleEquipmentClick("bpv_blowoff_valve")} 
                 style={getDeveloperStyle && getDeveloperStyle("bpv_blowoff_valve")} 
               />
@@ -466,51 +454,8 @@ export default function BpvTab({
                 makeup={getMappedValue ? getMappedValue("bpv_status", "MAKEUP", "--") : "--"}
                 surplus={getMappedValue ? getMappedValue("bpv_status", "SURPLUS", "--") : "--"}
                 pressure={getMappedValue ? getMappedValue("bpv_status", "PRESSURE", "--") : "--"}
-                onClick={() => handleEquipmentClick("bpv_status")}
+                onClick={() => handleEquipmentClick && handleEquipmentClick("bpv_status")}
                 style={getDeveloperStyle("bpv_status")}
-              />
-              {/*<BpvControlSwitchPanelSVG
-                x={700}
-                y={180}
-                scale={1.4}
-                mode={getMappedValue ? getMappedValue("bpv_control", "MODE", bpvMode) : bpvMode}
-                modeAuto={getMappedValue ? getMappedValue("bpv_control", "MODE_AUTO", bpvMode === "AUTO" ? "AUTO" : "MANUAL") : (bpvMode === "AUTO" ? "AUTO" : "MANUAL")}
-                modeManual={getMappedValue ? getMappedValue("bpv_control", "MODE_MANUAL", bpvMode === "MANUAL" ? "MANUAL" : "AUTO") : (bpvMode === "MANUAL" ? "MANUAL" : "AUTO")}
-                makeupOpen={getMappedValue ? getMappedValue("bpv_control", "MAKEUP_OPEN", bpvMakeup === "OPEN" ? "OPEN" : "CLOSE") : (bpvMakeup === "OPEN" ? "OPEN" : "CLOSE")}
-                makeupClose={getMappedValue ? getMappedValue("bpv_control", "MAKEUP_CLOSE", bpvMakeup === "CLOSE" ? "CLOSE" : "OPEN") : (bpvMakeup === "CLOSE" ? "CLOSE" : "OPEN")}
-                blowoffOpen={getMappedValue ? getMappedValue("bpv_control", "BLOWOFF_OPEN", bpvBlowoff === "OPEN" ? "OPEN" : "CLOSE") : (bpvBlowoff === "OPEN" ? "OPEN" : "CLOSE")}
-                blowoffClose={getMappedValue ? getMappedValue("bpv_control", "BLOWOFF_CLOSE", bpvBlowoff === "CLOSE" ? "CLOSE" : "OPEN") : (bpvBlowoff === "CLOSE" ? "CLOSE" : "OPEN")}
-                onModeAuto={() => {
-                  setBpvMode("AUTO");
-                }}
-                onModeManual={() => {
-                  setBpvMode("MANUAL");
-                }}
-                onMakeupOpen={() => {
-                  if (bpvMode === "MANUAL") {
-                    setBpvMakeup("OPEN");
-                    setBpvMakeupPos(100);
-                  }
-                }}
-                onMakeupClose={() => {
-                  if (bpvMode === "MANUAL") {
-                    setBpvMakeup("CLOSE");
-                    setBpvMakeupPos(0);
-                  }
-                }}
-                onBlowoffOpen={() => {
-                  if (bpvMode === "MANUAL") {
-                    setBpvBlowoff("OPEN");
-                    setBpvBlowoffPos(100);
-                  }
-                }}
-                onBlowoffClose={() => {
-                  if (bpvMode === "MANUAL") {
-                    setBpvBlowoff("CLOSE");
-                    setBpvBlowoffPos(0);
-                  }
-                }}
-                onClick={() => handleEquipmentClick("bpv_control")} */}
               />
             </g>
           </svg>

@@ -1,7 +1,7 @@
 /**
  * PLC Collector untuk Station Sterilizer
  *
- * Service ini MANDIRI — hanya membaca device & tag dari database sendiri (mewah_sterilizer),
+ * Service ini MANDIRI — hanya membaca device & tag dari database sendiri (mewah_pis_sterilizer_trial),
  * polling PLC sendiri via Snap7, update liveDataCache langsung, dan publish ke Redis.
  *
  * Tidak perlu central plc-collector lagi. Setiap station punya collector sendiri.
@@ -32,9 +32,6 @@ let clients = new Map(); // key: deviceId
 const lastTagValues = new Map(); // key: "deviceId:tagId"
 const reconnectState = new Map(); // key: deviceId
 const deviceStatusCache = new Map(); // key: deviceId → "CONNECTED"|"DISCONNECTED"
-
-// ── Cycle Catcher State (Perekam Logsheet Dinamis) ──
-const cycleState = new Map(); // key: deviceId → { status, currentStep, stepTimeline: [], lastStepTime, doorInlet: { openAt: null, duration: 0 }, doorOutlet: { openAt: null, duration: 0 } }
 const deviceHeartbeat = new Map(); // key: deviceId → last heartbeat timestamp
 
 // Redis
@@ -47,16 +44,8 @@ let thresholds = {};
 const alarmStates = {};
 
 // ═══════════════════════════════════════════════════════
-// ─── START
-// ─────────────────────────────────────────────────────────────────────────────
-export async function publishCommand(tagId, value) {
-  if (!redisConnected || !redisPublisher) {
-    throw new Error("Redis publisher is not connected");
-  }
-  const cmd = { tagId, value, stationSlug: STATION_SLUG };
-  await redisPublisher.publish(COMMAND_CHANNEL, JSON.stringify(cmd));
-}
-
+// START
+// ═══════════════════════════════════════════════════════
 export async function startPlcCollector() {
   console.log(`[plcCollector-${STATION_SLUG}] Starting...`);
 
@@ -74,15 +63,8 @@ export async function startPlcCollector() {
     `[plcCollector-${STATION_SLUG}] Started (poll every ${POLL_INTERVAL_MS}ms)`,
   );
 
-  // 4. Start polling using async loop to prevent overlapping requests
-  const runPollLoop = async () => {
-    const start = Date.now();
-    await pollAllDevices();
-    const elapsed = Date.now() - start;
-    const delay = Math.max(10, POLL_INTERVAL_MS - elapsed);
-    setTimeout(runPollLoop, delay);
-  };
-  runPollLoop();
+  // 4. Start polling
+  setInterval(pollAllDevices, POLL_INTERVAL_MS);
 
   // 5. Refresh config periodically
   setInterval(refreshConfiguration, REFRESH_CONFIG_INTERVAL_MS);
@@ -182,6 +164,37 @@ async function handleCommand(message) {
         .catch(() => {});
     }
   }
+}
+
+export async function writeTagDirect(targetId, value) {
+  let entry = null;
+  let tag = null;
+
+  for (const [clientId, clientEntry] of clients.entries()) {
+    const foundTag = clientEntry.tags.find(
+      (t) => String(t.id) === String(targetId) || t.tag_name === String(targetId)
+    );
+    if (foundTag) {
+      entry = clientEntry;
+      tag = foundTag;
+      break;
+    }
+  }
+
+  if (!entry || !tag) {
+    throw new Error(`Tag not active or not found: ${targetId}`);
+  }
+
+  let val =
+    tag.data_type === "BOOL"
+      ? String(value) === "1" || String(value) === "true"
+      : Number(value);
+
+  console.log(
+    `[plcCollector-${STATION_SLUG}] Direct Write: ${tag.tag_name} → ${val}`,
+  );
+  await entry.client.writeTag(tag, val);
+  return { tag_name: tag.tag_name, value: val };
 }
 
 // ═══════════════════════════════════════════════════════
@@ -429,22 +442,23 @@ async function pollDevice(clientKey, entry) {
     }
 
     // ⚡ SIMPAN ke DB station sendiri
-    try {
-      if (changedValues.length > 0) {
-        await dbPoolPlc.query("INSERT INTO plc_tag_values (tag_id, value) VALUES ?", [
+    if (changedValues.length > 0) {
+      dbPoolPlc
+        .query("INSERT INTO plc_tag_values (tag_id, value) VALUES ?", [
           changedValues,
-        ]);
-        await dbPoolPlc.query(
-          "INSERT INTO plc_tag_latest (tag_id, value) VALUES ? ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW()",
-          [changedValues],
-        );
-      }
-    } catch (dbErr) {
-      console.error(`[plcCollector-${STATION_SLUG}] DB Insert Error:`, dbErr.message);
+        ])
+        .catch(() => {});
     }
 
-    // --- CYCLE CATCHER ---
-    await processCycleCatcher(device);
+    if (batchPayload.length > 0) {
+      const latestValues = batchPayload.map((t) => [t.id, String(t.value)]);
+      dbPoolPlc
+        .query(
+          "INSERT INTO plc_tag_latest (tag_id, value) VALUES ? ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW()",
+          [latestValues],
+        )
+        .catch(() => {});
+    }
 
     // Update status device — hanya jika berubah
     const prevStatus = deviceStatusCache.get(clientKey);
@@ -506,7 +520,7 @@ async function pollDevice(clientKey, entry) {
 // ═══════════════════════════════════════════════════════
 // CHANGE DETECTION
 // ═══════════════════════════════════════════════════════
-const DEADBAND = { REAL: 0.05, INT: 0, DINT: 0, BOOL: 0 };
+const DEADBAND = { REAL: 0.01, INT: 0, DINT: 0, BOOL: 0 };
 
 function hasValueChanged(clientKey, tagId, dataType, newValue) {
   const key = `${clientKey}:${tagId}`;
@@ -541,182 +555,18 @@ function checkThreshold(tagName, value, oldValue = "") {
     console.log(
       `[plcCollector-${STATION_SLUG}] ⚠️ ${tagName}: ${lastState} → ${severity} (${numVal})`,
     );
-    // DB Logging to station_event_logs has been removed as requested.
-  }
-}
 
-// ═══════════════════════════════════════════════════════
-// CYCLE CATCHER (LOGSHEET OTOMATIS)
-// ═══════════════════════════════════════════════════════
-async function processCycleCatcher(device) {
-  const dId = device.id;
-  const currentStepVal = liveDataCache[`CurrentStep[${dId}]`];
-  const statusVal = liveDataCache[`status_overview[${dId}]`];
-  const doorIn = liveDataCache[`Door_in[${dId}]`];
-  const doorOut = liveDataCache[`Door_out[${dId}]`];
-
-  let state = cycleState.get(dId);
-  if (!state) {
-    state = {
-      isCycleRunning: false,
-      cycleStartTime: null,
-      lastStep: null,
-      lastStepTime: null,
-      stepTimeline: [],
-      doorInlet: { closedAt: null, duration: 0 },
-      doorOutlet: { duration: 0 },
-      lastDoorIn: false,
-      lastDoorOut: false,
-      lastSavedCycleId: null,
-      cycleStopTime: null,
-      lastValidCycleData: null
-    };
-    cycleState.set(dId, state);
-  }
-
-  const now = new Date();
-
-  // 1. Door Tracking
-  const isDoorInOpen = (String(doorIn) === "1" || String(doorIn) === "true");
-  if (!isDoorInOpen && state.lastDoorIn) {
-    // Pintu Inlet ditutup
-    state.doorInlet.closedAt = now;
-  }
-  state.lastDoorIn = isDoorInOpen;
-
-  const isDoorOutOpen = (String(doorOut) === "1" || String(doorOut) === "true");
-  if (isDoorOutOpen && !state.lastDoorOut) {
-    // Pintu Outlet dibuka
-    if (state.lastSavedCycleId && state.cycleStopTime) {
-      const unloadDuration = Math.round((now - state.cycleStopTime) / 1000);
-      
-      // Update the database with the unloading duration
-      dbPoolPlc.query(
-        `UPDATE sterilizer_cycle_logs SET door_details = JSON_SET(COALESCE(door_details, '{}'), '$.outlet.duration', ?) WHERE id = ?`,
-        [unloadDuration, state.lastSavedCycleId]
-      ).then(() => {
-        console.log(`[plcCollector-${STATION_SLUG}] Updated Unloading Duration for Cycle ID ${state.lastSavedCycleId}: ${unloadDuration}s`);
-      }).catch(err => {
-        console.error(`[plcCollector-${STATION_SLUG}] Failed to update unloading duration:`, err.message);
-      });
-
-      state.lastSavedCycleId = null;
-    }
-  }
-  state.lastDoorOut = isDoorOutOpen;
-
-  // 2. Cycle Start
-  const stepNum = parseInt(currentStepVal) || 0;
-  
-  // Try to find inlet steam % or boolean state
-  const inletSteamVal = liveDataCache[`ValvePercent_[${dId}]`] || 0;
-  const numInlet = parseFloat(inletSteamVal);
-  const isInlet100 = (!isNaN(numInlet) && numInlet >= 99) || String(inletSteamVal).toLowerCase() === "true" || String(inletSteamVal) === "1";
-
-  // Fallback agar logsheet tidak mati jika pembacaan gagal
-  const isTagMissing = inletSteamVal === 0 && !Object.keys(liveDataCache).some(k => k.toLowerCase().includes("valvepercent"));
-  const canStartCycle = isTagMissing ? (stepNum === 1) : (stepNum === 1 && isInlet100);
-
-  if (!state.isCycleRunning && canStartCycle) {
-    state.isCycleRunning = true;
-    state.cycleStartTime = now;
-    
-    // Hitung durasi Loading (FFB In)
-    if (state.doorInlet.closedAt) {
-      state.doorInlet.duration = Math.round((now - state.doorInlet.closedAt) / 1000);
-    } else {
-      state.doorInlet.duration = 0;
-    }
-
-    state.stepTimeline = [];
-    state.lastStep = stepNum;
-    state.lastStepTime = now;
-    state.lastValidCycleData = { ...liveDataCache };
-  }
-
-  if (state.isCycleRunning && stepNum > 1) {
-    state.lastValidCycleData = { ...liveDataCache };
-  }
-
-  // 3. Step Timeline tracking
-  let isCycleFinished = false;
-
-  if (state.isCycleRunning) {
-    // If step changed, record the duration of the previous step
-    if (stepNum !== state.lastStep) {
-      if (state.lastStep > 0 && state.lastStepTime) {
-        state.stepTimeline.push({
-          step: state.lastStep,
-          start_time: state.lastStepTime,
-          end_time: now,
-          duration: Math.round((now - state.lastStepTime) / 1000)
-        });
-      }
-
-      // Check for Flexible Cycle Stop condition
-      // Jika step melompat kembali ke 1 dari angka berapapun (misal dari 13 atau 15), cycle selesai.
-      if (stepNum === 1 && state.lastStep > 1) {
-        isCycleFinished = true;
-      } 
-      else {
-        state.lastStep = stepNum;
-        state.lastStepTime = now;
-      }
-    }
-  }
-
-  // 4. Cycle Stop (Snapshot & Insert)
-  if (isCycleFinished && state.isCycleRunning) {
-    state.isCycleRunning = false;
-
-    try {
-      const cycleDataJson = JSON.stringify(state.lastValidCycleData || liveDataCache); 
-      const doorDetailsJson = JSON.stringify({
-        inlet: state.doorInlet,
-        outlet: state.doorOutlet
-      });
-      const stepDetailsJson = JSON.stringify(state.stepTimeline);
-
-      let cycleNumber = 1;
-      const todayStr = now.toISOString().split('T')[0];
-      const [rows] = await dbPoolPlc.query(
-        "SELECT MAX(cycle_number) as maxCycle FROM sterilizer_cycle_logs WHERE device_id = ? AND DATE(start_time) = ?",
-        [dId, todayStr]
-      );
-      if (rows.length > 0 && rows[0].maxCycle) {
-        cycleNumber = rows[0].maxCycle + 1;
-      }
-
-      const [insertResult] = await dbPoolPlc.query(
-        `INSERT INTO sterilizer_cycle_logs 
-          (device_id, cycle_number, start_time, end_time, door_details, step_details, cycle_data)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    dbPoolPlc
+      .query(
+        `INSERT INTO station_event_logs (tag_name, old_value, new_value, severity, source)
+         VALUES (?, ?, ?, ?, 'PLC')`,
         [
-          dId, 
-          cycleNumber, 
-          state.cycleStartTime || now, 
-          now, 
-          doorDetailsJson, 
-          stepDetailsJson, 
-          cycleDataJson
-        ]
-      );
-      
-      // Simpan ID & Waktu Stop untuk update Unloading nanti
-      state.lastSavedCycleId = insertResult.insertId;
-      state.cycleStopTime = now;
-
-      console.log(`[plcCollector-${STATION_SLUG}] Cycle Catch! Device ${dId} Cycle ${cycleNumber} saved to DB.`);
-    } catch (e) {
-      console.error(`[plcCollector-${STATION_SLUG}] Cycle Catch Error:`, e.message);
-    }
-
-    // Reset cycle states
-    state.doorInlet = { closedAt: null, duration: 0 };
-    state.doorOutlet = { duration: 0 };
-    state.cycleStartTime = null;
-    state.stepTimeline = [];
-    state.lastValidCycleData = null;
+          tagName,
+          String(oldValue !== undefined ? oldValue : ""),
+          String(numVal),
+          severity,
+        ],
+      )
+      .catch(() => {});
   }
 }
-
