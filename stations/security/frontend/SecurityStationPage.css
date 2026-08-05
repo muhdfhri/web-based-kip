@@ -724,6 +724,35 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+/* Mobile Embed Fullscreen Override (Zero Gaps & Zero Padding) */
+.som-mobile-embed-container,
+.som-mobile-embed-container * {
+    border-radius: 0px !important;
+}
+
+.som-mobile-embed-container .som-patrol-map-section {
+    background: #0f172a !important;
+    border: none !important;
+    border-radius: 0px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+.som-mobile-embed-container .som-section-header,
+.som-mobile-embed-container .leaflet-top.leaflet-left {
+    display: none !important;
+}
+
+/* Ensure Leaflet container itself is 100% square flat */
+.som-mobile-embed-container .leaflet-container {
+    border-radius: 0px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
 .som-section-header {
     display: flex;
     justify-content: space-between;
@@ -1557,3 +1586,74 @@
     background: transparent;
     border: none;
 }
+
+/* ─────────────────────────────────────
+   CCTV GRID SIZE SELECTOR (header)
+───────────────────────────────────── */
+.som-cctv-grid-selector {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.som-grid-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+}
+
+.som-grid-btn:hover {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.som-grid-btn.active {
+    background: #ffdb3b;
+    color: #0f172a;
+    box-shadow: 0 2px 8px rgba(255, 219, 59, 0.35);
+}
+
+.som-grid-btn svg {
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+.som-grid-btn.active svg {
+    opacity: 1;
+}
+
+/* Thin Scrollbar for CCTV Feed Container (14-inch screens) */
+.som-cctv-scrollable::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.som-cctv-scrollable::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+.som-cctv-scrollable::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+.som-cctv-scrollable::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+

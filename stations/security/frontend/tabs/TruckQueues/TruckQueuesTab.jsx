@@ -27,8 +27,52 @@ function TruckQueuesTab() {
   useEffect(() => {
     fetchQueues();
     const interval = setInterval(fetchQueues, 4000);
-    return () => clearInterval(interval);
+
+    // WebSocket listener for real-time speaker audio call & queue list updates
+    const host = window.location.hostname || 'localhost';
+    const wsUrl = `ws://${host}:3200/ws`;
+    let ws;
+    try {
+      ws = new WebSocket(wsUrl);
+      ws.onopen = () => console.log('[WS Web Base] Connected to queue speaker channel');
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload.event === 'queue_called') {
+            if (payload.data) {
+              announceQueue(payload.data);
+              fetchQueues();
+            }
+          } else if (payload.event === 'queue_updated' || payload.event === 'queue_created') {
+            fetchQueues();
+          }
+        } catch (e) {}
+      };
+    } catch (e) {
+      console.error('[WS Web Base] Error connecting:', e);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (ws) ws.close();
+    };
   }, []);
+
+  // ── Helper to resolve photo proof URLs ──
+  const getPhotoUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+    const host = window.location.hostname || 'localhost';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      try {
+        const u = new URL(url);
+        return `http://${host}:3101${u.pathname}`;
+      } catch (e) {
+        return url;
+      }
+    }
+    return `http://${host}:3101${url.startsWith('/') ? '' : '/'}${url}`;
+  };
 
   // ── Web Speech API (TTS Voice Call) ──
   const announceQueue = (q) => {
@@ -368,16 +412,31 @@ function TruckQueuesTab() {
 
                         {/* Classification */}
                         <td style={tdStyle}>
-                          <span style={{
-                            fontSize: '11px',
-                            fontWeight: '800',
-                            background: '#0f172a',
-                            color: '#fbbf24',
-                            padding: '3px 8px',
-                            borderRadius: '4px'
-                          }}>
-                            {classCode}
-                          </span>
+                          {(() => {
+                            const classMap = {
+                              'U': 'FFB UMUM',
+                              'M': 'FFB MITRA',
+                              'C': 'CRUDE PALM OIL',
+                              'K': 'PALM KERNEL',
+                              'S': 'PALM KERNEL SHELL'
+                            };
+                            const label = classMap[classCode] || (q.classification_name && q.classification_name !== classCode ? q.classification_name : '');
+                            const text = label ? `${classCode} - ${label}` : classCode;
+                            return (
+                              <span style={{
+                                fontSize: '11px',
+                                fontWeight: '800',
+                                background: '#0f172a',
+                                color: '#fbbf24',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                letterSpacing: '0.02em',
+                                display: 'inline-block'
+                              }}>
+                                {text}
+                              </span>
+                            );
+                          })()}
                         </td>
 
                         {/* Photo */}
@@ -396,7 +455,12 @@ function TruckQueuesTab() {
                                 gap: '6px'
                               }}
                             >
-                              <img src={photo} alt="Proof" style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
+                              <img 
+                                src={getPhotoUrl(photo)} 
+                                alt="Proof" 
+                                style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} 
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
                               <span style={{ fontSize: '10px', fontWeight: '700', color: '#475569', paddingRight: '4px' }}>View</span>
                             </button>
                           ) : (
@@ -427,7 +491,7 @@ function TruckQueuesTab() {
                             {status === 'WAITING' && (
                               <button
                                 onClick={() => handleStatusUpdate(q.id, 'WEIGH_IN', q)}
-                                title="Panggil truk ke timbangan"
+                                title="Call truck to weigh bridge speaker"
                                 style={{
                                   background: '#0284c7',
                                   color: '#ffffff',
@@ -449,7 +513,8 @@ function TruckQueuesTab() {
                                 CALL WEIGH-IN
                               </button>
                             )}
-                            {(status === 'WEIGH_IN' || status === 'GRADING') && (
+
+                            {status === 'WEIGH_IN' && (
                               <>
                                 <button
                                   onClick={() => handleStatusUpdate(q.id, 'COMPLETED')}
@@ -471,27 +536,51 @@ function TruckQueuesTab() {
                                 </button>
                                 <button
                                   onClick={() => announceQueue(q)}
-                                  title="Panggil ulang via speaker suara"
+                                  title="Repeat speaker call"
                                   style={{
                                     background: '#fff7ed',
                                     color: '#ea580c',
                                     border: '1px solid #ffedd5',
-                                    padding: '6px 8px',
+                                    padding: '6px 10px',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
-                                    fontSize: '12px',
-                                    display: 'flex',
+                                    fontSize: '11px',
+                                    fontWeight: '800',
+                                    display: 'inline-flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
+                                    gap: '4px',
                                     boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                                     transition: 'all 0.15s'
                                   }}
                                 >
                                   <FaVolumeUp />
+                                  RE-CALL
                                 </button>
                               </>
                             )}
-                            {status === 'COMPLETED' && (
+
+                            {status === 'GRADING' && (
+                              <button
+                                onClick={() => handleStatusUpdate(q.id, 'COMPLETED')}
+                                style={{
+                                  background: '#16a34a',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  padding: '6px 12px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '11px',
+                                  fontWeight: '800',
+                                  letterSpacing: '0.02em',
+                                  boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)',
+                                  transition: 'all 0.15s'
+                                }}
+                              >
+                                COMPLETE
+                              </button>
+                            )}
+
+                            {(status === 'COMPLETED' || status === 'CHECKED_OUT') && (
                               <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>DONE</span>
                             )}
                           </div>
@@ -541,7 +630,7 @@ function TruckQueuesTab() {
               </button>
             </div>
             <div style={{ width: '100%', borderRadius: '10px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#000' }}>
-              <img src={selectedPhoto} alt="Driver Proof" style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '400px', objectFit: 'contain' }} />
+              <img src={getPhotoUrl(selectedPhoto)} alt="Driver Proof" style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '400px', objectFit: 'contain' }} />
             </div>
             <button
               onClick={() => setSelectedPhoto(null)}

@@ -74,6 +74,7 @@ import EngineRoomPlcConfig from "@stations/engine-room/PlcConfigView.jsx";
 // import DafOsrPlcConfig from "@stations/daf-osr/PlcConfigView.jsx";
 // import CmrsPlcConfig from "@stations/cmrs/PlcConfigView.jsx";
 // import GradingRampPlcConfig from "@stations/grading-ramp/PlcConfigView.jsx";
+import CamConfigView from "@stations/security/camconfig/CamConfigView.jsx";
 
 // ──────────────────────────────────────
 // Static station → component mappings
@@ -106,7 +107,7 @@ const STATION_PLC_CONFIG_MAP = {
   "Boiler House": BoilerHousePlcConfig,
   "EFB Plant": ComingSoonPage,
   "Engine Room": EngineRoomPlcConfig,
-  "Security": SecurityStationPage,
+  "Security": CamConfigView,
   Weighbridge: ComingSoonPage,
   "Loading Ramp": ComingSoonPage,
   "Oil Clarification Room": ComingSoonPage,
@@ -141,6 +142,7 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
   });
   const [activeMenu, setActiveMenu] = useState("Dashboard");
   const [viewPlcConfig, setViewPlcConfig] = useState(false);
+  const [isCamConfigOpen, setIsCamConfigOpen] = useState(false);
   const [isXooraUnlocked, setIsXooraUnlocked] = useState(false);
   const [stations, setStations] = useState([]);
   const [stationTitles, setStationTitles] = useState([]);
@@ -441,12 +443,13 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
       const StationPlcConfig = STATION_PLC_CONFIG_MAP[activeSubmenu];
 
       if (StationPlcConfig && StationPlcConfig !== ComingSoonPage) {
+        const isShowConfigPage = activeSubmenu === "Security" ? isCamConfigOpen : viewPlcConfig;
         return (
           <>
-            <div style={{ display: viewPlcConfig ? "block" : "none", height: "100%", width: "100%" }}>
+            <div style={{ display: isShowConfigPage ? "block" : "none", height: "100%", width: "100%" }}>
               <StationPlcConfig key={stationSlug} stationSlug={stationSlug} user={user} />
             </div>
-            <div style={{ display: viewPlcConfig ? "none" : "block", height: "100%", width: "100%" }}>
+            <div style={{ display: isShowConfigPage ? "none" : "block", height: "100%", width: "100%" }}>
               <div
                 className={`som-station-container ${(user?.userRole?.toLowerCase() === 'developer' || user?.role?.toLowerCase() === 'developer' || (user?.permissions || []).includes(`Setting:${activeSubmenu}`))
                     ? 'has-setting-permission'
@@ -458,6 +461,8 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
                   user={user}
                   onSelectSubmenu={handleSelectSubmenu}
                   configMode={isXooraUnlocked}
+                  isCamConfigOpen={isCamConfigOpen}
+                  setIsCamConfigOpen={setIsCamConfigOpen}
                 />
               </div>
             </div>
@@ -476,6 +481,8 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
             user={user}
             onSelectSubmenu={handleSelectSubmenu}
             configMode={isXooraUnlocked}
+            isCamConfigOpen={isCamConfigOpen}
+            setIsCamConfigOpen={setIsCamConfigOpen}
           />
         </div>
       );
@@ -549,59 +556,115 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
       {(user?.userRole?.toLowerCase() === "developer" ||
         user?.role?.toLowerCase() === "developer") &&
         isXooraUnlocked && (
-          <button
-            onClick={() => setViewPlcConfig(!viewPlcConfig)}
-            style={{
-              position: "fixed",
-              bottom: "24px",
-              right: "24px",
-              zIndex: 9999,
-              padding: "12px 18px",
-              background: viewPlcConfig
-                ? "#ef4444"
-                : "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "9999px",
-              boxShadow:
-                "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "0.8rem",
-              fontWeight: 800,
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
-              e.currentTarget.style.boxShadow =
-                "0 15px 30px -5px rgba(0, 0, 0, 0.4)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0px) scale(1)";
-              e.currentTarget.style.boxShadow =
-                "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)";
-            }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          <>
+            {activeSubmenu === "Security" && (user?.id === 5 || user?.user_id === 5 || user?.userRole?.toLowerCase() === "developer" || user?.role?.toLowerCase() === "developer") && (
+              <button
+                onClick={() => setIsCamConfigOpen(!isCamConfigOpen)}
+                style={{
+                  position: "fixed",
+                  bottom: "80px",
+                  right: "24px",
+                  zIndex: 9999,
+                  padding: "12px 18px",
+                  background: isCamConfigOpen
+                    ? "#ef4444"
+                    : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "9999px",
+                  boxShadow:
+                    "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(16, 185, 129, 0.4)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "0.8rem",
+                  fontWeight: 800,
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                  e.currentTarget.style.boxShadow =
+                    "0 15px 30px -5px rgba(16, 185, 129, 0.5)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0px) scale(1)";
+                  e.currentTarget.style.boxShadow =
+                    "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(16, 185, 129, 0.4)";
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                {isCamConfigOpen ? "CLOSE CAM CONFIG" : "CAM CONFIG"}
+              </button>
+            )}
+
+            <button
+              onClick={() => setViewPlcConfig(!viewPlcConfig)}
+              style={{
+                position: "fixed",
+                bottom: "24px",
+                right: "24px",
+                zIndex: 9999,
+                padding: "12px 18px",
+                background: viewPlcConfig
+                  ? "#ef4444"
+                  : "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "9999px",
+                boxShadow:
+                  "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "0.8rem",
+                fontWeight: 800,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                e.currentTarget.style.boxShadow =
+                  "0 15px 30px -5px rgba(0, 0, 0, 0.4)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0px) scale(1)";
+                e.currentTarget.style.boxShadow =
+                  "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)";
+              }}
             >
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <line x1="3" y1="9" x2="21" y2="9" />
-              <line x1="9" y1="21" x2="9" y2="9" />
-            </svg>
-            {viewPlcConfig ? "CLOSE" : "PLC INTEGRATION"}
-          </button>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="3" y1="9" x2="21" y2="9" />
+                <line x1="9" y1="21" x2="9" y2="9" />
+              </svg>
+              {viewPlcConfig ? "CLOSE" : "PLC INTEGRATION"}
+            </button>
+          </>
         )}
     </div>
   );

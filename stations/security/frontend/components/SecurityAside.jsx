@@ -61,8 +61,9 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                                         <div className="history-name">{session.guard_name}</div>
                                         <div className="history-meta">
                                             {startTime}{endTime ? ` — ${endTime}` : ' (aktif)'}
-                                            <span className="history-cp-count">
-                                                <FaMapMarkerAlt style={{ fontSize: '9px', marginLeft: '4px' }} /> {session.checkpoint_count}
+                                            <span className="history-cp-count" title={session.checkpoint_names || `${session.checkpoint_count} Checkpoints`}>
+                                                <FaMapMarkerAlt style={{ fontSize: '9px', marginLeft: '4px', marginRight: '3px' }} /> 
+                                                {session.checkpoint_names ? `${session.checkpoint_count} (${session.checkpoint_names})` : session.checkpoint_count}
                                             </span>
                                         </div>
                                     </div>
@@ -82,15 +83,6 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                             </div>
                         );
                     })}
-                </div>
-            </div>
-
-            {/* SYSTEM ALERT */}
-            <div className="som-patrol-card alert-card">
-                <div className="som-card-header"><FaShieldAlt style={{ marginRight: '6px', fontSize: '11px' }} />SYSTEM ALERT</div>
-                <div className="som-empty-alerts">
-                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="#10b981" strokeWidth="2" fill="none"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                    <span style={{ color: '#10b981', fontWeight: 800 }}>SECURE</span>
                 </div>
             </div>
         </aside>

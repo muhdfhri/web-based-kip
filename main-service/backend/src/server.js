@@ -38,9 +38,16 @@ app.use('/api/activity', activityRoutes);
 app.use('/api/config', configRoutes);
 
 // ── Health ──
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'main-service', mill: 'KIP' });
+const getHealthResponse = () => ({
+  success: true,
+  message: 'API is reachable',
+  server: 'Node.js Express',
+  service: 'main-service',
+  port: PORT
 });
+
+app.get('/health', (_req, res) => res.json(getHealthResponse()));
+app.get('/api/health', (_req, res) => res.json(getHealthResponse()));
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[main-service] listening on port ${PORT}`);

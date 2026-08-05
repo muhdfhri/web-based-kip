@@ -40,9 +40,16 @@ app.use('/api/upload', uploadRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ── Health ──
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', station: STATION_SLUG, module: 'security' });
+const getHealthResponse = () => ({
+  success: true,
+  message: 'API is reachable',
+  server: 'Node.js Express',
+  service: `security-station (${STATION_SLUG})`,
+  port: PORT
 });
+
+app.get('/health', (_req, res) => res.json(getHealthResponse()));
+app.get('/api/health', (_req, res) => res.json(getHealthResponse()));
 
 // ── Start Server ──
 app.listen(PORT, '0.0.0.0', () => {

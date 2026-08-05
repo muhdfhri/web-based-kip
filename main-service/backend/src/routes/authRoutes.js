@@ -84,6 +84,40 @@ router.get('/verify', requireAuth, (req, res) => {
   res.json({ valid: true, user: req.user });
 });
 
+// POST /auth/fcm-token
+router.post('/fcm-token', requireAuth, async (req, res) => {
+  const { token, deviceInfo } = req.body;
+  const userId = req.user.userId;
+  if (!token) {
+    return res.status(400).json({ message: 'Token is required' });
+  }
+  try {
+    // Delete existing token if registered to avoid duplicate notifications
+    await dbPool.query('DELETE FROM user_fcm_tokens WHERE token = ?', [token]);
+    // Insert token record
+    await dbPool.query(
+      'INSERT INTO user_fcm_tokens (user_id, token, device_info) VALUES (?, ?, ?)',
+      [userId, token, deviceInfo || null]
+    );
+    res.json({ success: true, message: 'FCM token registered successfully' });
+  } catch (error) {
+    console.error('[auth] fcm-token error:', error.message);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// DELETE /auth/fcm-token
+router.delete('/fcm-token', requireAuth, async (req, res) => {
+  const userId = req.user.userId;
+  try {
+    await dbPool.query('DELETE FROM user_fcm_tokens WHERE user_id = ?', [userId]);
+    res.json({ success: true, message: 'FCM tokens deleted successfully' });
+  } catch (error) {
+    console.error('[auth] delete fcm-token error:', error.message);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // PUT /auth/profile
 router.put('/profile', requireAuth, async (req, res) => {
   const { username, positionTitle, companyName, newPassword } = req.body;

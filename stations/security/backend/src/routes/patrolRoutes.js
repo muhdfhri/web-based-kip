@@ -24,6 +24,88 @@ const getShiftStartTimeStr = () => {
     return `${startOfDay.getFullYear()}-${pad(startOfDay.getMonth() + 1)}-${pad(startOfDay.getDate())} ${pad(startOfDay.getHours())}:${pad(startOfDay.getMinutes())}:${pad(startOfDay.getSeconds())}`;
 };
 
+// Ensure security_map_settings table exists & has default factory row
+const initMapSettingsTable = async () => {
+  try {
+    await dbPool.query(`
+      CREATE TABLE IF NOT EXISTS security_map_settings (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        factory_name VARCHAR(100) DEFAULT 'Pabrik SKL',
+        center_latitude DECIMAL(10, 8) NULL,
+        center_longitude DECIMAL(11, 8) NULL,
+        default_zoom INT NULL,
+        default_bearing INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+  } catch (err) {
+    console.error('[patrolRoutes] Failed to initialize security_map_settings table:', err);
+  }
+};
+initMapSettingsTable();
+
+/**
+ * GET /api/security/patrol/map-settings
+ * Fetch factory map settings (latitude, longitude, zoom, bearing)
+ */
+router.get('/map-settings', async (req, res) => {
+  try {
+    const [rows] = await dbPool.query('SELECT * FROM security_map_settings ORDER BY id ASC LIMIT 1');
+    if (rows.length > 0) {
+      return res.json(rows[0]);
+    }
+    res.json({
+      center_latitude: 3.683095,
+      center_longitude: 98.704352,
+      default_zoom: 18,
+      default_bearing: 0
+    });
+  } catch (error) {
+    console.error('Error fetching map settings:', error);
+    res.status(500).json({ error: 'Failed to fetch map settings' });
+  }
+});
+
+/**
+ * POST /api/security/patrol/map-settings
+ * Update factory map settings (latitude, longitude, zoom, bearing)
+ */
+router.post('/map-settings', async (req, res) => {
+  try {
+    const { center_latitude, center_longitude, default_zoom, default_bearing, factory_name } = req.body;
+    
+    const lat = parseFloat(center_latitude) || 3.683095;
+    const lng = parseFloat(center_longitude) || 98.704352;
+    const zoom = parseInt(default_zoom) || 18;
+    const bearing = parseInt(default_bearing) || 0;
+    const fname = factory_name || 'Pabrik SKL';
+
+    const [rows] = await dbPool.query('SELECT id FROM security_map_settings ORDER BY id ASC LIMIT 1');
+    if (rows.length > 0) {
+      await dbPool.query(`
+        UPDATE security_map_settings 
+        SET center_latitude = ?, center_longitude = ?, default_zoom = ?, default_bearing = ?, factory_name = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `, [lat, lng, zoom, bearing, fname, rows[0].id]);
+    } else {
+      await dbPool.query(`
+        INSERT INTO security_map_settings (factory_name, center_latitude, center_longitude, default_zoom, default_bearing)
+        VALUES (?, ?, ?, ?, ?)
+      `, [fname, lat, lng, zoom, bearing]);
+    }
+
+    res.json({
+      success: true,
+      message: 'Map settings updated successfully',
+      settings: { center_latitude: lat, center_longitude: lng, default_zoom: zoom, default_bearing: bearing, factory_name: fname }
+    });
+  } catch (error) {
+    console.error('Error updating map settings:', error);
+    res.status(500).json({ error: 'Failed to update map settings' });
+  }
+});
+
 /**
  * GET /api/security/patrol/active
  * Fetch currently active patrols (guards)
@@ -43,11 +125,8 @@ const getActiveGuardsHandler = async (req, res) => {
         gs.latitude,
         gs.longitude
       FROM security_patrol_sessions s
-      JOIN security_guards_status gs ON gs.user_id = s.guard_id
+      LEFT JOIN security_guards_status gs ON gs.user_id = s.guard_id
       WHERE s.status = 'active' 
-        AND gs.status = 'active'
-        AND gs.latitude IS NOT NULL 
-        AND gs.longitude IS NOT NULL
       ORDER BY s.started_at DESC
     `);
     res.json(rows);
@@ -59,6 +138,53 @@ const getActiveGuardsHandler = async (req, res) => {
 
 router.get('/active', getActiveGuardsHandler);
 router.get('/guards', getActiveGuardsHandler);
+
+/**
+ * GET /api/security/patrol/sessions/active
+ * Fetch the active patrol session for the currently authenticated guard
+ */
+router.get('/sessions/active', async (req, res) => {
+  let guard_id = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.decode(token);
+      if (decoded && decoded.userId) guard_id = decoded.userId;
+    } catch (_) {}
+  }
+
+  if (!guard_id) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    // Cari sesi patroli yang aktif untuk guard_id ini
+    const [sessions] = await dbPool.query(
+      'SELECT * FROM security_patrol_sessions WHERE guard_id = ? AND status = "active" ORDER BY id DESC LIMIT 1',
+      [guard_id]
+    );
+
+    if (sessions.length === 0) {
+      return res.json(null);
+    }
+
+    const session = sessions[0];
+
+    // Ambil semua checkpoint yang sudah disubmit di sesi ini
+    const [checkpoints] = await dbPool.query(
+      'SELECT * FROM security_session_checkpoints WHERE session_id = ? ORDER BY verified_at ASC',
+      [session.id]
+    );
+
+    session.checkpoints = checkpoints;
+
+    res.json(session);
+  } catch (error) {
+    console.error('Error fetching active guard session:', error);
+    res.status(500).json({ error: 'Failed to fetch active session' });
+  }
+});
 
 /**
  * GET /api/security/patrol/sessions
@@ -118,18 +244,20 @@ router.post('/sessions/start', async (req, res) => {
   }
   
   try {
-    // Automatically fetch guard_name from mewah_auth if not provided
-    if (!guard_name) {
-      try {
-        const [userRows] = await dbPool.query('SELECT username FROM mewah_auth.users WHERE id = ?', [user_id]);
-        if (userRows.length > 0) {
-          guard_name = userRows[0].username;
-        } else {
-          guard_name = `Guard-${user_id}`;
-        }
-      } catch (err) {
-        guard_name = `Guard-${user_id}`;
+    // Automatically fetch guard_name & fullName from mewah_auth if not provided
+    let full_name = 'Security Officer';
+    try {
+      const [userRows] = await dbPool.query('SELECT username, fullName FROM mewah_auth.users WHERE id = ?', [user_id]);
+      if (userRows.length > 0) {
+        guard_name = userRows[0].username;
+        full_name = userRows[0].fullName || userRows[0].username;
+      } else {
+        if (!guard_name) guard_name = `Guard-${user_id}`;
+        full_name = guard_name;
       }
+    } catch (err) {
+      if (!guard_name) guard_name = `Guard-${user_id}`;
+      full_name = guard_name;
     }
 
     // Auto-close any previous active session for this guard to maintain clean single-session lifecycle
@@ -154,8 +282,8 @@ router.post('/sessions/start', async (req, res) => {
             const initLngNum = parseFloat(initial_lng);
             
             await dbPool.query(
-              'INSERT INTO security_guards_status (user_id, status, latitude, longitude, last_update) VALUES (?, "active", ?, ?, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE status="active", latitude=VALUES(latitude), longitude=VALUES(longitude), last_update=CURRENT_TIMESTAMP',
-              [user_id, initLatNum, initLngNum]
+              'INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) VALUES (?, ?, ?, "active", ?, ?, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE status="active", latitude=VALUES(latitude), longitude=VALUES(longitude), last_update=CURRENT_TIMESTAMP',
+              [user_id, guard_name, full_name, initLatNum, initLngNum]
             );
 
             // Simpan sebagai titik PERTAMA di tracks untuk sesi baru ini
@@ -166,8 +294,8 @@ router.post('/sessions/start', async (req, res) => {
         } else {
             // Jika belum ada koordinat saat tekan start: RESET lat & lng ke NULL agar tidak memakai lokasi sesi lama!
             await dbPool.query(
-              'INSERT INTO security_guards_status (user_id, status, latitude, longitude, last_update) VALUES (?, "active", NULL, NULL, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE status="active", latitude=NULL, longitude=NULL, last_update=CURRENT_TIMESTAMP',
-              [user_id]
+              'INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) VALUES (?, ?, ?, "active", NULL, NULL, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE status="active", latitude=NULL, longitude=NULL, last_update=CURRENT_TIMESTAMP',
+              [user_id, guard_name, full_name]
             );
         }
     } catch (e) {
@@ -326,7 +454,7 @@ router.post('/checkpoints', async (req, res) => {
 
     // 🚀 AUTOMATIC ANOMALY INCIDENT ROUTING: If notes exist (finding recorded during patrol checkpoint),
     // automatically generate an Incident Report for Operator Validation & Maintenance Ticketing!
-    if (verification_notes && verification_notes.trim().length > 0) {
+    if (verification_notes && verification_notes.trim().length > 0 && !verification_notes.trim().startsWith('Checkpoint:')) {
       try {
         let guard_name = 'Security Officer';
         if (guard_id) {
@@ -335,13 +463,82 @@ router.post('/checkpoints', async (req, res) => {
         }
 
         const incCode = `INC-${Date.now()}`;
+        
+        // 1. Resolve dynamic station slug from mewah_config.station_registry
+        let station_slug = station_name.toLowerCase().replace(/\s+/g, '-');
+        let regRows = [];
+        try {
+          const [rows] = await dbPool.query('SELECT slug, title FROM mewah_config.station_registry WHERE title = ? OR slug = ?', [station_name, station_name]);
+          regRows = rows;
+          if (regRows.length > 0) station_slug = regRows[0].slug;
+        } catch (err) {
+          console.error('[INCIDENT ROUTER] Error resolving station slug:', err);
+        }
+
+        // Read priority from request body (default to MEDIUM if not specified or invalid)
+        const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+        let reqPriority = (req.body.priority || 'MEDIUM').toUpperCase();
+        if (!validPriorities.includes(reqPriority)) reqPriority = 'MEDIUM';
+
+        // 2. Save incident ticket to database using the resolved slug and selected priority
         await dbPool.query(
           `INSERT INTO security_incidents 
            (incident_code, incident_type, location, reported_by, reported_by_name, status, priority, description, photo_path, created_at) 
-           VALUES (?, 'Patrol Anomaly Finding', ?, ?, ?, 'SUBMITTED', 'MEDIUM', ?, ?, CURRENT_TIMESTAMP)`,
-          [incCode, station_name, guard_id || 1, guard_name, verification_notes.trim(), verification_photo || null]
+           VALUES (?, 'Patrol Anomaly Finding', ?, ?, ?, 'SUBMITTED', ?, ?, ?, CURRENT_TIMESTAMP)`,
+          [incCode, station_slug, guard_id || 1, guard_name, reqPriority, verification_notes.trim(), verification_photo || null]
         );
-        console.log(`[INCIDENT ROUTER] Auto-created incident ticket ${incCode} for station: ${station_name}`);
+        console.log(`[INCIDENT ROUTER] Auto-created incident ticket ${incCode} [Priority: ${reqPriority}] for station slug: ${station_slug}`);
+
+        // 3. Broadcast WebSocket event to maintenance-service (Port 3200)
+        const http = await import('http');
+        const postData = JSON.stringify({
+          event: 'ticket_created',
+          data: {
+            id: incCode,
+            ticketNumber: incCode,
+            station: station_slug,
+            priority: reqPriority,
+            status: 'pending',
+            equipment: 'Patrol Anomaly'
+          }
+        });
+
+        const postReq = http.request('http://localhost:3200/api/maintenance/notify-ticket', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+          }
+        }, (postRes) => {
+          console.log(`[INCIDENT ROUTER] WS Broadcast notify-ticket status: ${postRes.statusCode}`);
+        });
+        postReq.on('error', (err) => {
+          console.error('[INCIDENT ROUTER] Failed to send WS notification:', err.message);
+        });
+        postReq.write(postData);
+        postReq.end();
+
+        // 4. Retrieve and log FCM tokens for Operator notification routing
+        try {
+          const displayStation = regRows.length > 0 ? regRows[0].title : station_name;
+          const [operatorRows] = await dbPool.query(
+            `SELECT DISTINCT ut.token, u.username
+             FROM mewah_auth.user_permissions up
+             JOIN mewah_auth.permissions p ON up.permission_id = p.id
+             JOIN mewah_auth.users u ON up.user_id = u.id
+             JOIN mewah_auth.user_fcm_tokens ut ON u.id = ut.user_id
+             WHERE p.slug LIKE ?`,
+            [`%:${displayStation}%`]
+          );
+          if (operatorRows.length > 0) {
+            for (const row of operatorRows) {
+              console.log(`[FCM DISPATCH] Sending push notification to operator ${row.username} at token: ${row.token}`);
+            }
+          }
+        } catch (fcmErr) {
+          console.error('[INCIDENT ROUTER] Error logging FCM tokens:', fcmErr);
+        }
+
       } catch (incErr) {
         console.error('[INCIDENT ROUTER] Error auto-creating incident ticket:', incErr);
       }
@@ -349,11 +546,20 @@ router.post('/checkpoints', async (req, res) => {
     
     // Auto update guard status location (use UPSERT with subquery for user_id)
     try {
+        let guard_name = 'security1';
+        let full_name = 'Security Officer';
+        if (guard_id) {
+          const [uRows] = await dbPool.query('SELECT username, fullName FROM mewah_auth.users WHERE id = ?', [guard_id]);
+          if (uRows.length > 0) {
+            guard_name = uRows[0].username;
+            full_name = uRows[0].fullName || uRows[0].username;
+          }
+        }
         await dbPool.query(`
-          INSERT INTO security_guards_status (user_id, status, latitude, longitude, last_update) 
-          VALUES (?, "active", ?, ?, CURRENT_TIMESTAMP)
+          INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) 
+          VALUES (?, ?, ?, "active", ?, ?, CURRENT_TIMESTAMP)
           ON DUPLICATE KEY UPDATE status="active", latitude=VALUES(latitude), longitude=VALUES(longitude), last_update=CURRENT_TIMESTAMP
-        `, [guard_id, latitude, longitude]);
+        `, [guard_id, guard_name, full_name, latitude, longitude]);
     } catch (e) {
         console.error('Error updating guard status location:', e);
     }
@@ -479,14 +685,23 @@ router.post('/location', async (req, res) => {
 
     // Selalu update guard status/posisi avatar (bahkan jika track di-skip)
     // sehingga icon security SELALU muncul di peta
-    const [sessions] = await dbPool.query('SELECT guard_id FROM security_patrol_sessions WHERE id = ?', [session_id]);
+    const [sessions] = await dbPool.query('SELECT guard_id, guard_name FROM security_patrol_sessions WHERE id = ?', [session_id]);
     if (sessions.length > 0) {
        const guard_id = sessions[0].guard_id;
+       const guard_name = sessions[0].guard_name || 'Security Officer';
+       let full_name = guard_name;
+       try {
+           const [userRows] = await dbPool.query('SELECT fullName FROM mewah_auth.users WHERE id = ?', [guard_id]);
+           if (userRows.length > 0 && userRows[0].fullName) {
+               full_name = userRows[0].fullName;
+           }
+       } catch (_) {}
+       
        await dbPool.query(`
-          INSERT INTO security_guards_status (user_id, status, latitude, longitude, last_update) 
-          VALUES (?, "active", ?, ?, CURRENT_TIMESTAMP)
+          INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) 
+          VALUES (?, ?, ?, "active", ?, ?, CURRENT_TIMESTAMP)
           ON DUPLICATE KEY UPDATE status="active", latitude=VALUES(latitude), longitude=VALUES(longitude), last_update=CURRENT_TIMESTAMP
-        `, [guard_id, lat, lng]);
+        `, [guard_id, guard_name, full_name, lat, lng]);
     }
 
     res.status(201).json({ success: true, message: shouldSaveToTrack ? 'Location track recorded' : 'Guard position updated (track filtered)' });
@@ -565,6 +780,7 @@ router.get('/history', async (req, res) => {
       SELECT 
         s.id, s.guard_name, s.status, s.started_at, s.completed_at,
         (SELECT COUNT(*) FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_count,
+        (SELECT GROUP_CONCAT(DISTINCT c.station_name SEPARATOR ', ') FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_names,
         (SELECT COUNT(*) FROM security_patrol_tracks t WHERE t.session_id = s.id) as track_count
       FROM security_patrol_sessions s
       WHERE s.started_at >= ?

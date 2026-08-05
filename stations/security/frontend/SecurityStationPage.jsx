@@ -9,7 +9,7 @@ import SecurityAside from './components/SecurityAside.jsx'
 import ProofModal from './components/ProofModal.jsx'
 import CctvModal from './components/CctvModal.jsx'
 
-function SecurityStationPage() {
+function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen }) {
     // ── Detect ?mode=mobile from URL — render bare Patrol Map for Flutter WebView ──
     const urlParams = new URLSearchParams(window.location.search);
     const isMobileEmbed = urlParams.get('mode') === 'mobile';
@@ -24,13 +24,13 @@ function SecurityStationPage() {
 
     const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString())
     const [activeTab, setActiveTab] = useState('dashboard')
-    
+
     // Shared State for Modals & Views
     const [activeProof, setActiveProof] = useState(null)
     const [proofIndex, setProofIndex] = useState(0)
     const [selectedCctv, setSelectedCctv] = useState(null)
     const [cctvCameras, setCctvCameras] = useState([])
-    
+
     // Live Data State
     const [patrolGuards, setPatrolGuards] = useState([])
     const [stationCheckpoints, setStationCheckpoints] = useState([])
@@ -48,38 +48,46 @@ function SecurityStationPage() {
     }, [])
 
     // Fetch CCTV Cameras dynamically from database
-    useEffect(() => {
+    const fetchCctvCameras = () => {
         const token = localStorage.getItem('kip_token');
         fetch('/api/security/cctv', {
             headers: { 'Authorization': `Bearer ${token}` }
         })
-        .then(res => res.json())
-        .then(json => {
-            if (json.success) {
-                setCctvCameras(json.data);
-            }
-        })
-        .catch(err => console.error('[SecurityStationPage] Failed to fetch CCTV:', err));
+            .then(res => res.json())
+            .then(json => {
+                if (Array.isArray(json)) {
+                    setCctvCameras(json);
+                } else if (json.success && Array.isArray(json.data)) {
+                    setCctvCameras(json.data);
+                }
+            })
+            .catch(err => console.error('[SecurityStationPage] Failed to fetch CCTV:', err));
+    };
+
+    useEffect(() => {
+        fetchCctvCameras();
     }, []);
+
 
     // Fetch Live Patrol Data
     useEffect(() => {
         const fetchPatrolData = async () => {
             try {
                 const token = localStorage.getItem('kip_token');
+                const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
                 const [guardsRes, checkpointsRes, stationsRes, tracksRes, historyRes] = await Promise.all([
-                    fetch('/api/security/patrol/active', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/security/patrol/checkpoints', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/security/patrol/stations', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/security/patrol/tracks', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/security/patrol/history', { headers: { 'Authorization': `Bearer ${token}` } })
+                    fetch('/api/security/patrol/active', { headers: authHeaders }),
+                    fetch('/api/security/patrol/checkpoints', { headers: authHeaders }),
+                    fetch('/api/security/patrol/stations', { headers: authHeaders }),
+                    fetch('/api/security/patrol/tracks', { headers: authHeaders }),
+                    fetch('/api/security/patrol/history', { headers: authHeaders })
                 ]);
                 const guardsData = await guardsRes.json();
                 const checkpointsData = await checkpointsRes.json();
                 const stationsData = await stationsRes.json();
                 const tracksData = await tracksRes.json();
                 const historyData = await historyRes.json();
-                
+
                 if (Array.isArray(guardsData)) setPatrolGuards(guardsData);
                 if (Array.isArray(checkpointsData)) setStationCheckpoints(checkpointsData);
                 if (Array.isArray(stationsData)) setMapStations(stationsData);
@@ -100,7 +108,7 @@ function SecurityStationPage() {
     // ══════════════════════════════════════════════════════════════
     if (isMobileEmbed) {
         return (
-            <div style={{
+            <div className="som-mobile-embed-container" style={{
                 width: '100vw',
                 height: '100vh',
                 overflow: 'hidden',
@@ -109,6 +117,7 @@ function SecurityStationPage() {
                 top: 0, left: 0, right: 0, bottom: 0,
             }}>
                 <PatrolMapTab
+                    isMobileEmbed={true}
                     mapStations={mapStations}
                     patrolGuards={patrolGuards}
                     stationCheckpoints={stationCheckpoints}
@@ -161,13 +170,18 @@ function SecurityStationPage() {
                             setReplaySessionId={setReplaySessionId}
                         />
                     )}
-                    {activeTab === 'cctv' && <CctvFeedTab setSelectedCctv={setSelectedCctv} cctvCameras={cctvCameras} />}
+                    {activeTab === 'cctv' && (
+                        <CctvFeedTab
+                            setSelectedCctv={setSelectedCctv}
+                            cctvCameras={cctvCameras}
+                        />
+                    )}
                     {activeTab === 'queues' && <TruckQueuesTab />}
                 </div>
 
                 {activeTab === 'overview' && (
-                    <SecurityAside 
-                        patrolGuards={patrolGuards} 
+                    <SecurityAside
+                        patrolGuards={patrolGuards}
                         stationCheckpoints={stationCheckpoints}
                         patrolHistory={patrolHistory}
                         replaySessionId={replaySessionId}
@@ -176,7 +190,7 @@ function SecurityStationPage() {
                 )}
             </main>
 
-            <ProofModal 
+            <ProofModal
                 activeProof={activeProof}
                 setActiveProof={setActiveProof}
                 proofIndex={proofIndex}
@@ -184,7 +198,7 @@ function SecurityStationPage() {
                 currentTime={currentTime}
             />
 
-            <CctvModal 
+            <CctvModal
                 selectedCctv={selectedCctv}
                 setSelectedCctv={setSelectedCctv}
             />

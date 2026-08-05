@@ -106,6 +106,24 @@ module.exports = {
       error_file: "./logs/security-station.err.log",
       out_file: "./logs/security-station.out.log",
     },
+    {
+      name: "security-ai-service",
+      script: "app.py",
+      interpreter: "python",
+      cwd: "./stations/security/ai/backend",
+      watch: false,
+      autorestart: true,
+      max_memory_restart: "500M",
+      env: {
+        PORT: 4101,
+        FLASK_ENV: "production",
+        DB_NAME_AI: "mewah_security_ai",
+        REDIS_URL: "redis://127.0.0.1:6379"
+      },
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
+      error_file: "./logs/security-ai.err.log",
+      out_file: "./logs/security-ai.out.log",
+    },
     /*
     {
       name: "weighbridge-station",
