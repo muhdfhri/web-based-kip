@@ -12,11 +12,25 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const showAll = req.query.all === 'true' || req.query.all === '1';
-    const sql = showAll
-      ? 'SELECT id, camera_name, location, rtsp_url, is_active, sort_order, created_at FROM cctv_cameras ORDER BY sort_order ASC, id ASC'
-      : 'SELECT id, camera_name, location, rtsp_url, is_active, sort_order, created_at FROM cctv_cameras WHERE is_active = 1 ORDER BY sort_order ASC, id ASC';
+    const { location, search } = req.query;
+    const filterKeyword = (location || search || '').trim();
 
-    const [rows] = await dbPool.query(sql);
+    let sql = 'SELECT id, camera_name, location, rtsp_url, is_active, sort_order, created_at FROM cctv_cameras WHERE 1=1';
+    const params = [];
+
+    if (!showAll) {
+      sql += ' AND is_active = 1';
+    }
+
+    if (filterKeyword) {
+      sql += ' AND (LOWER(location) LIKE ? OR LOWER(camera_name) LIKE ?)';
+      const pattern = `%${filterKeyword.toLowerCase()}%`;
+      params.push(pattern, pattern);
+    }
+
+    sql += ' ORDER BY sort_order ASC, id ASC';
+
+    const [rows] = await dbPool.query(sql, params);
     const hostHeader = req.headers.host ? req.headers.host : 'localhost:3101';
     const protocol = req.protocol || 'http';
     const cameras = rows.map(cam => ({

@@ -38,7 +38,7 @@ const STATIONS = [
 // Stations that are unlocked and accessible
 const UNLOCKED_STATIONS = [
   // 'Security',
-  // 'Weighbridge',
+  'Weighbridge',
   // 'Grading Ramp',
   // 'Loading Ramp',
   'Sterilizer Station',
@@ -105,15 +105,12 @@ function DashboardHeader({
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordSuccess, setPasswordSuccess] = useState(false)
 
-  // ... (rest of useEffects remain the same, so we need to grab the middle chunk to preserve it)
   const [isEditingProfile, setIsEditingProfile] = useState(false)
 
   // Profile edit states
   const [username, setUsername] = useState(user.username || '')
   const [positionTitle, setPositionTitle] = useState(user.positionTitle || '')
   const [companyName, setCompanyName] = useState(user.companyName || '')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
   const [profileError, setProfileError] = useState('')
 
@@ -154,6 +151,43 @@ function DashboardHeader({
       setOpenDropdown(item)
     }
   }
+
+  const handleChangePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    setPasswordLoading(true);
+    try {
+      const res = await fetch('/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword })
+      });
+      if (res.ok) {
+        setPasswordSuccess(true);
+        setTimeout(() => {
+          setShowChangePassword(false);
+          setPasswordSuccess(false);
+          setNewPassword('');
+          setConfirmPassword('');
+        }, 1500);
+      } else {
+        const data = await res.json();
+        setPasswordError(data.message || 'Failed to change password');
+      }
+    } catch (err) {
+      setPasswordError('Network error');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -306,13 +340,13 @@ function DashboardHeader({
                               </div>
                             )}
                           </div>
-                        )
-                      }
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </li>
-            )
+            );
           })}
         </ul>
         <div className="som-dashboard-nav-right">
@@ -327,7 +361,7 @@ function DashboardHeader({
                 setShowChangePassword(false); // Reset when toggling
               }}
             >
-              <span className="som-profile-initial">{(user.username || 'U').charAt(0).toUpperCase()}</span>
+              <span className="som-profile-initial">{(user?.username || 'U').charAt(0).toUpperCase()}</span>
             </button>
             {showProfileMenu && (
               <div className="som-profile-menu" style={{ width: '220px', padding: '15px' }}>
@@ -389,13 +423,13 @@ function DashboardHeader({
                 ) : (
                   <>
                     <div className="som-profile-info">
-                      <span className="som-profile-name">{user.username}</span>
-                      <span className="som-profile-meta">{user.positionTitle}</span>
+                      <span className="som-profile-name">{user?.username}</span>
+                      <span className="som-profile-meta">{user?.positionTitle}</span>
                     </div>
                     <div className="som-profile-divider"></div>
                     <div className="som-profile-actions" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <button className="som-profile-secondary" onClick={() => setShowChangePassword(true)}>Change Password</button>
-                      <button className="som-profile-secondary" onClick={() => onLogoutSuccess()}>Logout</button>
+                      <button className="som-profile-secondary" onClick={() => onLogoutSuccess && onLogoutSuccess()}>Logout</button>
                     </div>
                   </>
                 )}

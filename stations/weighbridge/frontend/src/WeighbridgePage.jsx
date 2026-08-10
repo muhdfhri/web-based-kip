@@ -1,17 +1,5 @@
 import { useState, useEffect } from 'react'
 import './WeighbridgePage.css'
-import cctv1 from './assets/cctv1_weighbridge.png'
-import cctv2 from './assets/cctv2_weighbridge.png'
-import cctv3 from './assets/cctv3_weighbridge.png'
-import cctv4 from './assets/cctv4_weighbridge.png'
-
-const RECENT_TRANSACTIONS = [
-    { id: 'WB-7821', truck: 'BK 9122 CJ', product: 'FFB (Fresh Fruit Bunch)', supplier: 'Estate Alpha', timeIn: '16:40', weightIn: 28450, weightOut: 8120, net: 20330 },
-    { id: 'WB-7820', truck: 'BM 8831 AA', product: 'CPO (Crude Palm Oil)', supplier: 'Bulking Station', timeIn: '16:15', weightIn: 32100, weightOut: 11200, net: 20900 },
-    { id: 'WB-7819', truck: 'BK 7722 BB', product: 'PK (Palm Kernel)', supplier: 'Kernel Plant', timeIn: '15:50', weightIn: 18400, weightOut: 6500, net: 11900 },
-    { id: 'WB-7818', truck: 'BK 1124 AC', product: 'FFB (Fresh Fruit Bunch)', supplier: 'Independent Farmer 4', timeIn: '15:32', weightIn: 12400, weightOut: 4200, net: 8200 },
-    { id: 'WB-7817', truck: 'BM 9921 ZA', product: 'FFB (Fresh Fruit Bunch)', supplier: 'Estate Bravo', timeIn: '15:10', weightIn: 29100, weightOut: 8350, net: 20750 },
-]
 
 // ── Helper: format Date → "DD/MM/YYYY HH:MM:SS" ──
 function formatTimestamp(date) {
@@ -25,9 +13,18 @@ function formatTimestamp(date) {
 }
 
 function WeighbridgePage() {
-    const [currentWeight, setCurrentWeight] = useState(24560)
+    const [currentWeight, setCurrentWeight] = useState(0)
     const [isStable, setIsStable] = useState(true)
     const [timestamp, setTimestamp] = useState(formatTimestamp(new Date()))  // ← realtime
+
+    // Security Truck Queue, CCTV, Throughput & Scale State
+    const [queues, setQueues] = useState([])
+    const [cctvs, setCctvs] = useState([])
+    const [throughput, setThroughput] = useState({ ffbReceived: 0, cpoDispatch: 0, pkDispatch: 0, pksDispatch: 0 })
+    const [scalesStatus, setScalesStatus] = useState({
+        scale1: { inTruck: '-', inWeight: 0, outTruck: '-', outWeight: 0 },
+        scale2: { inTruck: '-', inWeight: 0, outTruck: '-', outWeight: 0 }
+    })
 
     // Realtime clock — update setiap detik
     useEffect(() => {
@@ -37,234 +34,443 @@ function WeighbridgePage() {
         return () => clearInterval(clockInterval)
     }, [])
 
-    // Simulate fluctuating weight if not stable
+    // Fetch Security Queue Data, Weighbridge Filtered CCTVs, Throughput, and Scales Status (every 5 seconds)
     useEffect(() => {
-        const interval = setInterval(() => {
-            if (!isStable) {
-                setCurrentWeight(prev => prev + Math.floor(Math.random() * 20 - 10))
+        let isMounted = true
+        const fetchData = async () => {
+            // 1. Fetch Queues
+            try {
+                const qRes = await fetch('/api/security/queues')
+                if (qRes.ok) {
+                    const qJson = await qRes.json()
+                    if (qJson.success && isMounted) setQueues(qJson.data || [])
+                }
+            } catch (err) {
+                console.warn('[Weighbridge] Queue fetch fallback:', err)
             }
-        }, 100)
-        return () => clearInterval(interval)
-    }, [isStable])
 
-    const stats = {
-        waitingOutside: 20,
-        weighing: 4,
-        grading: 8,
-        ffbReceived: 234,
-        cpoDispatched: 120,
-        pkDispatched: 40,
-        pksDispatched: 80
-    }
+            // 2. Fetch CCTVs
+            try {
+                const cRes = await fetch('/api/security/cctv?location=weighbridge')
+                if (cRes.ok) {
+                    const cJson = await cRes.json()
+                    if (cJson.success && isMounted) {
+                        const wbCameras = (cJson.data || []).filter(cam => {
+                            const loc = (cam.location || '').toLowerCase()
+                            const name = (cam.camera_name || '').toLowerCase()
+                            return loc.includes('weighbridge') || loc.includes('wb') || name.includes('weighbridge') || name.includes('wb')
+                        })
+                        setCctvs(wbCameras)
+                    }
+                }
+            } catch (err) {
+                console.warn('[Weighbridge] CCTV fetch fallback:', err)
+            }
 
-    const weights = {
-        out: 12340,
-        cam2Out: 14500
+            // 3. Fetch Throughput
+            try {
+                const tpRes = await fetch('/api/weighbridge/transactions/throughput/daily')
+                if (tpRes.ok) {
+                    const tpJson = await tpRes.json()
+                    if (tpJson.success && tpJson.data && isMounted) {
+                        setThroughput(tpJson.data)
+                    }
+                }
+            } catch (err) {
+                console.warn('[Weighbridge] Throughput fetch fallback:', err)
+            }
+
+            // 4. Fetch Scales Status
+            try {
+                const scRes = await fetch('/api/weighbridge/transactions/scales/status')
+                if (scRes.ok) {
+                    const scJson = await scRes.json()
+                    if (scJson.success && scJson.data && isMounted) {
+                        setScalesStatus(scJson.data)
+                    }
+                }
+            } catch (err) {
+                console.warn('[Weighbridge] Scales status fetch fallback:', err)
+            }
+        }
+
+        fetchData()
+        const interval = setInterval(fetchData, 5000)
+        return () => {
+            isMounted = false
+            clearInterval(interval)
+        }
+    }, [])
+
+    // Calculate 07:00 AM operational day shift window
+    const now = new Date()
+    const shiftStart = new Date(now)
+    if (now.getHours() < 7) {
+        shiftStart.setDate(shiftStart.getDate() - 1)
     }
+    shiftStart.setHours(7, 0, 0, 0)
+
+    const shiftEnd = new Date(shiftStart)
+    shiftEnd.setDate(shiftEnd.getDate() + 1)
+    shiftEnd.setMilliseconds(-1)
+
+    // Realtime live status counts (UN-RESET for WAITING, WEIGH_IN, GRADING)
+    const waitingOutside = (queues || []).filter(q => (q.status || '').toUpperCase() === 'WAITING').length
+    const weighingCount = (queues || []).filter(q => (q.status || '').toUpperCase() === 'WEIGH_IN').length
+    const gradingCount = (queues || []).filter(q => (q.status || '').toUpperCase() === 'GRADING').length
+
+    // Trucks Today: total queue registrations count within the 07:00 AM operational shift window
+    const queuesShiftToday = (queues || []).filter(q => {
+        const rawDate = q.created_at || q.check_in_at || q.checkInAt || q.registered_at || q.timestamp || q.createdAt
+        if (!rawDate) return false
+        // Replace SQL space format with ISO 'T' format if needed
+        const formattedDateStr = typeof rawDate === 'string' ? rawDate.replace(' ', 'T') : rawDate
+        const qDate = new Date(formattedDateStr)
+        return !isNaN(qDate.getTime()) && qDate >= shiftStart && qDate <= shiftEnd
+    })
+
+    const trucksToday = queuesShiftToday.length
+
+    // Active WAITING trucks list for NEXT TRUCK IN QUEUE card (top 3)
+    const nextWaitingTrucks = (queues || [])
+        .filter(q => (q.status || '').toUpperCase() === 'WAITING')
+        .slice(0, 3)
+
+    // Active WEIGH_IN trucks list from Security queues
+    const activeWeighInTrucks = (queues || []).filter(q => (q.status || '').toUpperCase() === 'WEIGH_IN')
+    
+    // Scale 1 IN: 1st WEIGH_IN truck
+    const scale1InTruckObj = activeWeighInTrucks[0] || null
+    const scale1InTruck = (scalesStatus && scalesStatus.scale1 && scalesStatus.scale1.inTruck && scalesStatus.scale1.inTruck !== '-')
+        ? scalesStatus.scale1.inTruck
+        : (scale1InTruckObj?.licensePlate || scale1InTruckObj?.plate_number || '-')
+
+    // Scale 2 IN: 2nd WEIGH_IN truck
+    const scale2InTruckObj = activeWeighInTrucks[1] || null
+    const scale2InTruck = (scalesStatus && scalesStatus.scale2 && scalesStatus.scale2.inTruck && scalesStatus.scale2.inTruck !== '-')
+        ? scalesStatus.scale2.inTruck
+        : (scale2InTruckObj?.licensePlate || scale2InTruckObj?.plate_number || '-')
 
     return (
         <div className="som-weighbridge-page">
             <header className="som-wb-header">
                 <div className="som-header-left">
                     <h1 className="som-wb-title">WEIGHBRIDGE STATION</h1>
-                    <div className="som-wb-status">
-                        <span className="dot stable"></span> SYSTEM ONLINE
-                    </div>
-                </div>
-                <div className="som-wb-stats-top">
-                    <div className="top-stat">
-                        <span className="label">DAILY TOTAL (TBS)</span>
-                        <span className="value">1,240.42 <small>TONS</small></span>
-                    </div>
-                    <div className="top-stat">
-                        <span className="label">TRUCKS TODAY</span>
-                        <span className="value">64 <small>UNITS</small></span>
-                    </div>
                 </div>
             </header>
 
             <div className="som-wb-content">
                 <aside className="som-wb-sidebar">
-                    <div className="sidebar-section">
-                        <h2 className="sidebar-title">WEIGHBRIDGE PERFORMANCE</h2>
-                        <div className="stats-groups-container">
 
-                            {/* ── LOGISTICS FLOW ── */}
-                            <div className="stats-subheader">LOGISTICS FLOW</div>
-                            <div className="stats-group logistics-group">
-                                <div className="stat-row logistics-row waiting">
-                                    <span className="stat-label">WAITING</span>
-                                    <span className="stat-value highlight">
-                                        {stats.waitingOutside} <small>TRUCKS</small>
-                                    </span>
-                                </div>
-                                <div className="stat-row logistics-row weighing">
-                                    <span className="stat-label">WEIGHING</span>
-                                    <span className="stat-value weighing-val">
-                                        {stats.weighing} <small>TRUCKS</small>
-                                    </span>
-                                </div>
-                                <div className="stat-row logistics-row grading">
-                                    <span className="stat-label">GRADING</span>
-                                    <span className="stat-value grading-val">
-                                        {stats.grading} <small>TRUCKS</small>
-                                    </span>
-                                </div>
+                    {/* ── PERFORMANCE PANEL ── */}
+                    <div className="wb-panel">
+                        <div className="wb-panel-title">LOGISTICS FLOW</div>
+                        <div className="wb-flow-grid">
+                            <div className="wb-flow-item total">
+                                <span className="wb-flow-count">{trucksToday}</span>
+                                <span className="wb-flow-label">TRUCKS TODAY</span>
                             </div>
-
-                            {/* ── DAILY THROUGHPUT ── */}
-                            <div className="stats-subheader">DAILY THROUGHPUT</div>
-                            <div className="stats-group throughput-group">
-                                <div className="stat-row">
-                                    <span className="stat-label">FFB RECEIVED</span>
-                                    <span className="stat-value">
-                                        {stats.ffbReceived} <small>MT</small>
-                                    </span>
-                                </div>
-                                <div className="stat-row">
-                                    <span className="stat-label">CPO DISPATCH</span>
-                                    <span className="stat-value">
-                                        {stats.cpoDispatched} <small>MT</small>
-                                    </span>
-                                </div>
-                                <div className="stat-row">
-                                    <span className="stat-label">PK DISPATCH</span>
-                                    <span className="stat-value">
-                                        {stats.pkDispatched} <small>MT</small>
-                                    </span>
-                                </div>
-                                <div className="stat-row">
-                                    <span className="stat-label">PKS DISPATCH</span>
-                                    <span className="stat-value">
-                                        {stats.pksDispatched} <small>MT</small>
-                                    </span>
-                                </div>
+                            <div className="wb-flow-item waiting">
+                                <span className="wb-flow-count">{waitingOutside}</span>
+                                <span className="wb-flow-label">WAITING</span>
                             </div>
-
-                        </div>
-                    </div>
-
-                    <div className="sidebar-section weight-indicators">
-                        <div className="weight-scales-container">
-                            <div className="weight-scale-header">
-                                <span className="weight-scale-title">SCALE 1</span>
-                                <span className={`status-dot ${isStable ? 'stable' : 'unstable'}`}></span>
+                            <div className="wb-flow-item weighing">
+                                <span className="wb-flow-count">{weighingCount}</span>
+                                <span className="wb-flow-label">WEIGH-IN</span>
                             </div>
-
-                            <div className="weight-box in">
-                                <div className="weight-truck-label">
-                                    Truck Number: <span className="weight-truck-number">BK 9122 CJ</span>
-                                </div>
-                                <div className="weight-value">
-                                    {currentWeight.toLocaleString('en-US', { minimumFractionDigits: 0 })} <span className="unit">KG</span>
-                                </div>
-                                <div className="weight-sublabel">WEIGH IN</div>
-                            </div>
-
-                            <div className="weight-box out">
-                                <div className="weight-truck-label">
-                                    Truck Number: <span className="weight-truck-number">BM 4451 XP</span>
-                                </div>
-                                <div className="weight-value">
-                                    {weights.out.toLocaleString('en-US', { minimumFractionDigits: 0 })} <span className="unit">KG</span>
-                                </div>
-                                <div className="weight-sublabel">WEIGH OUT</div>
-                            </div>
-
-                            {/* ── SCALE 2 ── */}
-                            <div className="weight-scale-header" style={{ marginTop: '1.2rem', paddingTop: '1.2rem', borderTop: '1px dashed #e2e8f0' }}>
-                                <span className="weight-scale-title">SCALE 2</span>
-                                <span className="status-dot stable" style={{ background: '#10b981', boxShadow: '0 0 8px rgba(16, 185, 129, 0.4)' }}></span>
-                            </div>
-
-                            <div className="weight-box in">
-                                <div className="weight-truck-label">
-                                    Truck Number: <span className="weight-truck-number">BM 8831 AA</span>
-                                </div>
-                                <div className="weight-value" style={{ color: '#10b981' }}>
-                                    14,500 <span className="unit">KG</span>
-                                </div>
-                                <div className="weight-sublabel">WEIGH IN</div>
-                            </div>
-
-                            <div className="weight-box out">
-                                <div className="weight-truck-label">
-                                    Truck Number: <span className="weight-truck-number">BK 7702 MQ</span>
-                                </div>
-                                <div className="weight-value">
-                                    {weights.cam2Out.toLocaleString()} <span className="unit">KG</span>
-                                </div>
-                                <div className="weight-sublabel">WEIGH OUT</div>
+                            <div className="wb-flow-item grading">
+                                <span className="wb-flow-count">{gradingCount}</span>
+                                <span className="wb-flow-label">GRADING</span>
                             </div>
                         </div>
                     </div>
+
+                    {/* ── THROUGHPUT ── */}
+                    <div className="wb-panel">
+                        <div className="wb-panel-title">DAILY THROUGHPUT</div>
+                        <div className="wb-throughput-list">
+                            <div className="wb-tp-row"><span>FFB RECEIVED (UMUM & MITRA)</span><span className="wb-tp-val">{throughput?.ffbReceived ?? 0} <small>MT</small></span></div>
+                            <div className="wb-tp-row"><span>CPO DISPATCH</span><span className="wb-tp-val">{throughput?.cpoDispatch ?? 0} <small>MT</small></span></div>
+                            <div className="wb-tp-row"><span>PALM KERNEL DISPATCH</span><span className="wb-tp-val">{throughput?.pkDispatch ?? 0} <small>MT</small></span></div>
+                            <div className="wb-tp-row"><span>PKS DISPATCH (SHELL)</span><span className="wb-tp-val">{throughput?.pksDispatch ?? 0} <small>MT</small></span></div>
+                        </div>
+                    </div>
+
+                    {/* ── COMBINED SCALES STATUS ── */}
+                    <div className="wb-panel">
+                        <div className="wb-scale-header">
+                            <span className="wb-panel-title" style={{ margin: 0 }}>SCALES STATUS</span>
+                            <span className={`wb-dot ${isStable ? 'online' : 'offline'}`}></span>
+                        </div>
+                        <div className="wb-scales-compact-grid">
+                            {(() => {
+                                const labelMap = {
+                                    'U': 'FFB UMUM',
+                                    'M': 'FFB MITRA',
+                                    'C': 'CRUDE PALM OIL',
+                                    'K': 'PALM KERNEL',
+                                    'S': 'PALM KERNEL SHELL'
+                                }
+                                const s1InCode = scalesStatus?.scale1?.inClass || scale1InTruckObj?.classification_code || scale1InTruckObj?.classificationCode || null
+                                const s1InLabel = s1InCode ? (labelMap[s1InCode.toUpperCase()] || s1InCode) : null
+                                
+                                const s1OutCode = scalesStatus?.scale1?.outClass || null
+                                const s1OutLabel = s1OutCode ? (labelMap[s1OutCode.toUpperCase()] || s1OutCode) : null
+                                
+                                const s2InCode = scalesStatus?.scale2?.inClass || scale2InTruckObj?.classification_code || scale2InTruckObj?.classificationCode || null
+                                const s2InLabel = s2InCode ? (labelMap[s2InCode.toUpperCase()] || s2InCode) : null
+                                
+                                const s2OutCode = scalesStatus?.scale2?.outClass || null
+                                const s2OutLabel = s2OutCode ? (labelMap[s2OutCode.toUpperCase()] || s2OutCode) : null
+
+                                return (
+                                    <>
+                                        <div className="wb-scale-section">
+                                            <div className="wb-scale-sec-title">SCALE 1</div>
+                                            <div className="wb-scale-row">
+                                                <div className="wb-scale-badge in">IN</div>
+                                                <div className="wb-scale-info">
+                                                    <div className="wb-scale-plate-wrapper">
+                                                        <span className="wb-scale-plate">{scale1InTruck}</span>
+                                                        {scale1InTruck !== '-' && s1InLabel && <span className="wb-scale-class-tag">{s1InLabel}</span>}
+                                                    </div>
+                                                    <div className="wb-scale-weight in-weight">
+                                                        {Number(scalesStatus?.scale1?.inWeight || 0).toLocaleString()} <span>KG</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="wb-scale-row">
+                                                <div className="wb-scale-badge out">OUT</div>
+                                                <div className="wb-scale-info">
+                                                    <div className="wb-scale-plate-wrapper">
+                                                        <span className="wb-scale-plate">{scalesStatus?.scale1?.outTruck || '-'}</span>
+                                                        {scalesStatus?.scale1?.outTruck && scalesStatus.scale1.outTruck !== '-' && s1OutLabel && <span className="wb-scale-class-tag out">{s1OutLabel}</span>}
+                                                    </div>
+                                                    <div className="wb-scale-weight out-weight">
+                                                        {Number(scalesStatus?.scale1?.outWeight || 0).toLocaleString()} <span>KG</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="wb-scale-divider"></div>
+
+                                        <div className="wb-scale-section">
+                                            <div className="wb-scale-sec-title">SCALE 2</div>
+                                            <div className="wb-scale-row">
+                                                <div className="wb-scale-badge in">IN</div>
+                                                <div className="wb-scale-info">
+                                                    <div className="wb-scale-plate-wrapper">
+                                                        <span className="wb-scale-plate">{scale2InTruck}</span>
+                                                        {scale2InTruck !== '-' && s2InLabel && <span className="wb-scale-class-tag">{s2InLabel}</span>}
+                                                    </div>
+                                                    <div className="wb-scale-weight in-weight">
+                                                        {Number(scalesStatus?.scale2?.inWeight || 0).toLocaleString()} <span>KG</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="wb-scale-row">
+                                                <div className="wb-scale-badge out">OUT</div>
+                                                <div className="wb-scale-info">
+                                                    <div className="wb-scale-plate-wrapper">
+                                                        <span className="wb-scale-plate">{scalesStatus?.scale2?.outTruck || '-'}</span>
+                                                        {scalesStatus?.scale2?.outTruck && scalesStatus.scale2.outTruck !== '-' && s2OutLabel && <span className="wb-scale-class-tag out">{s2OutLabel}</span>}
+                                                    </div>
+                                                    <div className="wb-scale-weight out-weight">
+                                                        {Number(scalesStatus?.scale2?.outWeight || 0).toLocaleString()} <span>KG</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )
+                            })()}
+                        </div>
+                    </div>
+
+                    {/* ── NEXT TRUCK IN QUEUE ── */}
+                    <div className="wb-panel wb-next-queue-panel">
+                        <div className="wb-panel-title">NEXT TRUCK IN QUEUE</div>
+                        <div className="wb-next-queue-list">
+                            {nextWaitingTrucks.length === 0 ? (
+                                <div className="wb-queue-empty">NO TRUCKS WAITING</div>
+                            ) : (
+                                nextWaitingTrucks.map((truck, idx) => {
+                                    const code = truck.queueCode || truck.queue_code || `U-${String(idx + 1).padStart(3, '0')}`
+                                    const plate = truck.licensePlate || truck.plate_number || 'UNKNOWN'
+                                    const classCode = (truck.classificationCode || truck.classification_name || 'U').toUpperCase()
+
+                                    const labelMap = {
+                                        'U': 'FFB UMUM',
+                                        'M': 'FFB MITRA',
+                                        'C': 'CRUDE PALM OIL',
+                                        'K': 'PALM KERNEL',
+                                        'S': 'PALM KERNEL SHELL'
+                                    }
+                                    const classLabel = labelMap[classCode] || classCode
+
+                                    return (
+                                        <div className="wb-queue-row" key={truck.id || idx}>
+                                            <span className="wb-queue-code">{code}</span>
+                                            <span className="wb-queue-plate">{plate}</span>
+                                            <span className="wb-queue-tag" title={classLabel}>{classLabel}</span>
+                                        </div>
+                                    )
+                                })
+                            )}
+                        </div>
+                    </div>
+
                 </aside>
 
                 <main className="som-wb-cctv-grid">
-                    {/* CAM 1 - Top Left */}
+                    {/* CAM 1: SCALE 1 INBOUND */}
                     <div className="som-bridge-cctv">
                         <div className="cctv-feed-container">
-                            <div className="cctv-label-overlay">CAM 1</div>
-                            <div className="cctv-top-right-overlay">
-                                <div className="cctv-timestamps">{timestamp}</div>   {/* ← realtime */}
-                                <div className="cctv-status-rec">●REC</div>
+                            <div className="cctv-label-overlay">
+                                <span className="cctv-cam-name">{cctvs[0] ? cctvs[0].camera_name : 'CAM 1 (WEIGH-IN)'}</span>
+                                <span className="cctv-cam-location">{cctvs[0]?.location || 'SCALE 1 INBOUND'}</span>
                             </div>
-                            <div className="cctv-scanline"></div>
-                            <img src={cctv1} alt="CCTV 1" className="cctv-img" />
+                            <div className="cctv-top-right-overlay">
+                                <div className="cctv-timestamps">{timestamp}</div>
+                                <div className={`cctv-status-rec ${cctvs[0]?.stream_url ? '' : 'offline'}`}>
+                                    {cctvs[0]?.stream_url ? '●REC' : 'OFFLINE'}
+                                </div>
+                            </div>
+                            {cctvs[0]?.stream_url ? (
+                                <img src={cctvs[0].stream_url} alt="CCTV 1" className="cctv-img" />
+                            ) : (
+                                <div className="cctv-offline-screen">
+                                    <svg viewBox="0 0 24 24" width="36" height="36" stroke="currentColor" strokeWidth="1.5" fill="none">
+                                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                    <span>OFFLINE STREAM</span>
+                                </div>
+                            )}
                             <div className="cctv-data-overlay">
-                                WEIGH-IN: {currentWeight.toLocaleString()} KG
+                                {scale1InTruck !== '-' ? (
+                                    <>
+                                        <span className="cctv-truck-badge">PLATE: {scale1InTruck}</span>
+                                        <span className="cctv-weight-badge">WEIGH-IN: {Number(scalesStatus?.scale1?.inWeight || 0).toLocaleString()} KG</span>
+                                    </>
+                                ) : (
+                                    <span className="cctv-empty-badge">NO VEHICLE ON SCALE 1</span>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* CAM 2 - Top Right */}
+                    {/* CAM 2: SCALE 1 OUTBOUND */}
                     <div className="som-bridge-cctv">
                         <div className="cctv-feed-container">
-                            <div className="cctv-label-overlay">CAM 2</div>
-                            <div className="cctv-top-right-overlay">
-                                <div className="cctv-timestamps">{timestamp}</div>   {/* ← realtime */}
-                                <div className="cctv-status-rec">●REC</div>
+                            <div className="cctv-label-overlay">
+                                <span className="cctv-cam-name">{cctvs[1] ? cctvs[1].camera_name : 'CAM 2 (WEIGH-OUT)'}</span>
+                                <span className="cctv-cam-location">{cctvs[1]?.location || 'SCALE 1 OUTBOUND'}</span>
                             </div>
-                            <div className="cctv-scanline"></div>
-                            <img src={cctv2} alt="CCTV 2" className="cctv-img" />
+                            <div className="cctv-top-right-overlay">
+                                <div className="cctv-timestamps">{timestamp}</div>
+                                <div className={`cctv-status-rec ${cctvs[1]?.stream_url ? '' : 'offline'}`}>
+                                    {cctvs[1]?.stream_url ? '●REC' : 'OFFLINE'}
+                                </div>
+                            </div>
+                            {cctvs[1]?.stream_url ? (
+                                <img src={cctvs[1].stream_url} alt="CCTV 2" className="cctv-img" />
+                            ) : (
+                                <div className="cctv-offline-screen">
+                                    <svg viewBox="0 0 24 24" width="36" height="36" stroke="currentColor" strokeWidth="1.5" fill="none">
+                                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                    <span>OFFLINE STREAM</span>
+                                </div>
+                            )}
                             <div className="cctv-data-overlay">
-                                WEIGH-OUT: {weights.out.toLocaleString()} KG
+                                {scalesStatus?.scale1?.outTruck && scalesStatus.scale1.outTruck !== '-' ? (
+                                    <>
+                                        <span className="cctv-truck-badge out">PLATE: {scalesStatus.scale1.outTruck}</span>
+                                        <span className="cctv-weight-badge out">WEIGH-OUT: {Number(scalesStatus.scale1.outWeight || 0).toLocaleString()} KG</span>
+                                    </>
+                                ) : (
+                                    <span className="cctv-empty-badge">SCALE 1 OUT IDLE</span>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Operator View - Bottom Left */}
+                    {/* CAM 3: SCALE 2 INBOUND */}
                     <div className="som-bridge-cctv">
                         <div className="cctv-feed-container">
-                            <div className="cctv-label-overlay">CAM 3</div>
-                            <div className="cctv-top-right-overlay">
-                                <div className="cctv-timestamps">{timestamp}</div>   {/* ← realtime */}
-                                <div className="cctv-status-rec">●REC</div>
+                            <div className="cctv-label-overlay">
+                                <span className="cctv-cam-name">{cctvs[2] ? cctvs[2].camera_name : 'CAM 3 (SCALE 2 IN)'}</span>
+                                <span className="cctv-cam-location">{cctvs[2]?.location || 'SCALE 2 INBOUND'}</span>
                             </div>
-                            <div className="cctv-scanline"></div>
-                            <img src={cctv3} alt="CCTV 3" className="cctv-img" />
+                            <div className="cctv-top-right-overlay">
+                                <div className="cctv-timestamps">{timestamp}</div>
+                                <div className={`cctv-status-rec ${cctvs[2]?.stream_url ? '' : 'offline'}`}>
+                                    {cctvs[2]?.stream_url ? '●REC' : 'OFFLINE'}
+                                </div>
+                            </div>
+                            {cctvs[2]?.stream_url ? (
+                                <img src={cctvs[2].stream_url} alt="CCTV 3" className="cctv-img" />
+                            ) : (
+                                <div className="cctv-offline-screen">
+                                    <svg viewBox="0 0 24 24" width="36" height="36" stroke="currentColor" strokeWidth="1.5" fill="none">
+                                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                    <span>OFFLINE STREAM</span>
+                                </div>
+                            )}
                             <div className="cctv-data-overlay">
-                                WEIGH-OUT: {weights.out.toLocaleString()} KG
+                                {scale2InTruck !== '-' ? (
+                                    <>
+                                        <span className="cctv-truck-badge">PLATE: {scale2InTruck}</span>
+                                        <span className="cctv-weight-badge">WEIGH-IN: {Number(scalesStatus?.scale2?.inWeight || 0).toLocaleString()} KG</span>
+                                    </>
+                                ) : (
+                                    <span className="cctv-empty-badge">NO VEHICLE ON SCALE 2</span>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* CAM 4 - Bottom Right */}
+                    {/* CAM 4: SCALE 2 OUTBOUND */}
                     <div className="som-bridge-cctv">
                         <div className="cctv-feed-container">
-                            <div className="cctv-label-overlay">CAM 4</div>
-                            <div className="cctv-top-right-overlay">
-                                <div className="cctv-timestamps">{timestamp}</div>   {/* ← realtime */}
-                                <div className="cctv-status-rec">●REC</div>
+                            <div className="cctv-label-overlay">
+                                <span className="cctv-cam-name">{cctvs[3] ? cctvs[3].camera_name : 'CAM 4 (SCALE 2 OUT)'}</span>
+                                <span className="cctv-cam-location">{cctvs[3]?.location || 'SCALE 2 OUTBOUND'}</span>
                             </div>
-                            <div className="cctv-scanline"></div>
-                            <img src={cctv4} alt="CCTV 4" className="cctv-img" />
+                            <div className="cctv-top-right-overlay">
+                                <div className="cctv-timestamps">{timestamp}</div>
+                                <div className={`cctv-status-rec ${cctvs[3]?.stream_url ? '' : 'offline'}`}>
+                                    {cctvs[3]?.stream_url ? '●REC' : 'OFFLINE'}
+                                </div>
+                            </div>
+                            {cctvs[3]?.stream_url ? (
+                                <img src={cctvs[3].stream_url} alt="CCTV 4" className="cctv-img" />
+                            ) : (
+                                <div className="cctv-offline-screen">
+                                    <svg viewBox="0 0 24 24" width="36" height="36" stroke="currentColor" strokeWidth="1.5" fill="none">
+                                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    </svg>
+                                    <span>OFFLINE STREAM</span>
+                                </div>
+                            )}
                             <div className="cctv-data-overlay">
-                                WEIGH-OUT: {weights.out.toLocaleString()} KG
+                                {scalesStatus?.scale2?.outTruck && scalesStatus.scale2.outTruck !== '-' ? (
+                                    <>
+                                        <span className="cctv-truck-badge out">PLATE: {scalesStatus.scale2.outTruck}</span>
+                                        <span className="cctv-weight-badge out">WEIGH-OUT: {Number(scalesStatus.scale2.outWeight || 0).toLocaleString()} KG</span>
+                                    </>
+                                ) : (
+                                    <span className="cctv-empty-badge">SCALE 2 OUT IDLE</span>
+                                )}
                             </div>
                         </div>
                     </div>
-
                 </main>
             </div>
         </div>

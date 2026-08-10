@@ -489,34 +489,46 @@ router.post('/checkpoints', async (req, res) => {
         );
         console.log(`[INCIDENT ROUTER] Auto-created incident ticket ${incCode} [Priority: ${reqPriority}] for station slug: ${station_slug}`);
 
-        // 3. Broadcast WebSocket event to maintenance-service (Port 3200)
+        // 3. Broadcast WebSocket incident_created event with full payload
         const http = await import('http');
-        const postData = JSON.stringify({
-          event: 'ticket_created',
-          data: {
-            id: incCode,
-            ticketNumber: incCode,
-            station: station_slug,
-            priority: reqPriority,
-            status: 'pending',
-            equipment: 'Patrol Anomaly'
-          }
-        });
+        const incidentPayload = {
+          id: incCode,
+          incident_code: incCode,
+          incident_type: 'Patrol Anomaly Finding',
+          location: station_slug,
+          station_name: station_name,
+          reported_by: guard_id || 1,
+          reported_by_name: guard_name,
+          status: 'SUBMITTED',
+          priority: reqPriority,
+          description: verification_notes.trim(),
+          photo_path: verification_photo || null,
+          created_at: new Date().toISOString()
+        };
 
-        const postReq = http.request('http://localhost:3200/api/maintenance/notify-ticket', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
-          }
-        }, (postRes) => {
-          console.log(`[INCIDENT ROUTER] WS Broadcast notify-ticket status: ${postRes.statusCode}`);
+        const sendWs = (evt, dataObj) => {
+          const postData = JSON.stringify({ event: evt, data: dataObj });
+          const postReq = http.request('http://localhost:3200/api/maintenance/notify-ticket', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(postData)
+            }
+          });
+          postReq.on('error', (err) => console.error(`[INCIDENT ROUTER] WS Broadcast error (${evt}):`, err.message));
+          postReq.write(postData);
+          postReq.end();
+        };
+
+        sendWs('incident_created', incidentPayload);
+        sendWs('ticket_created', {
+          id: incCode,
+          ticketNumber: incCode,
+          station: station_slug,
+          priority: reqPriority,
+          status: 'pending',
+          equipment: 'Patrol Anomaly'
         });
-        postReq.on('error', (err) => {
-          console.error('[INCIDENT ROUTER] Failed to send WS notification:', err.message);
-        });
-        postReq.write(postData);
-        postReq.end();
 
         // 4. Retrieve and log FCM tokens for Operator notification routing
         try {

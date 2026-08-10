@@ -40,7 +40,7 @@ import BoilerHousePage from "@stations/boiler-house/BoilerHousePage.jsx";
 // import EFBPlantPage from "@stations/efb-plant/EFBPlantPage.jsx";
 import EngineRoomPage from "@stations/engine-room/EngineRoomPage.jsx";
 import SecurityStationPage from "@stations/security/SecurityStationPage.jsx";
-// import WeighbridgePage from "@stations/weighbridge/WeighbridgePage.jsx";
+import WeighbridgePage from "@stations/weighbridge/WeighbridgePage.jsx";
 // import LoadingRampPage from "@stations/loading-ramp/LoadingRampPage.jsx";
 // import OilClarificationPage from "@stations/oil-clarification/OilClarificationPage.jsx";
 // import RawWaterPage from "@stations/raw-water/RawWaterPage.jsx";
@@ -66,7 +66,7 @@ import ThreshingCalibrationView from "@stations/threshing-station/calibration/Th
 import KernelCalibrationView from "@stations/kernel-plant/calibration/KernelCalibrationView.jsx";
 // import EFBPlantPlcConfig from "@stations/efb-plant/PlcConfigView.jsx";
 import EngineRoomPlcConfig from "@stations/engine-room/PlcConfigView.jsx";
-// import WeighbridgePlcConfig from "@stations/weighbridge/PlcConfigView.jsx";
+import WeighbridgePlcConfig from "@stations/weighbridge/PlcConfigView.jsx";
 // import LoadingRampPlcConfig from "@stations/loading-ramp/PlcConfigView.jsx";
 // import OilClarificationPlcConfig from "@stations/oil-clarification/PlcConfigView.jsx";
 // import RawWaterPlcConfig from "@stations/raw-water/PlcConfigView.jsx";
@@ -90,7 +90,7 @@ const STATION_PAGE_MAP = {
   "EFB Plant": ComingSoonPage, // Locked/inactive
   "Engine Room": EngineRoomPage,
   "Security": SecurityStationPage,
-  Weighbridge: ComingSoonPage, // Locked/inactive
+  Weighbridge: WeighbridgePage,
   "Loading Ramp": ComingSoonPage, // Locked/inactive
   "Oil Clarification Room": ComingSoonPage, // Locked/inactive
   "Raw Water Treatment": ComingSoonPage, // Locked/inactive
@@ -108,7 +108,7 @@ const STATION_PLC_CONFIG_MAP = {
   "EFB Plant": ComingSoonPage,
   "Engine Room": EngineRoomPlcConfig,
   "Security": CamConfigView,
-  Weighbridge: ComingSoonPage,
+  Weighbridge: WeighbridgePlcConfig,
   "Loading Ramp": ComingSoonPage,
   "Oil Clarification Room": ComingSoonPage,
   "Raw Water Treatment": ComingSoonPage,

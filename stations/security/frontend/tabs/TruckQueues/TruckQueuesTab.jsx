@@ -24,37 +24,100 @@ function TruckQueuesTab() {
     }
   };
 
+  // ── Web Audio Chime Sound (Ding Before Speech) ──
+  const playChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note chime
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.45);
+    } catch (e) {
+      console.warn('[AudioChime] Error playing chime:', e);
+    }
+  };
+
   useEffect(() => {
     fetchQueues();
     const interval = setInterval(fetchQueues, 4000);
 
-    // WebSocket listener for real-time speaker audio call & queue list updates
-    const host = window.location.hostname || 'localhost';
-    const wsUrl = `ws://${host}:3200/ws`;
+    // Audio unlock listener for browser autoplay policy
+    const unlockAudio = () => {
+      if ('speechSynthesis' in window) {
+        if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+      }
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          if (ctx.state === 'suspended') ctx.resume();
+        }
+      } catch (e) {}
+    };
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
+
+    // WebSocket listener with auto-reconnect for real-time speaker audio call & queue updates
     let ws;
-    try {
-      ws = new WebSocket(wsUrl);
-      ws.onopen = () => console.log('[WS Web Base] Connected to queue speaker channel');
-      ws.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.event === 'queue_called') {
-            if (payload.data) {
-              announceQueue(payload.data);
+    let reconnectTimer;
+    let isDisposed = false;
+
+    const connectWs = () => {
+      if (isDisposed) return;
+      const host = window.location.hostname || 'localhost';
+      const wsUrl = `ws://${host}:3200/ws`;
+      try {
+        ws = new WebSocket(wsUrl);
+        ws.onopen = () => console.log('[WS Web Base] Connected to queue speaker channel');
+        ws.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            const evtName = (payload.event || '').toLowerCase();
+            if (evtName === 'queue_called' || evtName === 'queue_call' || evtName === 'truck_queue_called') {
+              if (payload.data) {
+                announceQueue(payload.data);
+                fetchQueues();
+              }
+            } else if (evtName.includes('queue') || evtName.includes('truck') || evtName.includes('update') || evtName.includes('create') || evtName.includes('delete')) {
               fetchQueues();
             }
-          } else if (payload.event === 'queue_updated' || payload.event === 'queue_created') {
-            fetchQueues();
+          } catch (e) {}
+        };
+        ws.onclose = () => {
+          if (!isDisposed) {
+            reconnectTimer = setTimeout(connectWs, 3000);
           }
-        } catch (e) {}
-      };
-    } catch (e) {
-      console.error('[WS Web Base] Error connecting:', e);
-    }
+        };
+        ws.onerror = () => {
+          try { ws.close(); } catch (e) {}
+        };
+      } catch (e) {
+        if (!isDisposed) reconnectTimer = setTimeout(connectWs, 3000);
+      }
+    };
+
+    connectWs();
 
     return () => {
+      isDisposed = true;
       clearInterval(interval);
-      if (ws) ws.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+      if (ws) {
+        try { ws.close(); } catch (e) {}
+      }
     };
   }, []);
 
@@ -76,6 +139,9 @@ function TruckQueuesTab() {
 
   // ── Web Speech API (TTS Voice Call) ──
   const announceQueue = (q) => {
+    if (!q) return;
+    playChime();
+
     if (!('speechSynthesis' in window)) return;
 
     // Helper functions for spelling code and plate digit by digit / letter by letter
@@ -92,18 +158,25 @@ function TruckQueuesTab() {
       return plate.split('').map(c => c === ' ' ? ', ' : c).join(' ');
     };
 
-    const code = spellCode(q.queueCode || q.queue_number || '');
+    const code = spellCode(q.queueCode || q.queue_number || q.ticket_number || '');
     const driver = q.driverName || q.driver_name || '';
     const plate = spellPlate(q.licensePlate || q.plate_number || '');
 
     const text = `Nomor antrian ${code}, ${driver}, plat nomor ${plate}, silakan menuju timbangan.`;
 
-    window.speechSynthesis.cancel(); // Stop any ongoing speech
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'id-ID';
-    utterance.rate = 0.88; // Slightly slower for clarity
-    utterance.pitch = 1.05;
-    window.speechSynthesis.speak(utterance);
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+      window.speechSynthesis.cancel(); // Stop any ongoing speech
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'id-ID';
+      utterance.rate = 0.88; // Slightly slower for clarity
+      utterance.pitch = 1.05;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.error('[WebSpeech] Error playing utterance:', e);
+    }
   };
 
   const handleStatusUpdate = async (id, newStatus, itemData = null) => {
@@ -163,70 +236,80 @@ function TruckQueuesTab() {
   }
 
   return (
-    <div className="som-view-container" style={{ padding: '0', background: '#f8fafc', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="som-view-container" style={{ padding: '0', background: '#f8fafc', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
       
-      {/* ── TOP INDUSTRIAL STATS BAR ── */}
+      {/* ── TOP INDUSTRIAL STATS BAR (FLUSH FULL-WIDTH ALIGNMENT) ── */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '12px',
         padding: '16px 20px',
         background: '#ffffff',
         borderBottom: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        flexShrink: 0,
+        boxSizing: 'border-box',
+        width: '100%'
       }}>
-        {/* Metric 1 */}
-        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: '#eef2ff', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-            <FaTruck />
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '12px',
+          width: '100%'
+        }}>
+          {/* Metric 1 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '0px', background: '#eef2ff', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+              <FaTruck />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase' }}>TOTAL REGISTERED</div>
+              <div style={{ fontSize: '22px', fontWeight: '900', color: '#0f172a', lineHeight: '1.2' }}>{totalCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#94a3b8' }}>Trucks</span></div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase' }}>TOTAL REGISTERED</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: '#0f172a', lineHeight: '1.2' }}>{totalCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#94a3b8' }}>Trucks</span></div>
-          </div>
-        </div>
 
-        {/* Metric 2 */}
-        <div style={{ background: '#f8fafc', border: '1px solid #fef08a', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: '#fefce8', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-            <FaClock />
+          {/* Metric 2 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #fef08a', borderRadius: '0px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '0px', background: '#fefce8', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+              <FaClock />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#d97706', letterSpacing: '0.05em', textTransform: 'uppercase' }}>WAITING IN QUEUE</div>
+              <div style={{ fontSize: '22px', fontWeight: '900', color: '#b45309', lineHeight: '1.2' }}>{waitingCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#d97706' }}>Pending</span></div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#d97706', letterSpacing: '0.05em', textTransform: 'uppercase' }}>WAITING IN QUEUE</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: '#b45309', lineHeight: '1.2' }}>{waitingCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#d97706' }}>Pending</span></div>
-          </div>
-        </div>
 
-        {/* Metric 3 */}
-        <div style={{ background: '#f8fafc', border: '1px solid #bae6fd', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-            <FaVolumeUp />
+          {/* Metric 3 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #bae6fd', borderRadius: '0px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '0px', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+              <FaVolumeUp />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#0284c7', letterSpacing: '0.05em', textTransform: 'uppercase' }}>WEIGH-IN / GRADING</div>
+              <div style={{ fontSize: '22px', fontWeight: '900', color: '#0369a1', lineHeight: '1.2' }}>{weighinCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#0284c7' }}>Active</span></div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#0284c7', letterSpacing: '0.05em', textTransform: 'uppercase' }}>WEIGH-IN / GRADING</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: '#0369a1', lineHeight: '1.2' }}>{weighinCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#0284c7' }}>Active</span></div>
-          </div>
-        </div>
 
-        {/* Metric 4 */}
-        <div style={{ background: '#f8fafc', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-            <FaChevronRight />
-          </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', letterSpacing: '0.05em', textTransform: 'uppercase' }}>COMPLETED TODAY</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: '#15803d', lineHeight: '1.2' }}>{completedCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#16a34a' }}>Finished</span></div>
+          {/* Metric 4 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #bbf7d0', borderRadius: '0px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '0px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+              <FaChevronRight />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', letterSpacing: '0.05em', textTransform: 'uppercase' }}>COMPLETED TODAY</div>
+              <div style={{ fontSize: '22px', fontWeight: '900', color: '#15803d', lineHeight: '1.2' }}>{completedCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#16a34a' }}>Finished</span></div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── MAIN CONTENT AREA ── */}
-      <div style={{ padding: '20px', flex: '1', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* ── MAIN CONTENT AREA (FULL-WIDTH 100% WITHOUT SIDE SPACE) ── */}
+      <div style={{ padding: '16px 0px', flex: '1', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
         <div style={{
           background: '#ffffff',
-          borderRadius: '14px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+          borderRadius: '0px',
+          borderLeft: 'none',
+          borderRight: 'none',
+          borderTop: '1px solid #e2e8f0',
+          borderBottom: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
           display: 'flex',
           flexDirection: 'column',
           height: '100%',

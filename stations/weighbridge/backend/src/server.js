@@ -5,6 +5,7 @@ import monitorRoutes from './routes/monitorRoutes.js';
 import logsheetRoutes from './routes/logsheetRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import plcConfigRoutes from './routes/plcConfigRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
 import { startAlarmWorker } from './workers/alarmWorker.js';
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.use(`/api/${STATION_SLUG}/monitor`, monitorRoutes);
 app.use(`/api/${STATION_SLUG}/logsheet`, logsheetRoutes);
 app.use(`/api/${STATION_SLUG}/settings`, settingsRoutes);
 app.use(`/api/${STATION_SLUG}/plc-config`, plcConfigRoutes);
+app.use(`/api/${STATION_SLUG}/transactions`, transactionRoutes);
 
 // ── Health ──
 app.get('/health', (_req, res) => {

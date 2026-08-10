@@ -187,7 +187,11 @@ const getQueueList = async (req, res) => {
         perusahaan,
         transporter_company AS transporterCompany,
         transporter_company,
-        notes
+        notes,
+        created_at AS createdAt,
+        created_at,
+        updated_at AS updatedAt,
+        updated_at
        FROM security_truck_queues 
        ORDER BY check_in_at DESC`
     );

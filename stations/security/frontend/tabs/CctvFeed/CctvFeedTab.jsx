@@ -37,68 +37,96 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
     return (
         <div className="som-view-container cctv-grid-view" style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
 
-            {/* ── Grid Size Toolbar ── */}
+            {/* ── Grid Size & Stream Info Toolbar ── */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'flex-end',
-                gap: '8px',
-                padding: '8px 14px',
+                justify: 'space-between',
+                width: '100%',
+                padding: '10px 20px',
                 background: '#ffffff',
                 borderBottom: '1px solid #e2e8f0',
+                boxSizing: 'border-box',
                 flexShrink: 0,
             }}>
-                <span style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase', marginRight: '4px' }}>
-                    Grid
-                </span>
-                <div className="som-cctv-grid-selector">
-                    {/* ALL button */}
-                    <button
-                        className={`som-grid-btn ${gridSize === null ? 'active' : ''}`}
-                        onClick={() => setGridSize(null)}
-                        title="Show all cameras"
-                    >
-                        <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor">
-                            <rect x="0" y="0" width="3.2" height="3.2" rx="0.4"/>
-                            <rect x="4.4" y="0" width="3.2" height="3.2" rx="0.4"/>
-                            <rect x="8.8" y="0" width="3.2" height="3.2" rx="0.4"/>
-                            <rect x="0" y="4.4" width="3.2" height="3.2" rx="0.4"/>
-                            <rect x="4.4" y="4.4" width="3.2" height="3.2" rx="0.4"/>
-                            <rect x="8.8" y="4.4" width="3.2" height="3.2" rx="0.4"/>
-                            <rect x="0" y="8.8" width="3.2" height="3.2" rx="0.4"/>
-                            <rect x="4.4" y="8.8" width="3.2" height="3.2" rx="0.4"/>
-                            <rect x="8.8" y="8.8" width="3.2" height="3.2" rx="0.4"/>
-                        </svg>
-                        ALL
-                    </button>
+                {/* Left Side: Title & Minimalist Aktif / Non-Aktif Badges */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0284c7', boxShadow: '0 0 8px #0284c7', animation: 'pulse 2s infinite' }} />
+                    <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                        LIVE CCTV MONITORING
+                    </span>
+                    
+                    {/* Minimalist Aktif Badge */}
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: '6px', border: '1px solid #bbf7d0', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <span>Aktif:</span>
+                        <strong style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                            {cctvCameras.filter(c => c.is_active === 1 || c.is_active === true || c.is_active === undefined).length}
+                        </strong>
+                    </span>
 
-                    {/* Fixed-size grid buttons */}
-                    {gridOptions.map(({ n, squares, s, g }) => (
+                    {/* Minimalist Non-Aktif Badge */}
+                    <span style={{ fontSize: '11px', fontWeight: '800', color: '#dc2626', background: '#fef2f2', padding: '2px 8px', borderRadius: '6px', border: '1px solid #fecaca', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <span>Non-Aktif:</span>
+                        <strong style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                            {cctvCameras.filter(c => c.is_active === 0 || c.is_active === false).length}
+                        </strong>
+                    </span>
+                </div>
+
+                {/* Extreme Right Side: Layout Grid Selector */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                        Layout Grid:
+                    </span>
+                    <div className="som-cctv-grid-selector">
+                        {/* ALL button */}
                         <button
-                            key={n}
-                            className={`som-grid-btn ${gridSize === n ? 'active' : ''}`}
-                            onClick={() => setGridSize(n)}
-                            title={`${n}×${n} grid`}
+                            className={`som-grid-btn ${gridSize === null ? 'active' : ''}`}
+                            onClick={() => setGridSize(null)}
+                            title="Show all cameras"
                         >
                             <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor">
-                                {Array.from({ length: squares }).map((_, i) => {
-                                    const col = i % n;
-                                    const row = Math.floor(i / n);
-                                    return (
-                                        <rect
-                                            key={i}
-                                            x={col * (s + g)}
-                                            y={row * (s + g)}
-                                            width={s}
-                                            height={s}
-                                            rx="0.3"
-                                        />
-                                    );
-                                })}
+                                <rect x="0" y="0" width="3.2" height="3.2" rx="0.4"/>
+                                <rect x="4.4" y="0" width="3.2" height="3.2" rx="0.4"/>
+                                <rect x="8.8" y="0" width="3.2" height="3.2" rx="0.4"/>
+                                <rect x="0" y="4.4" width="3.2" height="3.2" rx="0.4"/>
+                                <rect x="4.4" y="4.4" width="3.2" height="3.2" rx="0.4"/>
+                                <rect x="8.8" y="4.4" width="3.2" height="3.2" rx="0.4"/>
+                                <rect x="0" y="8.8" width="3.2" height="3.2" rx="0.4"/>
+                                <rect x="4.4" y="8.8" width="3.2" height="3.2" rx="0.4"/>
+                                <rect x="8.8" y="8.8" width="3.2" height="3.2" rx="0.4"/>
                             </svg>
-                            {n}×{n}
+                            ALL
                         </button>
-                    ))}
+
+                        {/* Fixed-size grid buttons */}
+                        {gridOptions.map(({ n, squares, s, g }) => (
+                            <button
+                                key={n}
+                                className={`som-grid-btn ${gridSize === n ? 'active' : ''}`}
+                                onClick={() => setGridSize(n)}
+                                title={`${n}×${n} grid`}
+                            >
+                                <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor">
+                                    {Array.from({ length: squares }).map((_, i) => {
+                                        const col = i % n;
+                                        const row = Math.floor(i / n);
+                                        return (
+                                            <rect
+                                                key={i}
+                                                x={col * (s + g)}
+                                                y={row * (s + g)}
+                                                width={s}
+                                                height={s}
+                                                rx="0.3"
+                                            />
+                                        );
+                                    })}
+                                </svg>
+                                {n}×{n}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -155,7 +183,7 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                             <div
                                 style={{
                                     display: 'flex',
-                                    justifyContent: 'space-between',
+                                    justify: 'space-between',
                                     alignItems: 'center',
                                     padding: gridSize !== null && gridSize >= 6 ? '4px 8px' : '8px 12px',
                                     background: '#ffffff',

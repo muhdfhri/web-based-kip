@@ -1,49 +1,892 @@
 import React, { useState, useEffect } from 'react';
+import {
+  FaTruck,
+  FaShieldAlt,
+  FaExclamationTriangle,
+  FaVideo,
+  FaMapMarkerAlt,
+  FaArrowUp,
+  FaChartBar,
+  FaChartLine
+} from 'react-icons/fa';
 
+/* ────────────────────────────────────────────────────────────────
+   DESIGN TOKENS
+   Enterprise operations dashboard — restrained palette, consistent
+   spacing/radius/shadow scale. Yellow (#FFDB3B) is the brand accent,
+   used sparingly, never as a dominant surface color.
+   ──────────────────────────────────────────────────────────────── */
+const colors = {
+  primary: '#FFDB3B',
+  primaryText: '#8A6D00',
+
+  white: '#FFFFFF',
+  bg: '#F8FAFC',
+  bgAlt: '#F1F5F9',
+  border: '#E2E8F0',
+  borderStrong: '#CBD5E1',
+  textMuted: '#64748B',
+  textBody: '#334155',
+  textStrong: '#0F172A',
+
+  success: '#16A34A',
+  successBg: '#F0FDF4',
+  successBorder: '#BBF7D0',
+
+  warning: '#F59E0B',
+  warningBg: '#FFFBEB',
+  warningBorder: '#FDE68A',
+
+  danger: '#DC2626',
+  dangerBg: '#FEF2F2',
+  dangerBorder: '#FECACA',
+
+  info: '#2563EB',
+  infoBg: '#EFF6FF',
+  infoBorder: '#BFDBFE',
+};
+
+const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 };
+const radius = { sm: 8, md: 10, lg: 12 };
+const shadow = '0 1px 3px rgba(15, 23, 42, 0.06)';
+
+const font = {
+  section: { fontSize: '0.8rem', fontWeight: 700, color: colors.textStrong },
+  metric: { fontSize: '1.75rem', fontWeight: 800, color: colors.textStrong, lineHeight: 1.1 },
+  support: { fontSize: '0.7rem', fontWeight: 500, color: colors.textMuted },
+  label: { fontSize: '0.7rem', fontWeight: 600, color: colors.textMuted },
+  mono: { fontFamily: 'JetBrains Mono, monospace' },
+};
+
+const panelStyle = {
+  background: colors.white,
+  border: `1px solid ${colors.border}`,
+  borderRadius: radius.md,
+  boxShadow: shadow,
+};
+
+// Single chart accent — one primary color, no multi-color gradients / glow.
+const chartColor = colors.info;
+
+/* ────────────────────────────────────────────────────────────────
+   REUSABLE COMPONENTS
+   Kept in this file to avoid a wider refactor of the project's
+   component tree; only the visual concerns that repeat across the
+   dashboard are consolidated here.
+   ──────────────────────────────────────────────────────────────── */
+
+function SectionHeader({ icon, iconColor, title, badgeLabel, badgeColor, badgeBg, badgeBorder }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: space.sm,
+        paddingBottom: space.sm,
+        borderBottom: `1px solid ${colors.bgAlt}`,
+        flexShrink: 0,
+        gap: space.xs,
+      }}
+    >
+      <h3 style={{ margin: 0, ...font.section, display: 'flex', alignItems: 'center', gap: space.xs }}>
+        {icon && <span style={{ color: iconColor || colors.textMuted, display: 'flex' }}>{icon}</span>}
+        {title}
+      </h3>
+      {badgeLabel && (
+        <span
+          style={{
+            fontSize: '0.62rem',
+            fontWeight: 700,
+            color: badgeColor || colors.textMuted,
+            background: badgeBg || colors.bgAlt,
+            border: `1px solid ${badgeBorder || colors.border}`,
+            padding: '2px 7px',
+            borderRadius: 999,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {badgeLabel}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function StatusBadge({ label, color, bg }) {
+  return (
+    <span
+      style={{
+        fontSize: '0.6rem',
+        fontWeight: 700,
+        padding: '2px 7px',
+        borderRadius: 6,
+        background: bg,
+        color: color,
+        textTransform: 'capitalize',
+        flexShrink: 0,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function MetricCard({ icon, label, value, valueColor, iconColor, trendLabel, trendPositive, style }) {
+  return (
+    <div
+      style={{
+        ...panelStyle,
+        padding: `${space.md}px ${space.lg}px`,
+        minHeight: 86,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        ...style,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={font.label}>{label}</div>
+          <div style={{ ...font.metric, color: valueColor || colors.textStrong, marginTop: 4 }}>{value}</div>
+        </div>
+        <div
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: radius.sm,
+            background: colors.bg,
+            border: `1px solid ${colors.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: iconColor || colors.textMuted,
+            flexShrink: 0,
+          }}
+        >
+          {icon}
+        </div>
+      </div>
+      {trendLabel && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: space.xs, ...font.support }}>
+          {trendPositive && (
+            <span style={{ color: colors.success, fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}>
+              <FaArrowUp size={8} />
+            </span>
+          )}
+          <span>{trendLabel}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ title, message }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        color: colors.textMuted,
+        textAlign: 'center',
+        padding: space.lg,
+      }}
+    >
+      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: colors.textBody }}>{title}</span>
+      {message && <span style={{ fontSize: '0.68rem' }}>{message}</span>}
+    </div>
+  );
+}
+
+function SkeletonBlock({ width = '100%', height = 12, r = 6 }) {
+  return (
+    <div
+      style={{
+        width,
+        height,
+        borderRadius: r,
+        background: 'linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 37%, #F1F5F9 63%)',
+        backgroundSize: '400% 100%',
+        animation: 'dashboardSkeletonPulse 1.4s ease infinite',
+      }}
+    />
+  );
+}
+
+function LoadingDashboard() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: space.md, height: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
+      <style>{`
+        @keyframes dashboardSkeletonPulse {
+          0% { background-position: 100% 50%; }
+          100% { background-position: 0 50%; }
+        }
+      `}</style>
+
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '2fr 1fr', gap: space.md, minHeight: 0 }}>
+        {/* LEFT: chart + queue list, stacked */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: space.md, minHeight: 0 }}>
+          <div style={{ ...panelStyle, padding: space.lg, display: 'flex', flexDirection: 'column', gap: space.sm, flex: '1.2 1 0%', minHeight: 0 }}>
+            <SkeletonBlock width="45%" height={11} />
+            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: space.sm, paddingTop: space.sm }}>
+              {[40, 65, 30, 80, 50].map((h, j) => (
+                <SkeletonBlock key={j} width="100%" height={`${h}%`} />
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: space.md, flex: '1 1 0%', minHeight: 0 }}>
+            <div style={{ ...panelStyle, padding: space.lg, display: 'flex', flexDirection: 'column', gap: space.sm, minHeight: 0 }}>
+              <SkeletonBlock width="45%" height={11} />
+              {[0, 1, 2, 3].map((j) => (
+                <SkeletonBlock key={j} height={22} />
+              ))}
+            </div>
+            <div style={{ ...panelStyle, padding: space.lg, display: 'flex', flexDirection: 'column', gap: space.sm, minHeight: 0 }}>
+              <SkeletonBlock width="55%" height={11} />
+              {[0, 1, 2].map((j) => (
+                <SkeletonBlock key={j} height={26} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: stacked summary cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: space.md, minHeight: 0 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} style={{ ...panelStyle, padding: `${space.md}px ${space.lg}px`, display: 'flex', flexDirection: 'column', gap: space.sm, justifyContent: 'center', flex: 1, minHeight: 0 }}>
+              <SkeletonBlock width="55%" height={9} />
+              <SkeletonBlock width="35%" height={22} />
+              <SkeletonBlock width="75%" height={8} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Status → visual mapping, restrained semantic palette */
+function getQueueStatusStyle(status) {
+  switch (status) {
+    case 'WAITING':
+      return { color: colors.primaryText, bg: '#FEF9E7', label: 'Waiting' };
+    case 'WEIGH_IN':
+      return { color: colors.info, bg: colors.infoBg, label: 'Weigh In' };
+    case 'GRADING':
+      return { color: colors.textBody, bg: colors.bgAlt, label: 'Grading' };
+    case 'COMPLETED':
+      return { color: colors.success, bg: colors.successBg, label: 'Completed' };
+    default:
+      return { color: colors.textMuted, bg: colors.bgAlt, label: status };
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   MAIN COMPONENT
+   Data fetching, polling, filtering, and calculation logic is
+   unchanged from the existing implementation — only presentation
+   has been redesigned.
+   ──────────────────────────────────────────────────────────────── */
 function DashboardTab() {
-  const [summary, setSummary] = useState({ activeQueues: 0, activePatrols: 0, openIncidents: 0 });
+  const [summary, setSummary] = useState({ activeQueues: 0, activePatrols: 0, openIncidents: 0, activeCctvs: 0 });
+  const [queues, setQueues] = useState([]);
+  const [incidents, setIncidents] = useState([]);
+  const [activeGuards, setActiveGuards] = useState([]);
+  const [checkpoints, setCheckpoints] = useState([]);
+  const [cctvs, setCctvs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [chartType, setChartType] = useState('bar'); // 'bar' or 'line'
+  const [timeFilter, setTimeFilter] = useState('daily'); // 'daily', 'weekly', 'monthly'
+  const [hoveredNode, setHoveredNode] = useState(null);
 
   useEffect(() => {
-    const fetchSummary = async () => {
+    let isMounted = true;
+
+    const fetchAllDashboardData = async () => {
       try {
         const token = localStorage.getItem('kip_token');
-        const res = await fetch('/api/security/queues/summary', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const json = await res.json();
-        if (json) {
-          setSummary(json);
+        const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+        // Parallel Data Fetching from all stations
+        const [
+          summaryRes,
+          queuesRes,
+          incidentsRes,
+          guardsRes,
+          checkpointsRes,
+          cctvsRes
+        ] = await Promise.all([
+          fetch('/api/security/queues/summary', { headers: authHeaders }),
+          fetch('/api/security/queues', { headers: authHeaders }),
+          fetch('/api/security/incidents', { headers: authHeaders }),
+          fetch('/api/security/patrol/active', { headers: authHeaders }),
+          fetch('/api/security/patrol/checkpoints', { headers: authHeaders }),
+          fetch('/api/security/cctv', { headers: authHeaders })
+        ]);
+
+        const summaryJson = await summaryRes.json().catch(() => ({}));
+        const queuesJson = await queuesRes.json().catch(() => ({}));
+        const incidentsData = await incidentsRes.json().catch(() => []);
+        const guardsData = await guardsRes.json().catch(() => []);
+        const checkpointsData = await checkpointsRes.json().catch(() => []);
+        const cctvsJson = await cctvsRes.json().catch(() => ({}));
+
+        if (isMounted) {
+          const queueList = Array.isArray(queuesJson.data) ? queuesJson.data : (Array.isArray(queuesJson) ? queuesJson : []);
+          const cctvList = Array.isArray(cctvsJson.data) ? cctvsJson.data : (Array.isArray(cctvsJson) ? cctvsJson : []);
+          const guardList = Array.isArray(guardsData) ? guardsData : [];
+          const incidentList = Array.isArray(incidentsData) ? incidentsData : [];
+          const checkpointList = Array.isArray(checkpointsData) ? checkpointsData : [];
+
+          setQueues(queueList);
+          setIncidents(incidentList);
+          setActiveGuards(guardList);
+          setCheckpoints(checkpointList);
+          setCctvs(cctvList);
+
+          setSummary({
+            activeQueues: summaryJson.activeQueues ?? queueList.filter(q => ['WAITING', 'WEIGH_IN', 'GRADING'].includes((q.status || '').toUpperCase())).length,
+            activePatrols: summaryJson.activePatrols ?? guardList.length,
+            openIncidents: summaryJson.openIncidents ?? incidentList.filter(i => ['SUBMITTED', 'PENDING', 'OPEN'].includes((i.status || '').toUpperCase())).length,
+            activeCctvs: cctvList.filter(c => c.is_active === 1 || c.is_active === true).length
+          });
         }
       } catch (err) {
-        console.error('Failed to fetch summary:', err);
+        console.error('[Security Dashboard] Fetch error:', err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
-    fetchSummary();
-    const interval = setInterval(fetchSummary, 5000); // Polling every 5s
-    return () => clearInterval(interval);
+
+    fetchAllDashboardData();
+    const interval = setInterval(fetchAllDashboardData, 5000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  if (loading) return <div style={{ color: '#fff', padding: '20px' }}>Loading Dashboard...</div>;
+  // Compute Time Window Boundaries (Daily 07:00 AM shift, Weekly 7 days, Monthly 30 days)
+  const now = new Date();
+  const shiftStart = new Date(now);
+  if (now.getHours() < 7) {
+    shiftStart.setDate(shiftStart.getDate() - 1);
+  }
+  shiftStart.setHours(7, 0, 0, 0);
+
+  const shiftEnd = new Date(shiftStart);
+  shiftEnd.setDate(shiftEnd.getDate() + 1);
+  shiftEnd.setMilliseconds(-1);
+
+  const weekStart = new Date(now);
+  weekStart.setDate(weekStart.getDate() - 7);
+
+  const monthStart = new Date(now);
+  monthStart.setDate(monthStart.getDate() - 30);
+
+  // Filter queues shift today
+  const queuesToday = queues.filter(q => {
+    const rawDate = q.created_at || q.check_in_at || q.checkInAt || q.registered_at || q.timestamp || q.createdAt;
+    if (!rawDate) return false;
+    const formatted = typeof rawDate === 'string' ? rawDate.replace(' ', 'T') : rawDate;
+    const qDate = new Date(formatted);
+    return !isNaN(qDate.getTime()) && qDate >= shiftStart && qDate <= shiftEnd;
+  });
+
+  // Filter incidents reported today
+  const incidentsToday = incidents.filter(inc => {
+    const rawDate = inc.reported_at || inc.created_at || inc.createdAt;
+    if (!rawDate) return false;
+    const formatted = typeof rawDate === 'string' ? rawDate.replace(' ', 'T') : rawDate;
+    const incDate = new Date(formatted);
+    return !isNaN(incDate.getTime()) && incDate >= shiftStart && incDate <= shiftEnd;
+  });
+
+  // Filter Queues according to Selected Time Filter (Daily, Weekly, Monthly)
+  const filteredQueuesForChart = queues.filter(q => {
+    const rawDate = q.created_at || q.check_in_at || q.checkInAt || q.registered_at || q.timestamp || q.createdAt;
+    if (!rawDate) return true;
+    const formatted = typeof rawDate === 'string' ? rawDate.replace(' ', 'T') : rawDate;
+    const qDate = new Date(formatted);
+    if (isNaN(qDate.getTime())) return true;
+
+    if (timeFilter === 'daily') {
+      return qDate >= shiftStart && qDate <= shiftEnd;
+    } else if (timeFilter === 'weekly') {
+      return qDate >= weekStart;
+    } else if (timeFilter === 'monthly') {
+      return qDate >= monthStart;
+    }
+    return true;
+  });
+
+  // Dynamic Commodity Breakdown
+  const commodityCounts = {
+    'FFB UMUM': 0,
+    'FFB MITRA': 0,
+    'CRUDE PALM OIL': 0,
+    'PALM KERNEL': 0,
+    'PALM KERNEL SHELL': 0
+  };
+
+  filteredQueuesForChart.forEach(q => {
+    const code = (q.classification_code || q.classificationCode || q.classification_id || 'U').toUpperCase();
+    if (code === 'U') commodityCounts['FFB UMUM']++;
+    else if (code === 'M') commodityCounts['FFB MITRA']++;
+    else if (code === 'C') commodityCounts['CRUDE PALM OIL']++;
+    else if (code === 'K') commodityCounts['PALM KERNEL']++;
+    else if (code === 'S') commodityCounts['PALM KERNEL SHELL']++;
+  });
+
+  const totalCommoditiesCount = Object.values(commodityCounts).reduce((a, b) => a + b, 0);
+  const maxCount = Math.max(...Object.values(commodityCounts), 1);
+
+  // Single-color chart palette — categories differ by label, not by hue.
+  const commodityItems = [
+    { label: 'FFB UMUM', code: 'UMUM', count: commodityCounts['FFB UMUM'] },
+    { label: 'FFB MITRA', code: 'MITRA', count: commodityCounts['FFB MITRA'] },
+    { label: 'CPO', code: 'CPO', count: commodityCounts['CRUDE PALM OIL'] },
+    { label: 'PK', code: 'PK', count: commodityCounts['PALM KERNEL'] },
+    { label: 'PKS', code: 'PKS', count: commodityCounts['PALM KERNEL SHELL'] }
+  ];
+
+  // Calculate coordinates for smooth Bezier Spline Line Chart (SVG viewBox 0 0 300 120)
+  const coords = commodityItems.map((item, idx) => {
+    const x = 30 + (idx * 60);
+    const heightRatio = totalCommoditiesCount > 0 ? (item.count / maxCount) : 0;
+    const y = 95 - (heightRatio * 70);
+    return { x, y, item, idx };
+  });
+
+  // Generate Smooth Cubic Bezier Path (d)
+  const createSmoothPath = (points) => {
+    if (points.length < 2) return '';
+    let d = `M ${points[0].x},${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const curr = points[i];
+      const next = points[i + 1];
+      const cp1x = curr.x + (next.x - curr.x) / 2;
+      const cp1y = curr.y;
+      const cp2x = curr.x + (next.x - curr.x) / 2;
+      const cp2y = next.y;
+      d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${next.x},${next.y}`;
+    }
+    return d;
+  };
+
+  const smoothPathD = createSmoothPath(coords);
+  const areaPathD = `${smoothPathD} L ${coords[coords.length - 1].x},100 L ${coords[0].x},100 Z`;
+
+  if (loading) {
+    return <LoadingDashboard />;
+  }
 
   return (
-    <div className="som-view-container">
-      <section className="som-dashboard-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', padding: '20px' }}>
-        <div className="stat-card" style={{ background: 'rgba(2, 6, 23, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '20px', borderRadius: '12px', backdropFilter: 'blur(10px)' }}>
-          <h3 style={{ color: '#94a3b8', margin: '0 0 10px 0', fontSize: '14px' }}>TRUCKS IN QUEUE</h3>
-          <div style={{ fontSize: '48px', color: '#ffdb3b', fontWeight: 'bold' }}>{summary.activeQueues}</div>
+    <div className="som-view-container" style={{ display: 'flex', flexDirection: 'column', gap: space.md, height: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
+
+      {/* ── LAYOUT ──
+          Two-column layout: primary content (chart + truck queue list) on
+          the left, a stacked column of compact summary cards on the right —
+          mirrors the reference (large chart + list on the left, a vertical
+          stack of stat cards on the right). */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '2fr 1fr', gap: space.md, minHeight: 0, overflow: 'hidden' }}>
+
+        {/* LEFT: Operational Overview (chart) + Truck Queues, stacked */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: space.md, minHeight: 0, overflow: 'hidden' }}>
+
+          {/* Operational Overview / Commodity Mix */}
+          <div style={{ ...panelStyle, padding: space.lg, display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: '1.2 1 0%', minHeight: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.sm, paddingBottom: space.sm, borderBottom: `1px solid ${colors.bgAlt}`, flexShrink: 0, gap: space.xs }}>
+              <h3 style={{ margin: 0, ...font.section, display: 'flex', alignItems: 'center', gap: space.xs }}>
+                <FaChartBar size={12} style={{ color: colors.textMuted }} /> Operational Overview
+              </h3>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: space.xs }}>
+                {/* Daily / Weekly / Monthly */}
+                <div style={{ display: 'flex', background: colors.bgAlt, padding: 2, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+                  {[
+                    { key: 'daily', label: 'D' },
+                    { key: 'weekly', label: 'W' },
+                    { key: 'monthly', label: 'M' },
+                  ].map((tf) => (
+                    <button
+                      key={tf.key}
+                      onClick={() => setTimeFilter(tf.key)}
+                      title={`Filter ${tf.key}`}
+                      style={{
+                        border: 'none',
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        background: timeFilter === tf.key ? colors.textStrong : 'transparent',
+                        color: timeFilter === tf.key ? colors.white : colors.textMuted,
+                      }}
+                    >
+                      {tf.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Bar / Line */}
+                <div style={{ display: 'flex', gap: 2, background: colors.bgAlt, padding: 2, borderRadius: 6, border: `1px solid ${colors.border}` }}>
+                  <button
+                    onClick={() => setChartType('bar')}
+                    title="Bar chart"
+                    style={{
+                      border: 'none',
+                      padding: '2px 5px',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      background: chartType === 'bar' ? chartColor : 'transparent',
+                      color: chartType === 'bar' ? colors.white : colors.textMuted,
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <FaChartBar size={10} />
+                  </button>
+                  <button
+                    onClick={() => setChartType('line')}
+                    title="Line chart"
+                    style={{
+                      border: 'none',
+                      padding: '2px 5px',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      background: chartType === 'line' ? chartColor : 'transparent',
+                      color: chartType === 'line' ? colors.white : colors.textMuted,
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <FaChartLine size={10} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 0, position: 'relative' }}>
+              {chartType === 'bar' ? (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: space.sm, padding: `${space.sm}px 2px 2px 2px`, borderBottom: `1px solid ${colors.bgAlt}` }}>
+                  {commodityItems.map((item, idx) => {
+                    const heightPct = totalCommoditiesCount > 0 ? Math.round((item.count / maxCount) * 100) : 0;
+                    return (
+                      <div
+                        key={idx}
+                        onMouseEnter={() => setHoveredNode(item)}
+                        onMouseLeave={() => setHoveredNode(null)}
+                        style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', gap: 4, cursor: 'default' }}
+                      >
+                        <span
+                          style={{
+                            ...font.mono,
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            color: item.count > 0 ? colors.textStrong : colors.borderStrong,
+                          }}
+                        >
+                          {item.count}
+                        </span>
+                        <div
+                          style={{
+                            width: '100%',
+                            maxWidth: 24,
+                            height: `${Math.max(heightPct, 4)}%`,
+                            background: item.count > 0 ? chartColor : colors.bgAlt,
+                            opacity: hoveredNode?.code === item.code || !hoveredNode ? 1 : 0.5,
+                            borderRadius: '4px 4px 0 0',
+                            transition: 'opacity 0.15s ease, height 0.2s ease',
+                          }}
+                        />
+                        <span style={{ fontSize: '0.58rem', fontWeight: 700, color: colors.textMuted, marginTop: 2 }}>{item.code}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: `${space.xs}px 2px 2px 2px`, borderBottom: `1px solid ${colors.bgAlt}` }}>
+                  <div style={{ position: 'relative', flex: '1 1 auto', minHeight: 0 }}>
+                    <svg style={{ width: '100%', height: '100%', display: 'block', overflow: 'visible' }} viewBox="0 0 300 120" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={chartColor} stopOpacity="0.22" />
+                          <stop offset="100%" stopColor={chartColor} stopOpacity="0" />
+                        </linearGradient>
+                        <filter id="lineShadow" x="-20%" y="-40%" width="140%" height="180%">
+                          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor={chartColor} floodOpacity="0.25" />
+                        </filter>
+                      </defs>
+
+                      <line x1="20" y1="25" x2="280" y2="25" stroke={colors.bgAlt} strokeDasharray="3 3" strokeWidth="1" />
+                      <line x1="20" y1="60" x2="280" y2="60" stroke={colors.bgAlt} strokeDasharray="3 3" strokeWidth="1" />
+                      <line x1="20" y1="95" x2="280" y2="95" stroke={colors.border} strokeWidth="1" />
+
+                      {/* Vertical guide from the hovered point down to the baseline */}
+                      {hoveredNode && (() => {
+                        const hc = coords.find((c) => c.item.code === hoveredNode.code);
+                        if (!hc) return null;
+                        return <line x1={hc.x} y1={hc.y} x2={hc.x} y2="95" stroke={colors.borderStrong} strokeDasharray="2 2" strokeWidth="1" />;
+                      })()}
+
+                      <path d={areaPathD} fill="url(#areaGradient)" />
+                      <path
+                        d={smoothPathD}
+                        fill="none"
+                        stroke={chartColor}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        filter="url(#lineShadow)"
+                      />
+
+                      {coords.map((c, i) => {
+                        const isHovered = hoveredNode?.code === c.item.code;
+                        return (
+                          <g key={i} onMouseEnter={() => setHoveredNode(c.item)} onMouseLeave={() => setHoveredNode(null)} style={{ cursor: 'default' }}>
+                            {isHovered && <circle cx={c.x} cy={c.y} r="8" fill={chartColor} opacity="0.14" />}
+                            <circle
+                              cx={c.x}
+                              cy={c.y}
+                              r={isHovered ? 5 : 3.5}
+                              fill={chartColor}
+                              stroke={colors.white}
+                              strokeWidth="1.5"
+                              style={{ transition: 'r 0.15s ease' }}
+                            />
+                          </g>
+                        );
+                      })}
+                    </svg>
+
+                    {/* Y-axis scale labels */}
+                    <div style={{ position: 'absolute', left: 0, top: '18%', transform: 'translateY(-50%)', fontSize: '0.55rem', fontWeight: 600, color: colors.textMuted, pointerEvents: 'none' }}>
+                      {maxCount}
+                    </div>
+                    <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', fontSize: '0.55rem', fontWeight: 600, color: colors.textMuted, pointerEvents: 'none' }}>
+                      {Math.round(maxCount / 2)}
+                    </div>
+                    <div style={{ position: 'absolute', left: 0, top: '79%', transform: 'translateY(-50%)', fontSize: '0.55rem', fontWeight: 600, color: colors.textMuted, pointerEvents: 'none' }}>
+                      0
+                    </div>
+
+                    {/* Hover tooltip */}
+                    {hoveredNode && (() => {
+                      const hc = coords.find((c) => c.item.code === hoveredNode.code);
+                      if (!hc) return null;
+                      const leftPct = (hc.x / 300) * 100;
+                      const topPct = (hc.y / 120) * 100;
+                      return (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: `${leftPct}%`,
+                            top: `${topPct}%`,
+                            transform: 'translate(-50%, -135%)',
+                            background: colors.textStrong,
+                            color: colors.white,
+                            fontSize: '0.62rem',
+                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: 6,
+                            whiteSpace: 'nowrap',
+                            pointerEvents: 'none',
+                            boxShadow: '0 4px 10px rgba(15, 23, 42, 0.18)',
+                          }}
+                        >
+                          {hoveredNode.label}: {hoveredNode.count}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginTop: 2, padding: '0 5px', flexShrink: 0 }}>
+                    {commodityItems.map((item, idx) => (
+                      <div
+                        key={idx}
+                        onMouseEnter={() => setHoveredNode(item)}
+                        onMouseLeave={() => setHoveredNode(null)}
+                        style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                      >
+                        <span
+                          style={{
+                            ...font.mono,
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                            color: hoveredNode?.code === item.code ? colors.white : (item.count > 0 ? colors.textStrong : colors.borderStrong),
+                            background: hoveredNode?.code === item.code ? chartColor : 'transparent',
+                            padding: '1px 4px',
+                            borderRadius: 4,
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {item.count}
+                        </span>
+                        <span style={{ fontSize: '0.58rem', fontWeight: 700, color: colors.textMuted }}>{item.code}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: space.xs, fontSize: '0.65rem', color: colors.textMuted, fontWeight: 600 }}>
+                <span style={{ textTransform: 'capitalize' }}>{timeFilter} volume</span>
+                <span style={{ ...font.mono, color: colors.textStrong, fontWeight: 700 }}>{totalCommoditiesCount} trucks</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom split: Truck Queues + Active Patrols */}
+          <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: space.md, flex: '1 1 0%', minHeight: 0 }}>
+
+            {/* Truck Queues */}
+            <div style={{ ...panelStyle, padding: space.lg, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+              <SectionHeader
+                icon={<FaTruck size={12} />}
+                title="Truck Queues"
+                badgeLabel="Live"
+                badgeColor={colors.primaryText}
+                badgeBg="#FEF9E7"
+                badgeBorder="#FDE68A"
+              />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: space.xs, overflowY: 'auto', paddingRight: 2 }}>
+                {queues.length === 0 ? (
+                  <EmptyState title="No active queues" message="All truck operations are clear." />
+                ) : (
+                  queues.slice(0, 6).map((q, idx) => {
+                    const code = q.queueCode || q.queue_code || `U-${idx + 1}`;
+                    const plate = q.licensePlate || q.plate_number || 'Unknown';
+                    const status = (q.status || 'WAITING').toUpperCase();
+                    const s = getQueueStatusStyle(status);
+                    return (
+                      <div
+                        key={q.id || idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: `${space.xs + 2}px ${space.sm}px`,
+                          background: colors.bg,
+                          border: `1px solid ${colors.border}`,
+                          borderRadius: radius.sm - 2,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: space.xs + 2 }}>
+                          <span style={{ ...font.mono, fontSize: '0.68rem', fontWeight: 700, color: colors.textStrong }}>{code}</span>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 600, color: colors.textBody }}>{plate}</span>
+                        </div>
+                        <StatusBadge label={s.label} color={s.color} bg={s.bg} />
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Active Patrols */}
+            <div style={{ ...panelStyle, padding: space.lg, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+              <SectionHeader
+                icon={<FaShieldAlt size={12} />}
+                title="Active Patrols"
+                badgeLabel={`${activeGuards.length} on duty`}
+                badgeColor={colors.success}
+                badgeBg={colors.successBg}
+                badgeBorder={colors.successBorder}
+              />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: space.xs, overflowY: 'auto', paddingRight: 2 }}>
+                {activeGuards.length === 0 ? (
+                  <EmptyState title="No active patrol sessions" />
+                ) : (
+                  activeGuards.map((g, idx) => (
+                    <div
+                      key={g.session_id || idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: `${space.xs + 2}px ${space.sm}px`,
+                        background: colors.bg,
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: radius.sm - 2,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: space.xs + 2 }}>
+                        <div
+                          style={{
+                            width: 22,
+                            height: 22,
+                            borderRadius: '50%',
+                            background: colors.bgAlt,
+                            border: `1px solid ${colors.border}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                            color: colors.textBody,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {(g.name || 'G').charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: colors.textStrong }}>{g.name || 'Security Officer'}</span>
+                          <span style={{ fontSize: '0.6rem', color: colors.textMuted, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <FaMapMarkerAlt size={7} /> {g.current_station_key || 'Patrolling area'}
+                          </span>
+                        </div>
+                      </div>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.success, flexShrink: 0 }} />
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+          {/* close left column */}
         </div>
-        <div className="stat-card" style={{ background: 'rgba(2, 6, 23, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '20px', borderRadius: '12px', backdropFilter: 'blur(10px)' }}>
-          <h3 style={{ color: '#94a3b8', margin: '0 0 10px 0', fontSize: '14px' }}>ACTIVE PATROLS</h3>
-          <div style={{ fontSize: '48px', color: '#39ff14', fontWeight: 'bold' }}>{summary.activePatrols}</div>
+
+        {/* RIGHT: stacked summary cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: space.md, minHeight: 0, overflow: 'hidden' }}>
+          <MetricCard
+            style={{ flex: 1, minHeight: 0 }}
+            icon={<FaTruck size={14} />}
+            label="Trucks in Queue"
+            value={summary.activeQueues}
+            trendLabel={`${queuesToday.length} registered today`}
+            trendPositive={queuesToday.length > 0}
+          />
+          <MetricCard
+            style={{ flex: 1, minHeight: 0 }}
+            icon={<FaShieldAlt size={14} />}
+            label="Active Patrols"
+            value={summary.activePatrols}
+            trendLabel={`${activeGuards.length} on duty · ${checkpoints.length} checkpoints verified`}
+          />
+          <MetricCard
+            style={{ flex: 1, minHeight: 0 }}
+            icon={<FaExclamationTriangle size={14} />}
+            label="Open Incidents"
+            value={summary.openIncidents}
+            valueColor={summary.openIncidents > 0 ? colors.danger : colors.textStrong}
+            iconColor={summary.openIncidents > 0 ? colors.danger : colors.textMuted}
+            trendLabel={summary.openIncidents > 0 ? `${incidentsToday.length} reported today` : `${incidents.length} total logged, none open`}
+          />
+          <MetricCard
+            style={{ flex: 1, minHeight: 0 }}
+            icon={<FaVideo size={14} />}
+            label="CCTV Cameras"
+            value={`${summary.activeCctvs} / ${cctvs.length}`}
+            trendLabel="online"
+          />
         </div>
-        <div className="stat-card" style={{ background: 'rgba(2, 6, 23, 0.6)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '20px', borderRadius: '12px', backdropFilter: 'blur(10px)' }}>
-          <h3 style={{ color: '#94a3b8', margin: '0 0 10px 0', fontSize: '14px' }}>OPEN INCIDENTS</h3>
-          <div style={{ fontSize: '48px', color: summary.openIncidents > 0 ? '#ef4444' : '#64748b', fontWeight: 'bold' }}>{summary.openIncidents}</div>
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

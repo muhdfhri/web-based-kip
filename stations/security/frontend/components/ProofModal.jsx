@@ -1,6 +1,5 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import guardSelfieUrl from '../assets/guard_selfie_proof.png';
 
 function ProofModal({ activeProof, setActiveProof, proofIndex, setProofIndex, currentTime }) {
     if (!activeProof) return null;
@@ -11,7 +10,7 @@ function ProofModal({ activeProof, setActiveProof, proofIndex, setProofIndex, cu
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
-        img.src = currentProof.img || guardSelfieUrl;
+        img.src = currentProof.img;
 
         img.onload = () => {
             canvas.width = 1024;
