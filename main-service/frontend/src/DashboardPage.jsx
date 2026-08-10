@@ -33,11 +33,12 @@ import PressStationSettingsPage from "@stations/press-station/settings/PressStat
 import ThreshingStationSettingsPage from "@stations/threshing-station/settings/ThreshingStationSettingsPage.jsx";
 import SterilizerStationSettingsPage from "@stations/sterilizer-station/settings/SterilizerStationSettingsPage.jsx";
 import BoilerHouseSettingsPage from "@stations/boiler-house/settings/BoilerHouseSettingsPage.jsx";
+import EFBPlantSettingsPage from "@stations/efb-plant/SettingsView.jsx";
 import SystemSettingsPage from "@core/pages/SystemSettingsPage.jsx";
 import usePlcStore from "@core/store";
 import DashboardHeader from "./layout/DashboardHeader.jsx";
 import BoilerHousePage from "@stations/boiler-house/BoilerHousePage.jsx";
-// import EFBPlantPage from "@stations/efb-plant/EFBPlantPage.jsx";
+import EFBPlantPage from "@stations/efb-plant/EFBPlantPage.jsx";
 import EngineRoomPage from "@stations/engine-room/EngineRoomPage.jsx";
 import SecurityStationPage from "@stations/security/SecurityStationPage.jsx";
 import WeighbridgePage from "@stations/weighbridge/WeighbridgePage.jsx";
@@ -64,7 +65,7 @@ import SterilizerCalibrationView from "@stations/sterilizer-station/calibration/
 import PressCalibrationView from "@stations/press-station/calibration/PressCalibrationView.jsx";
 import ThreshingCalibrationView from "@stations/threshing-station/calibration/ThreshingCalibrationView.jsx";
 import KernelCalibrationView from "@stations/kernel-plant/calibration/KernelCalibrationView.jsx";
-// import EFBPlantPlcConfig from "@stations/efb-plant/PlcConfigView.jsx";
+import EFBPlantPlcConfig from "@stations/efb-plant/PlcConfigView.jsx";
 import EngineRoomPlcConfig from "@stations/engine-room/PlcConfigView.jsx";
 import WeighbridgePlcConfig from "@stations/weighbridge/PlcConfigView.jsx";
 // import LoadingRampPlcConfig from "@stations/loading-ramp/PlcConfigView.jsx";
@@ -87,7 +88,7 @@ const STATION_PAGE_MAP = {
   "Kernel Plant": KernelStationPage,
   "Grading Ramp": ComingSoonPage, // Locked/inactive
   "Boiler House": BoilerHousePage,
-  "EFB Plant": ComingSoonPage, // Locked/inactive
+  "EFB Plant": EFBPlantPage, // Locked/inactive
   "Engine Room": EngineRoomPage,
   "Security": SecurityStationPage,
   Weighbridge: WeighbridgePage,
@@ -105,7 +106,7 @@ const STATION_PLC_CONFIG_MAP = {
   "Sterilizer Station": SterilizerPlcConfig,
   "Kernel Plant": KernelPlcConfig,
   "Boiler House": BoilerHousePlcConfig,
-  "EFB Plant": ComingSoonPage,
+  "EFB Plant": EFBPlantPlcConfig,
   "Engine Room": EngineRoomPlcConfig,
   "Security": CamConfigView,
   Weighbridge: WeighbridgePlcConfig,
@@ -124,6 +125,7 @@ const STATION_SETTINGS_MAP = {
   "Kernel Plant": KernelPlantSettingsPage,
   "Sterilizer Station": SterilizerStationSettingsPage,
   "Boiler House": BoilerHouseSettingsPage,
+  "EFB Plant": EFBPlantSettingsPage,
   "DAF / OSR": ComingSoonPage,
 };
 
@@ -452,8 +454,8 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
             <div style={{ display: isShowConfigPage ? "none" : "block", height: "100%", width: "100%" }}>
               <div
                 className={`som-station-container ${(user?.userRole?.toLowerCase() === 'developer' || user?.role?.toLowerCase() === 'developer' || (user?.permissions || []).includes(`Setting:${activeSubmenu}`))
-                    ? 'has-setting-permission'
-                    : 'no-setting-permission'
+                  ? 'has-setting-permission'
+                  : 'no-setting-permission'
                   }`}
                 style={{ height: '100%' }}
               >
@@ -472,8 +474,8 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
       return (
         <div
           className={`som-station-container ${(user?.userRole?.toLowerCase() === 'developer' || user?.role?.toLowerCase() === 'developer' || (user?.permissions || []).includes(`Setting:${activeSubmenu}`))
-              ? 'has-setting-permission'
-              : 'no-setting-permission'
+            ? 'has-setting-permission'
+            : 'no-setting-permission'
             }`}
           style={{ height: '100%' }}
         >
