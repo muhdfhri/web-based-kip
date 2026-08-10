@@ -124,7 +124,6 @@ module.exports = {
       error_file: "./logs/security-ai.err.log",
       out_file: "./logs/security-ai.out.log",
     },
-    /*
     {
       name: "weighbridge-station",
       script: "src/server.js",
@@ -140,6 +139,7 @@ module.exports = {
       error_file: "./logs/weighbridge-station.err.log",
       out_file: "./logs/weighbridge-station.out.log",
     },
+    /*
     {
       name: "grading-ramp-station",
       script: "src/server.js",

@@ -3,6 +3,26 @@ import { dbPool } from '../config/db.js';
 
 const router = express.Router();
 
+// Helper to broadcast WebSocket events via maintenance-service (Port 3200)
+async function broadcastIncidentEvent(event, data) {
+  try {
+    const http = await import('http');
+    const postData = JSON.stringify({ event, data });
+    const req = http.request('http://localhost:3200/api/maintenance/notify-ticket', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    });
+    req.on('error', (err) => console.error('[INCIDENT WS] Broadcast error:', err.message));
+    req.write(postData);
+    req.end();
+  } catch (err) {
+    console.error('[INCIDENT WS] Broadcast exception:', err);
+  }
+}
+
 /**
  * GET /api/security/incidents
  * Fetch incidents reported by security guards
@@ -10,7 +30,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const [rows] = await dbPool.query(
-      'SELECT * FROM security_incidents ORDER BY reported_at DESC LIMIT 100'
+      'SELECT * FROM security_incidents ORDER BY reported_at DESC, created_at DESC LIMIT 100'
     );
     res.json(rows);
   } catch (error) {
@@ -37,6 +57,11 @@ router.put('/:id/status', async (req, res) => {
       return res.status(404).json({ error: 'Incident not found' });
     }
     
+    const [[updatedRow]] = await dbPool.query('SELECT * FROM security_incidents WHERE id = ?', [id]);
+    if (updatedRow) {
+      broadcastIncidentEvent('incident_updated', updatedRow);
+    }
+    
     res.json({ success: true, message: 'Incident updated successfully' });
   } catch (error) {
     console.error('Error updating incident:', error);
@@ -57,9 +82,14 @@ router.post('/', async (req, res) => {
   
   try {
     const [result] = await dbPool.query(
-      'INSERT INTO security_incidents (user_id, station_name, incident_category, incident_description, photo_path, reported_at, status) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, "PENDING")',
+      'INSERT INTO security_incidents (user_id, station_name, incident_category, incident_description, photo_path, reported_at, status) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, "SUBMITTED")',
       [user_id, station_name || null, incident_category, incident_description || null, photo_path || null]
     );
+
+    const [[newRow]] = await dbPool.query('SELECT * FROM security_incidents WHERE id = ?', [result.insertId]);
+    if (newRow) {
+      broadcastIncidentEvent('incident_created', newRow);
+    }
     
     res.status(201).json({ success: true, incident_id: result.insertId, message: 'Incident reported successfully' });
   } catch (error) {

@@ -722,6 +722,20 @@
   z-index: 0;
 }
 
+/* WeighbridgePage manages its own layout — remove shell padding */
+.som-dashboard-main:has(.som-weighbridge-page) {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Weighbridge station container fills completely */
+.som-dashboard-main:has(.som-weighbridge-page) .som-station-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* Allow scrolling ONLY for Dashboards */
 .som-dashboard-main:has(.pd2-shell),
 .som-dashboard-main:has(.dod-shell) {

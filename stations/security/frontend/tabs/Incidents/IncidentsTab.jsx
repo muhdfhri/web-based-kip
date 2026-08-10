@@ -86,70 +86,80 @@ function IncidentsTab() {
   }
 
   return (
-    <div className="som-view-container" style={{ padding: '0', background: '#f8fafc', height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div className="som-view-container" style={{ padding: '0', background: '#f8fafc', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
 
-      {/* ── TOP METRICS PIPELINE BAR ── */}
+      {/* ── TOP METRICS PIPELINE BAR (FLUSH FULL-WIDTH ALIGNMENT) ── */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '12px',
         padding: '16px 20px',
         background: '#ffffff',
         borderBottom: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+        flexShrink: 0,
+        boxSizing: 'border-box',
+        width: '100%'
       }}>
-        {/* Metric 1 */}
-        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: '#eef2ff', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-            <FaShieldAlt />
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '12px',
+          width: '100%'
+        }}>
+          {/* Metric 1 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '0px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '0px', background: '#eef2ff', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+              <FaShieldAlt />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase' }}>TOTAL ANOMALIES</div>
+              <div style={{ fontSize: '22px', fontWeight: '900', color: '#0f172a', lineHeight: '1.2' }}>{totalCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#94a3b8' }}>Tickets</span></div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', letterSpacing: '0.05em', textTransform: 'uppercase' }}>TOTAL ANOMALIES</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: '#0f172a', lineHeight: '1.2' }}>{totalCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#94a3b8' }}>Tickets</span></div>
-          </div>
-        </div>
 
-        {/* Metric 2 */}
-        <div style={{ background: '#f8fafc', border: '1px solid #fed7aa', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-            <FaClock />
+          {/* Metric 2 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #fed7aa', borderRadius: '0px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '0px', background: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+              <FaClock />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#ea580c', letterSpacing: '0.05em', textTransform: 'uppercase' }}>WAITING OPERATOR</div>
+              <div style={{ fontSize: '22px', fontWeight: '900', color: '#c2410c', lineHeight: '1.2' }}>{submittedCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#ea580c' }}>Submitted</span></div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#ea580c', letterSpacing: '0.05em', textTransform: 'uppercase' }}>WAITING OPERATOR</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: '#c2410c', lineHeight: '1.2' }}>{submittedCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#ea580c' }}>Submitted</span></div>
-          </div>
-        </div>
 
-        {/* Metric 3 */}
-        <div style={{ background: '#f8fafc', border: '1px solid #bae6fd', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-            <FaTools />
+          {/* Metric 3 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #bae6fd', borderRadius: '0px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '0px', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+              <FaTools />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#0284c7', letterSpacing: '0.05em', textTransform: 'uppercase' }}>MAINTENANCE WO</div>
+              <div style={{ fontSize: '22px', fontWeight: '900', color: '#0369a1', lineHeight: '1.2' }}>{reviewedCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#0284c7' }}>Work Orders</span></div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#0284c7', letterSpacing: '0.05em', textTransform: 'uppercase' }}>MAINTENANCE WO</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: '#0369a1', lineHeight: '1.2' }}>{reviewedCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#0284c7' }}>Work Orders</span></div>
-          </div>
-        </div>
 
-        {/* Metric 4 */}
-        <div style={{ background: '#f8fafc', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '8px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-            <FaCheckCircle />
-          </div>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', letterSpacing: '0.05em', textTransform: 'uppercase' }}>RESOLVED & VERIFIED</div>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: '#15803d', lineHeight: '1.2' }}>{resolvedCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#16a34a' }}>Fixed</span></div>
+          {/* Metric 4 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #bbf7d0', borderRadius: '0px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '0px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+              <FaCheckCircle />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', letterSpacing: '0.05em', textTransform: 'uppercase' }}>RESOLVED & VERIFIED</div>
+              <div style={{ fontSize: '22px', fontWeight: '900', color: '#15803d', lineHeight: '1.2' }}>{resolvedCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#16a34a' }}>Fixed</span></div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── MAIN CONTENT AREA ── */}
-      <div style={{ padding: '20px', flex: '1', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* ── MAIN CONTENT AREA (FULL-WIDTH 100% WITHOUT SIDE SPACE) ── */}
+      <div style={{ padding: '16px 0px', flex: '1', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
         <div style={{
           background: '#ffffff',
-          borderRadius: '14px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+          borderRadius: '0px',
+          borderLeft: 'none',
+          borderRight: 'none',
+          borderTop: '1px solid #e2e8f0',
+          borderBottom: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
           display: 'flex',
           flexDirection: 'column',
           height: '100%',
@@ -163,7 +173,6 @@ function IncidentsTab() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            flexWrap: 'wrap',
             gap: '14px',
             background: '#ffffff'
           }}>
@@ -178,14 +187,14 @@ function IncidentsTab() {
               </span>
             </div>
 
-            {/* Controls */}
+            {/* Right Controls: [Search Form] [Status Filter Tabs] */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {/* Search Bar */}
               <div style={{ position: 'relative' }}>
                 <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '13px' }} />
                 <input
                   type="text"
-                  placeholder="Search Ticket, Station, Reporter, Description..."
+                  placeholder="Search Ticket, Station, Reporter..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   style={{
@@ -197,7 +206,7 @@ function IncidentsTab() {
                     fontSize: '13px',
                     fontWeight: '600',
                     outline: 'none',
-                    width: '300px',
+                    width: '260px',
                     transition: 'all 0.2s'
                   }}
                 />
@@ -291,7 +300,7 @@ function IncidentsTab() {
 
                     return (
                       <tr key={inc.id || code || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#fafafa', transition: 'background 0.15s' }}>
-                        
+
                         {/* Report Time */}
                         <td style={tdStyle}>
                           <div style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>

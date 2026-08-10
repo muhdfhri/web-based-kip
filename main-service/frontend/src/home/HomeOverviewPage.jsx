@@ -1,5 +1,4 @@
 import React from 'react';
-import homeDashboardUrl from './assets/home-dashboard.webp';
 import './HomeOverviewPage.css';
 
 const getMappedStationTitle = (cardTitle) => {
@@ -30,9 +29,8 @@ const HomeOverviewPage = ({ user, onNavigate, stations }) => {
               <svg viewBox="0 0 1600 700" className="som-home-svg-canvas" preserveAspectRatio="xMidYMid meet">
                 <foreignObject x="0" y="0" width="1600" height="723">
                   <div className="som-home-ultra-fit-shell">
-                    {/* Background Image */}
+                    {/* Background Wrapper */}
                     <div className="som-home-background-wrapper">
-                      <img src={homeDashboardUrl} alt="Factory Overview" className="som-home-bg-image" />
                       <div className="som-home-overlay"></div>
                     </div>
 
