@@ -28,7 +28,7 @@ export default defineConfig({
         new URL("../../stations/threshing/frontend", import.meta.url),
       ),
       "@stations/efb-plant": fileURLToPath(
-        new URL("../../stations/efb-plant/frontend/src", import.meta.url),
+        new URL("../../stations/efb-plant/frontend", import.meta.url),
       ),
       "@stations/press-station": fileURLToPath(
         new URL("../../stations/press/frontend", import.meta.url),
