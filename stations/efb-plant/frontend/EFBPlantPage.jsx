@@ -10,7 +10,8 @@ import pipeSvg from './assets/Pipe.svg'
 import motorSvg from './assets/motor.svg'
 import motorbackSvg from './assets/motor-back.svg'
 
-import { LiquidFlowSVG } from '../../boiler-house/frontend/src/BoilerHousePage.jsx'
+import { useWTFlowBuilder, WTFlowOverlay, WTFlowPanel } from './components/WTFlowBuilder.jsx'
+import { LiquidFlowSVG, SteamFlowSVG } from './components/Flows.jsx'
 
 // Auth helper (sama seperti di PlcConfigView)
 const authHeaders = () => {
@@ -464,18 +465,24 @@ const MonitorCard = ({ id, x, y, label, value, unit, equipmentName, trendType, s
                 <div style={{ display: 'flex', justifyContent: 'center', transform: `scale(${scale})`, transformOrigin: 'center' }}>
                     <div
                         ref={cardRef}
-                        className={`som-boiler-mini-card ${isEditable ? 'som-editable' : ''}`}
+                        className={`som-station-card ${isEditable ? 'som-editable' : ''}`}
                         onMouseEnter={handleMouseEnter}
                         onMouseLeave={handleMouseLeave}
                     >
-                        <div className="som-boiler-mini-header">
-                            <span className="som-boiler-mini-tag">{label}</span>
-                            <div className={`som-boiler-status-indicator ${isRunning ? 'active' : ''}`}></div>
+                        <div className="som-station-header">
+                            <div className="som-station-title">{label}</div>
+                            <div
+                                className="som-station-status-dot"
+                                style={{
+                                    backgroundColor: isRunning ? '#22c55e' : '#ef4444',
+                                    boxShadow: isRunning ? '0 0 4px rgba(34, 197, 94, 0.8)' : '0 0 4px rgba(239, 68, 68, 0.8)'
+                                }}
+                            ></div>
                         </div>
-                        <div className="som-boiler-mini-body">
-                            <div className="som-boiler-mini-param">
-                                <span className="som-boiler-mini-value">{value}</span>
-                                {unit && <span className="som-boiler-mini-unit">{unit}</span>}
+                        <div className="som-station-body">
+                            <div className="som-station-value-group" style={{ justifyContent: 'center', padding: '2px 0' }}>
+                                <span className="som-station-value">{value}</span>
+                                {unit && <span className="som-station-unit">{unit}</span>}
                             </div>
                         </div>
                     </div>
@@ -503,21 +510,25 @@ const MachineParams = ({ id, x, y, title, params, scale = 1, onClick, isEditable
     <g id={id} className="svg-equipment motor-group" onClick={() => onClick && onClick(id)} style={{ cursor: isEditable ? 'pointer' : 'default' }}>
         <foreignObject x={x - 100} y={y - 90} width="200" height="240" style={{ overflow: 'visible' }}>
             <div style={{ display: 'flex', justifyContent: 'center', transform: `scale(${scale})`, transformOrigin: 'center' }}>
-                <div className={`som-boiler-mini-card ${isEditable ? 'som-editable' : ''}`} style={{ width: 'fit-content' }}>
-                    <div className="som-boiler-mini-header" style={{ padding: '4px 8px' }}>
-                        <span className="som-boiler-mini-tag">{title}</span>
-                        <div className="som-boiler-status-indicator active"></div>
+                <div className={`som-station-card ${isEditable ? 'som-editable' : ''}`}>
+                    <div className="som-station-header">
+                        <div className="som-station-title">{title}</div>
+                        <div className="som-station-status-dot" style={{ backgroundColor: '#22c55e', boxShadow: '0 0 4px rgba(34, 197, 94, 0.8)' }}></div>
                     </div>
-                    <div className="som-boiler-mini-body" style={{ padding: '6px 8px' }}>
-                        {params.map((p, i) => (
-                            <div key={i} className="som-boiler-mini-param">
-                                <span className="som-boiler-mini-label" style={{ fontSize: '9px', fontWeight: '700' }}>{p.label}</span>
-                                <span className="som-boiler-mini-value" style={{ color: p.color === 'red' ? '#ef4444' : '#0f172a', fontSize: '11px', fontWeight: '900' }}>
-                                    {p.value}
-                                </span>
-                                {p.unit && <span className="som-boiler-mini-unit" style={{ color: '#94a3b8', fontSize: '8px' }}>{p.unit}</span>}
-                            </div>
-                        ))}
+                    <div className="som-station-body">
+                        <div className="som-station-data-list">
+                            {params.map((p, i) => (
+                                <div key={i} className="som-station-row">
+                                    <span className="som-station-label">{p.label}</span>
+                                    <div className="som-station-value-group">
+                                        <span className={`som-station-value ${p.color === 'red' ? 'red' : ''}`}>
+                                            {p.value}
+                                        </span>
+                                        {p.unit && <span className="som-station-unit">{p.unit}</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -630,6 +641,7 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
     const svgRef = useRef(null);
     const [viewMode, setViewMode] = useState('process'); // 'process' or 'maintenance'
     const [activeTab, setActiveTab] = useState('overview')
+    const wtFlow = useWTFlowBuilder()
 
     // --- PLC CONFIG STATE ---
     const [configMode, setConfigMode] = useState(false);
@@ -761,6 +773,9 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
         console.log(`Equipment clicked: ${id}`);
     };
 
+    const press1SteamVal = lv('press1_data', 'STEAM', 'no tag');
+    const isPress1SteamActive = parseFloat(press1SteamVal) > 0;
+
     return (
         <section className={`som-efb-plant som-mode-${viewMode}`}>
             <header className="som-efb-plant-header">
@@ -783,6 +798,13 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
                     {onSelectSubmenu && (
                         <button className="som-view-btn" onClick={() => onSelectSubmenu('EFB Plant', 'Settings')} style={{ marginLeft: '4px' }}>⚙️ SETTINGS</button>
                     )}
+                    <button
+                        className={`som-view-btn ${wtFlow.isActive ? 'active' : ''}`}
+                        onClick={wtFlow.toggle}
+                        style={{ marginLeft: '4px', background: wtFlow.isActive ? '#eab308' : undefined, color: wtFlow.isActive ? '#000' : undefined }}
+                    >
+                        {wtFlow.isActive ? 'EXIT FLOW BUILDER' : 'FLOW BUILDER'}
+                    </button>
                 </div>
             </header>
 
@@ -797,6 +819,23 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
                         >
                             <image href={efbPlantImageUrl} width="1920" height="1080" />
 
+                            <defs>
+                                <filter id="tint-red" colorInterpolationFilters="sRGB">
+                                    <feColorMatrix type="matrix" values="
+                                    0.244 0.822 0.083 0 0
+                                    0     0     0     0 0
+                                    0     0     0     0 0
+                                    0 0 0 1 0" />
+                                </filter>
+                                <filter id="tint-green" colorInterpolationFilters="sRGB">
+                                    <feColorMatrix type="matrix" values="
+                                    0.0638 0.2146 0.0216 0 0
+                                    0.2551 0.8582 0.0867 0 0
+                                    0.0425 0.1430 0.0144 0 0
+                                    0 0 0 1 0" />
+                                </filter>
+                            </defs>
+
                             {viewMode === 'maintenance' && (
                                 <foreignObject x="660" y="20" width="600" height="60" style={{ overflow: 'visible' }}>
                                     <div className="som-diagnostic-banner">
@@ -807,6 +846,45 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
 
 
                             {/* --- FLOW LINES --- */}
+                            {/* Press 1 Steam Flow */}
+                            <SteamFlowSVG
+                                d="M 243,237 L 263,236 Q 282,234 281,254 L 280,301"
+                                active={true}
+                                mode="flowing"
+                                color="#a9dbe1ff"
+                                thickness={4}
+                            />
+                            {/* Press 1 Dilution Flow */}
+                            <LiquidFlowSVG
+                                d="M 243,272 L 265,272 Q 280,272 280,288 L 280,303"
+                                isRunning={true}
+                                color="#a9dbe1ff"
+                                thickness={6}
+                            />
+                            {/* Press 2 Steam Flow */}
+                            <SteamFlowSVG
+                                d="M 716,235 L 735,236 Q 754,236 754,255 L 753,301"
+                                active={true}
+                                mode="flowing"
+                                color="#a9dbe1ff"
+                                thickness={4}
+                            />
+                            {/* Press 3 Steam Flow */}
+                            <SteamFlowSVG
+                                d="M 1187,237 L 1210,236 Q 1233,234 1232,257 L 1230,303"
+                                active={true}
+                                mode="flowing"
+                                color="#a9dbe1ff"
+                                thickness={4}
+                            />
+                            {/* Press 4 Steam Flow */}
+                            <SteamFlowSVG
+                                d="M 1656,237 L 1683,236 Q 1708,235 1708,260 L 1707,304"
+                                active={true}
+                                mode="flowing"
+                                color="#a9dbe1ff"
+                                thickness={4}
+                            />
                             <LiquidFlowSVG
                                 d="M 1767,430 L 67,426 Q 42,426 42,451 L 40,571 Q 40,596 65,596 L 528,596 Q 553,596 553,621 L 552,756"
                                 isRunning={true}
@@ -878,124 +956,88 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
 
 
                             {/* --- VISUAL ASSETS (MOTORS, PIPES, PUMPS, VALVES) --- */}
-                            <image href={motorbackSvg} x={1835} y={128} width="60" height="48" style={{ pointerEvents: 'none' }} />
-                            <image href={motorSvg} x={1843} y={436} width="65" height="60" style={{ pointerEvents: 'none' }} />
+                            <image href={motorbackSvg} x={1836} y={124} width="55" style={{ pointerEvents: 'none' }} />
+                            <image href={motorSvg} x={1931} y={517} width="68" height="60" style={{ pointerEvents: 'none', transform: 'scaleX(-1)', transformOrigin: '1922.5px 466px' }} />
                             <image href={pumpRunSvg} x={8} y={820} width="40" height="40" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={338} y={852} width="51" height="51" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={358} y={815} width="25" height="25" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={1165} y={890} width="51" height="51" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={1055} y={795} width="51" height="51" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={219} y={252} width="25" height="25" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={219} y={216} width="25" height="25" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={692} y={216} width="25" height="25" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={692} y={252} width="25" height="25" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={1162} y={216} width="25" height="25" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={1162} y={252} width="25" height="25" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={1632} y={216} width="25" height="25" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={1632} y={252} width="25" height="25" style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={338} y={852} width="56" transform="rotate(90 366 880)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={358} y={815} width="30" transform="rotate(90 373 830)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={1165} y={890} width="56" transform="rotate(90 1193 918)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={1055} y={795} width="56" transform="rotate(90 1083 823)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={219} y={252} width="30" transform="rotate(90 234 267)" filter={isPress1SteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={219} y={216} width="30" transform="rotate(90 234 231)" filter={isPress1SteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={692} y={216} width="30" transform="rotate(90 707 231)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={692} y={252} width="30" transform="rotate(90 707 267)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={1162} y={216} width="30" transform="rotate(90 1177 231)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={1162} y={252} width="30" transform="rotate(90 1177 267)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={1632} y={216} width="30" transform="rotate(90 1647 231)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={1632} y={252} width="30" transform="rotate(90 1647 267)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
 
                             {/* --- MONITORING CARDS --- */}
 
                             {/* Press Data Cards */}
                             <MachineParams id="press1_data" onClick={handleEquipmentClick} isEditable={configMode} x={490} y={290} title="PRESS 1 DATA" params={[
-                                { label: 'STEAM', value: '50', unit: '%' },
-                                { label: 'DILUTION', value: '30', unit: '%' },
-                                { label: 'DAMPER', value: '30', unit: '%' },
-                                { label: 'EFB COUNT', value: '120', unit: '/hr' }
+                                { label: 'STEAM', value: press1SteamVal, unit: '%' },
+                                { label: 'DILUTION', value: lv('press1_data', 'DILUTION', 'no tag'), unit: '%' },
+                                { label: 'DAMPER', value: lv('press1_data', 'DAMPER', 'no tag'), unit: '%' },
+                                { label: 'EFB COUNT', value: lv('press1_data', 'EFB COUNT', 'no tag'), unit: '/hr' }
                             ]} />
                             <MachineParams id="press2_data" onClick={handleEquipmentClick} isEditable={configMode} x={940} y={290} title="PRESS 2 DATA" params={[
-                                { label: 'STEAM', value: '50', unit: '%' },
-                                { label: 'DILUTION', value: '30', unit: '%' },
-                                { label: 'DAMPER', value: '30', unit: '%' },
-                                { label: 'EFB COUNT', value: '120', unit: '/hr' }
+                                { label: 'STEAM', value: 'no tag', unit: '%' },
+                                { label: 'DILUTION', value: 'no tag', unit: '%' },
+                                { label: 'DAMPER', value: 'no tag', unit: '%' },
+                                { label: 'EFB COUNT', value: 'no tag', unit: '/hr' }
                             ]} />
                             <MachineParams id="press3_data" onClick={handleEquipmentClick} isEditable={configMode} x={1430} y={290} title="PRESS 3 DATA" params={[
-                                { label: 'STEAM', value: '0', unit: '%', color: 'red' },
-                                { label: 'DILUTION', value: '0', unit: '%', color: 'red' },
-                                { label: 'DAMPER', value: '30', unit: '%' },
-                                { label: 'EFB COUNT', value: '0', unit: '/hr' }
+                                { label: 'STEAM', value: 'no tag', unit: '%', color: 'red' },
+                                { label: 'DILUTION', value: 'no tag', unit: '%', color: 'red' },
+                                { label: 'DAMPER', value: 'no tag', unit: '%' },
+                                { label: 'EFB COUNT', value: 'no tag', unit: '/hr' }
                             ]} />
                             <MachineParams id="press4_data" onClick={handleEquipmentClick} isEditable={configMode} x={1840} y={290} title="PRESS 4 DATA" params={[
-                                { label: 'STEAM', value: '45', unit: '%' },
-                                { label: 'DILUTION', value: '25', unit: '%' },
-                                { label: 'DAMPER', value: '100', unit: '%' },
-                                { label: 'EFB COUNT', value: '90', unit: '/hr' }
+                                { label: 'STEAM', value: 'no tag', unit: '%' },
+                                { label: 'DILUTION', value: 'no tag', unit: '%' },
+                                { label: 'DAMPER', value: 'no tag', unit: '%' },
+                                { label: 'EFB COUNT', value: 'no tag', unit: '/hr' }
                             ]} />
 
                             {/* Temp Sensors below Presses */}
-                            <MonitorCard id="temp1" onClick={handleEquipmentClick} isEditable={configMode} x={220} y={480} label="TEMP 1" value="95" unit="°C" equipmentName="Press 1 Temp" trendType="Temperature" />
-                            <MonitorCard id="temp2" onClick={handleEquipmentClick} isEditable={configMode} x={705} y={480} label="TEMP 2" value="95" unit="°C" equipmentName="Press 2 Temp" trendType="Temperature" />
-                            <MonitorCard id="temp3" onClick={handleEquipmentClick} isEditable={configMode} x={1190} y={480} label="TEMP 3" value="95" unit="°C" equipmentName="Press 3 Temp" trendType="Temperature" />
-                            <MonitorCard id="temp4" onClick={handleEquipmentClick} isEditable={configMode} x={1675} y={480} label="TEMP 4" value="95" unit="°C" equipmentName="Press 4 Temp" trendType="Temperature" />
+                            <MonitorCard id="temp1" onClick={handleEquipmentClick} isEditable={configMode} x={220} y={480} label="TEMP 1" value="no tag" unit="°C" equipmentName="Press 1 Temp" trendType="Temperature" />
+                            <MonitorCard id="temp2" onClick={handleEquipmentClick} isEditable={configMode} x={705} y={480} label="TEMP 2" value="no tag" unit="°C" equipmentName="Press 2 Temp" trendType="Temperature" />
+                            <MonitorCard id="temp3" onClick={handleEquipmentClick} isEditable={configMode} x={1190} y={480} label="TEMP 3" value="no tag" unit="°C" equipmentName="Press 3 Temp" trendType="Temperature" />
+                            <MonitorCard id="temp4" onClick={handleEquipmentClick} isEditable={configMode} x={1675} y={480} label="TEMP 4" value="no tag" unit="°C" equipmentName="Press 4 Temp" trendType="Temperature" />
 
                             {/* Left Side Monitoring */}
-                            <MonitorCard id="flow_out" onClick={handleEquipmentClick} isEditable={configMode} x={40} y={387} label="FLOW OUT" value="11.5" unit="" equipmentName="Flow Out" trendType="Load" />
-                            <MonitorCard id="liq_steam" onClick={handleEquipmentClick} isEditable={configMode} x={278} y={770} label="LIQ STEAM" value="50" unit="%" equipmentName="Liquor Tank Steam" trendType="Valve" scale={0.8} />
-                            <MonitorCard id="tank_level" onClick={handleEquipmentClick} isEditable={configMode} x={445} y={860} label="TANK LEVEL" value="95" unit="%" equipmentName="Liquor Tank Level" trendType="Level" />
-                            <MonitorCard id="tank_temp" onClick={handleEquipmentClick} isEditable={configMode} x={560} y={860} label="TANK TEMP" value="95" unit="°C" equipmentName="Liquor Tank Temp" trendType="Temperature" />
-                            <MonitorCard id="end_temp" onClick={handleEquipmentClick} isEditable={configMode} x={40} y={940} label="END TEMP" value="25" unit="°C" equipmentName="End Temp" trendType="Temperature" />
+                            <MonitorCard id="liq_steam" onClick={handleEquipmentClick} isEditable={configMode} x={305} y={840} label="LIQ STEAM" value="no tag" unit="%" equipmentName="Liquor Tank Steam" trendType="Valve" scale={0.8} />
+                            <MonitorCard id="tank_level" onClick={handleEquipmentClick} isEditable={configMode} x={490} y={1060} label="TANK LEVEL" value="no tag" unit="%" equipmentName="Liquor Tank Level" trendType="Level" />
+                            <MonitorCard id="tank_temp" onClick={handleEquipmentClick} isEditable={configMode} x={605} y={1060} label="TANK TEMP" value="no tag" unit="°C" equipmentName="Liquor Tank Temp" trendType="Temperature" />
+                            <MonitorCard id="end_temp" onClick={handleEquipmentClick} isEditable={configMode} x={115} y={940} label="END TEMP" value="no tag" unit="°C" equipmentName="End Temp" trendType="Temperature" />
 
                             {/* Pumps and Tanks */}
-                            <MonitorCard id="pump1" onClick={handleEquipmentClick} isEditable={configMode} x={645} y={780} label="PUMP 1" value="OFF" unit="" equipmentName="Pump 1" trendType="Status" status="STOPPED" />
-                            <MonitorCard id="pump2" onClick={handleEquipmentClick} isEditable={configMode} x={830} y={890} label="PUMP 2" value="RUN" unit="" equipmentName="Pump 2" trendType="Status" status="RUNNING" />
-                            <MonitorCard id="brush1" onClick={handleEquipmentClick} isEditable={configMode} x={935} y={800} label="BRUSH 1" value="RUN" unit="A" equipmentName="Brush Strainer 1" trendType="Status" status="RUNNING" scale={0.7} />
-                            <MonitorCard id="brush2" onClick={handleEquipmentClick} isEditable={configMode} x={1020} y={800} label="BRUSH 2" value="OFF" unit="A" equipmentName="Brush Strainer 2" trendType="Status" status="STOPPED" scale={0.7} />
+                            <MonitorCard id="pump1" onClick={handleEquipmentClick} isEditable={configMode} x={800} y={735} label="PUMP 1" value="no tag" unit="" equipmentName="Pump 1" trendType="Status" status="STOPPED" />
+                            <MonitorCard id="pump2" onClick={handleEquipmentClick} isEditable={configMode} x={880} y={885} label="PUMP 2" value="no tag" unit="" equipmentName="Pump 2" trendType="Status" status="RUNNING" />
+                            <MonitorCard id="brush1" onClick={handleEquipmentClick} isEditable={configMode} x={960} y={800} label="BRUSH 1" value="no tag" unit="A" equipmentName="Brush Strainer 1" trendType="Status" status="RUNNING" scale={0.7} />
+                            <MonitorCard id="brush2" onClick={handleEquipmentClick} isEditable={configMode} x={1045} y={800} label="BRUSH 2" value="no tag" unit="A" equipmentName="Brush Strainer 2" trendType="Status" status="STOPPED" scale={0.7} />
 
-                            <MachineParams id="cst_data" onClick={handleEquipmentClick} isEditable={configMode} x={1350} y={790} title="CST DATA" params={[
-                                { label: 'TEMP', value: '90', unit: '°C' },
-                                { label: 'OIL LEVEL', value: '311', unit: 'mm' }
+                            <MachineParams id="cst_data" onClick={handleEquipmentClick} isEditable={configMode} x={1380} y={790} title="CST DATA" params={[
+                                { label: 'TEMP', value: 'no tag', unit: '°C' },
+                                { label: 'OIL LEVEL', value: 'no tag', unit: 'mm' }
                             ]} />
 
-                            <MonitorCard id="decanter" onClick={handleEquipmentClick} isEditable={configMode} x={1440} y={580} label="DECANTER" value="RUN" unit="" equipmentName="Decanter" trendType="Status" status="RUNNING" />
-                            <MonitorCard id="cake_breaker" onClick={handleEquipmentClick} isEditable={configMode} x={1880} y={420} label="CAKE BREAKER" value="16.52" unit="A" equipmentName="Cake Breaker Conveyor" trendType="Load" />
-                            <MonitorCard id="feed_conv" onClick={handleEquipmentClick} isEditable={configMode} x={1680} y={152} label="FEED CONV" value="12.08" unit="A" equipmentName="EFB Feed Conveyor" trendType="Load" />
+                            <MonitorCard id="cake_breaker" onClick={handleEquipmentClick} isEditable={configMode} x={1830} y={630} label="CAKE BREAKER" value="no tag" unit="A" equipmentName="Cake Breaker Conveyor" trendType="Load" />
+                            <MonitorCard id="feed_conv" onClick={handleEquipmentClick} isEditable={configMode} x={1680} y={152} label="FEED CONV" value="no tag" unit="A" equipmentName="EFB Feed Conveyor" trendType="Load" />
 
-                            <MonitorCard id="flow_in" onClick={handleEquipmentClick} isEditable={configMode} x={-45} y={775} label="FLOW IN" value="2.5" unit="" equipmentName="Flow In" trendType="Load" />
+                            <MachineParams id="liquor_volume" onClick={handleEquipmentClick} isEditable={configMode} x={672} y={703} title="LIQUOR VOLUME" params={[
+                                { label: 'CURRENT', value: 'no tag', unit: 'm³/hr' },
+                                { label: 'DAILY', value: 'no tag', unit: 'm³' }
+                            ]} />
 
-
-
-
-                            <foreignObject x={562} y={603} width="120" height="70" style={{ overflow: 'visible', pointerEvents: 'none' }}>
-                                <div className="som-boiler-mini-card" style={{ width: 'fit-content', transform: 'scale(0.85)', transformOrigin: 'bottom left' }}>
-                                    <div className="som-boiler-mini-header" style={{ padding: '2px 8px' }}>
-                                        <span className="som-boiler-mini-tag" style={{ fontSize: '7px' }}>Liquor Volume</span>
-                                    </div>
-                                    <div className="som-boiler-mini-body" style={{ padding: '4px 8px', gap: '2px' }}>
-                                        <div className="som-boiler-mini-param" style={{ gap: '10px' }}>
-                                            <span className="som-boiler-mini-label" style={{ fontSize: '7px' }}>Current</span>
-                                            <span className="som-boiler-mini-value" style={{ fontSize: '10px' }}>19 <small style={{ fontSize: '7px', opacity: 0.8 }}>m³/hr</small></span>
-                                        </div>
-                                        <div className="som-boiler-mini-param" style={{ gap: '10px' }}>
-                                            <span className="som-boiler-mini-label" style={{ fontSize: '7px' }}>Daily</span>
-                                            <span className="som-boiler-mini-value" style={{ fontSize: '10px' }}>45.01 <small style={{ fontSize: '7px', opacity: 0.8 }}>m³</small></span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </foreignObject>
-
-                            <foreignObject x={668} y={923} width="110" height="50" style={{ overflow: 'visible', pointerEvents: 'none' }}>
-                                <div className="som-boiler-mini-card" style={{ width: 'fit-content', transform: 'scale(0.85)', transformOrigin: 'bottom left' }}>
-                                    <div className="som-boiler-mini-header" style={{ padding: '3px 9px' }}>
-                                        <span className="som-boiler-mini-tag" style={{ fontSize: '13px' }}>TEMP</span>
-                                        <span className="som-boiler-mini-value" style={{ fontSize: '9px' }}>75 <small style={{ fontSize: '7px', opacity: 0.8 }}>°C</small></span>
-                                    </div>
-                                    <div className="som-boiler-mini-body" style={{ padding: '4px 8px' }}>
-                                        <span className="som-boiler-mini-label" style={{ fontSize: '10px' }}>BLOW-DOWN</span>
-                                    </div>
-                                </div>
-                            </foreignObject>
-
-
-
-
-
-
+                            <MonitorCard id="blowdown_temp" onClick={handleEquipmentClick} isEditable={configMode} x={680} y={975} label="BLOW-DOWN TEMP" value="no tag" unit="°C" equipmentName="Blow-Down Temp" trendType="Temperature" />
 
                             {/* Maintenance Mode Elements */}
                             {viewMode === 'maintenance' && (
                                 <>
-                                    <MaintenanceCardSVG x={240} y={150} label="MANDO 1 CTRL" params={[{ label: 'LOAD', value: '45.2', unit: 'A' }]} id="mando1_mnt" />
-                                    <MaintenanceCardSVG x={240} y={320} label="MANDO 2 CTRL" params={[{ label: 'LOAD', value: '42.8', unit: 'A' }]} id="mando2_mnt" />
+                                    <MaintenanceCardSVG x={240} y={150} label="MANDO 1 CTRL" params={[{ label: 'LOAD', value: 'no tag', unit: 'A' }]} id="mando1_mnt" />
+                                    <MaintenanceCardSVG x={240} y={320} label="MANDO 2 CTRL" params={[{ label: 'LOAD', value: 'no tag', unit: 'A' }]} id="mando2_mnt" />
                                 </>
                             )}
 
@@ -1004,15 +1046,15 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
                                 <div className="som-stats-overlay-card" style={{ margin: 0, transform: 'scale(0.85)', transformOrigin: 'top left', width: 'fit-content', minWidth: '140px' }}>
                                     <div className="stats-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '2px', paddingBottom: '8px' }}>
                                         <span className="stats-label">FFB Processed Today</span>
-                                        <span className="stats-value">850 MT</span>
+                                        <span className="stats-value">no tag</span>
                                     </div>
                                     <div className="stats-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '2px', paddingBottom: '8px' }}>
                                         <span className="stats-label">Oil Recovered from EFB</span>
-                                        <span className="stats-value">2.03 MT</span>
+                                        <span className="stats-value">no tag</span>
                                     </div>
                                     <div className="stats-row highlight" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
                                         <span className="stats-label">OER Recovered</span>
-                                        <span className="stats-value">0.229 %</span>
+                                        <span className="stats-value">no tag</span>
                                     </div>
                                 </div>
                             </foreignObject>
@@ -1024,10 +1066,22 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
                                     </div>
                                     <div className="stats-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '2px', paddingBottom: '0', borderBottom: 'none' }}>
                                         <span className="stats-label">Daily oil recovered</span>
-                                        <span className="stats-value" style={{ color: '#d4ac0d' }}>2.03 MT</span>
+                                        <span className="stats-value" style={{ color: '#d4ac0d' }}>no tag</span>
                                     </div>
                                 </div>
                             </foreignObject>
+                            {/* WT Flow Builder Overlay */}
+                            <WTFlowOverlay
+                                flows={wtFlow.flows}
+                                activeFlowIdx={wtFlow.activeFlowIdx}
+                                isActive={wtFlow.isActive}
+                                isPlacing={wtFlow.isPlacing}
+                                onPointDrag={wtFlow.updatePoint}
+                                onInsertPoint={wtFlow.insertPoint}
+                                onDeletePoint={wtFlow.deletePoint}
+                                onSelectFlow={wtFlow.setActiveFlowIdx}
+                                onCanvasClick={(x, y) => wtFlow.addPointToActiveFlow(x, y)}
+                            />
                         </svg>
                     </div>
                 </div>
@@ -1042,6 +1096,20 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
                     saving={savingTags}
                 />
             )}
+
+            {/* WT Flow Builder Floating Panel */}
+            <WTFlowPanel
+                isActive={wtFlow.isActive}
+                flows={wtFlow.flows}
+                activeFlowIdx={wtFlow.activeFlowIdx}
+                isPlacing={wtFlow.isPlacing}
+                onSelectFlow={wtFlow.setActiveFlowIdx}
+                onAddNewFlow={wtFlow.addNewFlow}
+                onDeleteFlow={wtFlow.deleteFlow}
+                onUpdateFlowSettings={wtFlow.updateFlowSettings}
+                onFinishPlacing={wtFlow.finishPlacing}
+                onClose={wtFlow.toggle}
+            />
         </section >
     )
 }
