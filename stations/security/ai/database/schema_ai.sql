@@ -36,11 +36,6 @@ CREATE TABLE IF NOT EXISTS `security_ai_cctv_configs` (
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Sample Data CCTV RTSP
-INSERT IGNORE INTO `security_ai_cctv_configs` (`camera_code`, `camera_name`, `station_slug`, `rtsp_url`, `stream_fps`) VALUES
-('CAM_SECURITY_01', 'Kamera Pos Security Utama', 'security', 'rtsp://admin:admin123@192.168.1.64:554/Streaming/Channels/102', 15),
-('CAM_STERILIZER_01', 'Kamera Area Sterilizer', 'sterilizer', 'rtsp://admin:admin123@192.168.1.65:554/Streaming/Channels/102', 15);
-
 -- ─────────────────────────────────────────────────────────────
 -- 2. Region of Interest (ROI) Configurations
 -- ─────────────────────────────────────────────────────────────
@@ -57,18 +52,22 @@ CREATE TABLE IF NOT EXISTS `security_ai_roi_configs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ─────────────────────────────────────────────────────────────
--- 3. AI Detection Logs (General & Feature Specific)
+-- ─────────────────────────────────────────────────────────────
+-- 3. AI Detection Logs (General Master & Feature Specific)
 -- ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS `security_ai_detection_logs` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `category` VARCHAR(50) NOT NULL,                      -- e.g. APD, FIRE, HUMAN, LPR, OILDISPATCH
   `camera_code` VARCHAR(50) NOT NULL,
+  `camera_name` VARCHAR(100) DEFAULT NULL,
   `station_slug` VARCHAR(50) NOT NULL,
-  `feature_type` VARCHAR(50) NOT NULL,                 -- apd, fire, human, lpr, oildispatch
-  `detected_label` VARCHAR(100) NOT NULL,              -- e.g. helmet_missing, fire_detected, plate_number
-  `confidence_score` FLOAT NOT NULL,
+  `plate_no` VARCHAR(50) DEFAULT NULL,                 -- Deteksi plat mobil/truk (khusus LPR, NULL untuk kategori lain)
+  `detection_detail` VARCHAR(255) DEFAULT NULL,        -- Label/target detail hasil deteksi
+  `confidence_score` FLOAT DEFAULT NULL,
   `bounding_box_json` JSON DEFAULT NULL,
-  `snapshot_path` VARCHAR(255) DEFAULT NULL,
-  `detected_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+  `snapshot_path` VARCHAR(255) DEFAULT NULL,          -- Path/URL view snapshot (.jpg)
+  `detected_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`camera_code`) REFERENCES `security_ai_cctv_configs`(`camera_code`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ─────────────────────────────────────────────────────────────
@@ -77,53 +76,57 @@ CREATE TABLE IF NOT EXISTS `security_ai_detection_logs` (
 CREATE TABLE IF NOT EXISTS `security_ai_apd_logs` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
   `camera_code` VARCHAR(50) NOT NULL,
+  `camera_name` VARCHAR(100) DEFAULT NULL,
   `station_slug` VARCHAR(50) NOT NULL,
-  `helmet_detected` TINYINT(1) DEFAULT 1,
-  `vest_detected` TINYINT(1) DEFAULT 1,
-  `status` VARCHAR(20) DEFAULT 'COMPLIANT',
-  `snapshot_path` VARCHAR(255) DEFAULT NULL,
-  `recorded_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+  `detection_detail` VARCHAR(255) DEFAULT NULL,        -- Label/target detail hasil deteksi APD
+  `snapshot_path` VARCHAR(255) DEFAULT NULL,          -- Path/URL view snapshot (.jpg)
+  `detected_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`camera_code`) REFERENCES `security_ai_cctv_configs`(`camera_code`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `security_ai_fire_logs` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
   `camera_code` VARCHAR(50) NOT NULL,
+  `camera_name` VARCHAR(100) DEFAULT NULL,
   `station_slug` VARCHAR(50) NOT NULL,
-  `fire_detected` TINYINT(1) DEFAULT 0,
-  `smoke_detected` TINYINT(1) DEFAULT 0,
-  `alert_level` VARCHAR(20) DEFAULT 'NORMAL',
-  `snapshot_path` VARCHAR(255) DEFAULT NULL,
-  `recorded_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+  `detection_detail` VARCHAR(255) DEFAULT NULL,        -- Label/target detail hasil deteksi Fire/Smoke
+  `snapshot_path` VARCHAR(255) DEFAULT NULL,          -- Path/URL view snapshot (.jpg)
+  `detected_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`camera_code`) REFERENCES `security_ai_cctv_configs`(`camera_code`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `security_ai_human_logs` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
   `camera_code` VARCHAR(50) NOT NULL,
+  `camera_name` VARCHAR(100) DEFAULT NULL,
   `station_slug` VARCHAR(50) NOT NULL,
-  `person_count` INT DEFAULT 0,
-  `is_unauthorized` TINYINT(1) DEFAULT 0,
-  `snapshot_path` VARCHAR(255) DEFAULT NULL,
-  `recorded_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+  `detection_detail` VARCHAR(255) DEFAULT NULL,        -- Label/target detail hasil deteksi Human Trespasser
+  `snapshot_path` VARCHAR(255) DEFAULT NULL,          -- Path/URL view snapshot (.jpg)
+  `detected_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`camera_code`) REFERENCES `security_ai_cctv_configs`(`camera_code`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `security_ai_lpr_logs` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
   `camera_code` VARCHAR(50) NOT NULL,
+  `camera_name` VARCHAR(100) DEFAULT NULL,
   `station_slug` VARCHAR(50) NOT NULL,
-  `plate_number` VARCHAR(50) NOT NULL,
-  `ocr_confidence` FLOAT NOT NULL,
-  `snapshot_path` VARCHAR(255) DEFAULT NULL,
-  `recorded_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+  `plate_no` VARCHAR(50) DEFAULT NULL,                 -- Deteksi plat mobil/truk (khusus LPR)
+  `detection_detail` VARCHAR(255) DEFAULT NULL,        -- Label/target detail hasil deteksi LPR
+  `snapshot_path` VARCHAR(255) DEFAULT NULL,          -- Path/URL view snapshot (.jpg)
+  `detected_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`camera_code`) REFERENCES `security_ai_cctv_configs`(`camera_code`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `security_ai_oildispatch_logs` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
   `camera_code` VARCHAR(50) NOT NULL,
+  `camera_name` VARCHAR(100) DEFAULT NULL,
   `station_slug` VARCHAR(50) NOT NULL,
-  `tanker_truck_detected` TINYINT(1) DEFAULT 1,
-  `valve_connection_status` VARCHAR(50) DEFAULT 'CONNECTED',
-  `dispatch_status` VARCHAR(50) DEFAULT 'IN_PROGRESS',
-  `recorded_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+  `detection_detail` VARCHAR(255) DEFAULT NULL,        -- Label/target detail hasil deteksi Oil Dispatch
+  `snapshot_path` VARCHAR(255) DEFAULT NULL,          -- Path/URL view snapshot (.jpg)
+  `detected_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`camera_code`) REFERENCES `security_ai_cctv_configs`(`camera_code`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `security_ai_recommendations` (

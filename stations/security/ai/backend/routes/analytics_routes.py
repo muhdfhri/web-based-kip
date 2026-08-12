@@ -84,3 +84,71 @@ def get_ai_recommendations():
         return jsonify({"success": True, "data": recs})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
+
+@analytics_bp.route('/api/security-ai/analytics/detection-logs', methods=['GET'])
+def get_detection_logs():
+    """
+    GET Master Detection Logs (Mendukung query parameter ?station_slug=... & ?category=... & ?limit=... & ?page=...)
+    """
+    station_slug = request.args.get('station_slug')
+    category = request.args.get('category')
+    limit = int(request.args.get('limit', 11))
+    page = int(request.args.get('page', 1))
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    offset = (page - 1) * limit
+
+    try:
+        conn = get_db_ai_connection()
+        with conn.cursor() as cursor:
+            where_conditions = []
+            params = []
+
+            if station_slug and station_slug != 'all-stations':
+                where_conditions.append("REPLACE(station_slug, '_', '-') = REPLACE(%s, '_', '-')")
+                params.append(station_slug)
+
+            if category and category.upper() not in ['ALL', 'ALL CATEGORIES', 'ALL-CATEGORIES']:
+                where_conditions.append("category = %s")
+                params.append(category.upper())
+
+            if start_date:
+                # normalize ISO T/Z if needed, e.g. 2026-08-07T00:00:00Z -> 2026-08-07 00:00:00
+                clean_start = start_date.replace('T', ' ').replace('Z', '').split('.')[0]
+                where_conditions.append("detected_at >= %s")
+                params.append(clean_start)
+
+            if end_date:
+                clean_end = end_date.replace('T', ' ').replace('Z', '').split('.')[0]
+                where_conditions.append("detected_at <= %s")
+                params.append(clean_end)
+
+            where_clause = (" WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
+
+            count_sql = f"SELECT COUNT(*) as total FROM security_ai_detection_logs{where_clause}"
+            cursor.execute(count_sql, tuple(params))
+            total = cursor.fetchone().get('total', 0)
+
+            sql = f"SELECT * FROM security_ai_detection_logs{where_clause} ORDER BY detected_at DESC, id DESC LIMIT %s OFFSET %s"
+            cursor.execute(sql, tuple(params + [limit, offset]))
+            logs = cursor.fetchall()
+
+            for log in logs:
+                if log.get('detected_at'):
+                    log['detected_at'] = str(log['detected_at'])
+        conn.close()
+
+        import math
+        total_pages = math.ceil(total / limit) if limit > 0 else 1
+        return jsonify({
+            "success": True,
+            "data": logs,
+            "pagination": {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "totalPages": max(total_pages, 1)
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500

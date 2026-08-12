@@ -6,6 +6,7 @@ import patrolRoutes from './routes/patrolRoutes.js';
 import incidentRoutes from './routes/incidentRoutes.js';
 import queueRoutes from './routes/queueRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import logsheetRoutes from './routes/logsheetRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -30,6 +31,8 @@ app.use(`/api/${STATION_SLUG}/cctv`, cctvRoutes);
 app.use(`/api/${STATION_SLUG}/patrol`, patrolRoutes);
 app.use(`/api/${STATION_SLUG}/incidents`, incidentRoutes);
 app.use(`/api/${STATION_SLUG}/queues`, queueRoutes);
+app.use(`/api/${STATION_SLUG}/logsheet`, logsheetRoutes);
+
 // Mobile app compat alias
 app.use(`/api/${STATION_SLUG}/truck-queue`, queueRoutes);
 app.use(`/api/${STATION_SLUG}/upload`, uploadRoutes);

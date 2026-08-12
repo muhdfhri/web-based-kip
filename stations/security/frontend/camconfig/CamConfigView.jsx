@@ -19,9 +19,34 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
   // Form State
   const [cameraName, setCameraName] = useState("");
   const [location, setLocation] = useState("");
+  const [stationSlugState, setStationSlugState] = useState(stationSlug || "security");
   const [rtspUrl, setRtspUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [sortOrder, setSortOrder] = useState(0);
+
+  // Available Station Options (Dynamically fetched from Master API /api/config/stations)
+  const [availableStations, setAvailableStations] = useState([]);
+
+  useEffect(() => {
+    const fetchStationList = async () => {
+      try {
+        const res = await fetch("/api/config/stations", { headers: authHeaders() });
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          const activeStations = json.data
+            .filter(s => s.is_active === 1)
+            .map(s => ({
+              slug: s.slug,
+              title: s.title ? s.title.toUpperCase() : s.slug.toUpperCase()
+            }));
+          setAvailableStations(activeStations);
+        }
+      } catch (err) {
+        console.error("[CamConfigView] Error fetching stations from master API:", err);
+      }
+    };
+    fetchStationList();
+  }, []);
 
   const fetchCameras = useCallback(async () => {
     try {
@@ -50,6 +75,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
     setCurrentCamera(null);
     setCameraName("");
     setLocation("");
+    setStationSlugState(stationSlug || "security");
     setRtspUrl("");
     setIsActive(true);
     setSortOrder(0);
@@ -59,6 +85,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
     setCurrentCamera(cam);
     setCameraName(cam.camera_name || "");
     setLocation(cam.location || "");
+    setStationSlugState(cam.station_slug || "security");
     setRtspUrl(cam.rtsp_url || "");
     setIsActive(Boolean(cam.is_active));
     setSortOrder(cam.sort_order || 0);
@@ -77,6 +104,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
       const payload = {
         camera_name: cameraName.trim(),
         location: location.trim(),
+        station_slug: stationSlugState,
         rtsp_url: rtspUrl.trim(),
         is_active: isActive ? 1 : 0,
         sort_order: parseInt(sortOrder, 10) || 0,
@@ -134,6 +162,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
       const payload = {
         camera_name: cam.camera_name,
         location: cam.location,
+        station_slug: cam.station_slug || "security",
         rtsp_url: cam.rtsp_url,
         sort_order: cam.sort_order,
         is_active: cam.is_active ? 0 : 1,
@@ -223,6 +252,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
               <tr>
                 <th style={{ width: "52px" }}>#</th>
                 <th>Camera Identifier</th>
+                <th>Station Scope</th>
                 <th>Location</th>
                 <th>RTSP Stream Endpoint</th>
                 <th style={{ width: "60px", textAlign: "center" }}>Order</th>
@@ -243,6 +273,11 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
                       {cam.camera_name}
                       <span className="som-device-meta">RTSP Video Source</span>
                     </div>
+                  </td>
+                  <td>
+                    <span className="som-ip-badge" style={{ background: '#f1f5f9', color: '#334155', fontWeight: '700', textTransform: 'uppercase' }}>
+                      {cam.station_slug || 'security'}
+                    </span>
                   </td>
                   <td>
                     <span style={{ fontSize: "0.875rem", opacity: 0.85 }}>
@@ -271,9 +306,8 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
                   <td style={{ textAlign: "center" }}>
                     {/* Active / Inactive toggle pill */}
                     <button
-                      className={`ccam-status-pill ${
-                        cam.is_active ? "ccam-status-active" : "ccam-status-inactive"
-                      }`}
+                      className={`ccam-status-pill ${cam.is_active ? "ccam-status-active" : "ccam-status-inactive"
+                        }`}
                       onClick={() => handleToggleActive(cam)}
                       title="Click to toggle status"
                     >
@@ -330,7 +364,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
               {cameras.length === 0 && (
                 <tr>
                   <td
-                    colSpan="7"
+                    colSpan="8"
                     style={{
                       textAlign: "center",
                       padding: "80px 0",
@@ -389,6 +423,22 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
                   </div>
 
                   <div className="form-group-full">
+                    <label className="som-label">Target Station Scope (station_slug) *</label>
+                    <select
+                      className="som-input"
+                      value={stationSlugState}
+                      onChange={(e) => setStationSlugState(e.target.value)}
+                      required
+                    >
+                      {availableStations.map((st) => (
+                        <option key={st.slug} value={st.slug}>
+                          {st.title} ({st.slug})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group-full">
                     <label className="som-label">Location Area</label>
                     <input
                       type="text"
@@ -435,9 +485,8 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
                         <span className="ccam-toggle-slider"></span>
                       </label>
                       <span
-                        className={`ccam-toggle-label ${
-                          isActive ? "ccam-toggle-label-active" : "ccam-toggle-label-inactive"
-                        }`}
+                        className={`ccam-toggle-label ${isActive ? "ccam-toggle-label-active" : "ccam-toggle-label-inactive"
+                          }`}
                       >
                         {isActive ? "Active" : "Inactive"}
                       </span>
@@ -462,8 +511,8 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
                   {saving
                     ? "Saving..."
                     : currentCamera
-                    ? "Save Changes"
-                    : "Add Camera"}
+                      ? "Save Changes"
+                      : "Add Camera"}
                 </button>
               </div>
             </form>

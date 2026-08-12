@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS `cctv_cameras` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `camera_name` VARCHAR(100) NOT NULL,
   `location` VARCHAR(100) DEFAULT NULL,
+  `station_slug` VARCHAR(100) DEFAULT 'security',
   `rtsp_url` VARCHAR(255) NOT NULL,
   `is_active` TINYINT(1) DEFAULT 1,
   `sort_order` INT DEFAULT 0,
