@@ -129,14 +129,14 @@ router.get('/next-sequence/:code', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     const [rows] = await dbPool.query(
       `SELECT queue_code, sequence_number FROM security_truck_queues 
-       WHERE classification_code = ? AND queue_date = ?
-       ORDER BY id DESC LIMIT 1`,
-      [upperCode, today]
+       WHERE classification_code = ?
+       ORDER BY sequence_number DESC, id DESC LIMIT 1`,
+      [upperCode]
     );
 
     let nextNum = 1;
     if (rows.length > 0) {
-      if (rows[0].sequence_number) {
+      if (rows[0].sequence_number && rows[0].sequence_number > 0) {
         nextNum = rows[0].sequence_number + 1;
       } else if (rows[0].queue_code) {
         const parts = rows[0].queue_code.split('-');
@@ -147,7 +147,20 @@ router.get('/next-sequence/:code', async (req, res) => {
       }
     }
 
-    const ticketNumber = `${upperCode}-${String(nextNum).padStart(3, '0')}`;
+    let ticketNumber = null;
+    do {
+      const candidate = `${upperCode}-${String(nextNum).padStart(3, '0')}`;
+      const [exist] = await dbPool.query(
+        'SELECT id FROM security_truck_queues WHERE queue_code = ?',
+        [candidate]
+      );
+      if (exist.length > 0) {
+        nextNum++;
+      } else {
+        ticketNumber = candidate;
+      }
+    } while (!ticketNumber);
+
     res.json({ success: true, ticket_number: ticketNumber });
   } catch (error) {
     console.error('Error generating next sequence:', error);
@@ -268,18 +281,59 @@ const createQueueHandler = async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     
     const [seqRows] = await dbPool.query(
-      `SELECT sequence_number FROM security_truck_queues 
-       WHERE classification_code = ? AND queue_date = ?
-       ORDER BY id DESC LIMIT 1`,
-      [finalClassCode, today]
+      `SELECT sequence_number, queue_code FROM security_truck_queues 
+       WHERE classification_code = ?
+       ORDER BY sequence_number DESC, id DESC LIMIT 1`,
+      [finalClassCode]
     );
 
     let nextSeq = 1;
-    if (seqRows.length > 0 && seqRows[0].sequence_number) {
-      nextSeq = seqRows[0].sequence_number + 1;
+    if (seqRows.length > 0) {
+      if (seqRows[0].sequence_number && seqRows[0].sequence_number > 0) {
+        nextSeq = seqRows[0].sequence_number + 1;
+      } else if (seqRows[0].queue_code) {
+        const parts = seqRows[0].queue_code.split('-');
+        if (parts.length > 1) {
+          const parsed = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(parsed)) nextSeq = parsed + 1;
+        }
+      }
     }
 
-    const finalQueueCode = queueCode || queue_number || `${finalClassCode}-${String(nextSeq).padStart(3, '0')}`;
+    let finalQueueCode = queueCode || queue_number;
+    if (!finalQueueCode) {
+      do {
+        const candidate = `${finalClassCode}-${String(nextSeq).padStart(3, '0')}`;
+        const [exist] = await dbPool.query(
+          'SELECT id FROM security_truck_queues WHERE queue_code = ?',
+          [candidate]
+        );
+        if (exist.length > 0) {
+          nextSeq++;
+        } else {
+          finalQueueCode = candidate;
+        }
+      } while (!finalQueueCode);
+    } else {
+      const [exist] = await dbPool.query(
+        'SELECT id FROM security_truck_queues WHERE queue_code = ?',
+        [finalQueueCode]
+      );
+      if (exist.length > 0) {
+        do {
+          const candidate = `${finalClassCode}-${String(nextSeq).padStart(3, '0')}`;
+          const [existCand] = await dbPool.query(
+            'SELECT id FROM security_truck_queues WHERE queue_code = ?',
+            [candidate]
+          );
+          if (existCand.length > 0) {
+            nextSeq++;
+          } else {
+            finalQueueCode = candidate;
+          }
+        } while (finalQueueCode === (queueCode || queue_number));
+      }
+    }
 
     const [result] = await dbPool.query(
       `INSERT INTO security_truck_queues 

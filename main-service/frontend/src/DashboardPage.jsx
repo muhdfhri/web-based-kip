@@ -28,6 +28,7 @@ import MillStabilityPage from "@reports/MillStabilityPage.jsx";
 import { DeveloperPage, ContactListView } from "@contact";
 import LogsheetBase from "@core/logsheet/LogsheetBase.jsx";
 import SterilizerLogsheet from "@stations/sterilizer-station/LogsheetView.jsx";
+import SecurityLogsheetHub from "@stations/security/logsheet/SecurityLogsheetHub.jsx";
 import KernelPlantSettingsPage from "@stations/kernel-plant/settings/KernelPlantSettingsPage.jsx";
 import PressStationSettingsPage from "@stations/press-station/settings/PressStationSettingsPage.jsx";
 import ThreshingStationSettingsPage from "@stations/threshing-station/settings/ThreshingStationSettingsPage.jsx";
@@ -321,6 +322,9 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
 
     // Priority 2: Logsheet
     if (activeMenu === "Logsheet") {
+      if (activeSubmenu === "Security") {
+        return <SecurityLogsheetHub />;
+      }
       if (activeSubmenu === "Sterilizer Station") {
         return <SterilizerLogsheet stationSlug="sterilizer" />;
       }

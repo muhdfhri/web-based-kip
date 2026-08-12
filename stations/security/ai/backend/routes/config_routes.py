@@ -32,6 +32,7 @@ def add_or_update_cctv_config():
     camera_name = data.get('camera_name', 'CCTV Pos Security')
     station_slug = data.get('station_slug', 'security')
     rtsp_url = data.get('rtsp_url')
+    is_active = 1 if data.get('is_active', True) else 0
     
     if not camera_code or not rtsp_url:
         return jsonify({"success": False, "message": "camera_code dan rtsp_url wajib diisi"}), 400
@@ -40,15 +41,33 @@ def add_or_update_cctv_config():
         conn = get_db_ai_connection()
         with conn.cursor() as cursor:
             sql = """
-                INSERT INTO security_ai_cctv_configs (camera_code, camera_name, station_slug, rtsp_url)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO security_ai_cctv_configs (camera_code, camera_name, station_slug, rtsp_url, is_active)
+                VALUES (%s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     camera_name = VALUES(camera_name),
                     station_slug = VALUES(station_slug),
-                    rtsp_url = VALUES(rtsp_url)
+                    rtsp_url = VALUES(rtsp_url),
+                    is_active = VALUES(is_active)
             """
-            cursor.execute(sql, (camera_code, camera_name, station_slug, rtsp_url))
+            cursor.execute(sql, (camera_code, camera_name, station_slug, rtsp_url, is_active))
         conn.close()
         return jsonify({"success": True, "message": "Konfigurasi kamera RTSP berhasil diperbarui"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@config_bp.route('/api/security-ai/config/cameras/<camera_code>', methods=['DELETE'])
+def delete_cctv_config(camera_code):
+    """
+    // ISI DISINI UNTUK LOGIC A I U E O: MENGHAPUS KAMERA DARI DATABASE AI SINKRON KETIKA OPERATOR MENGHAPUS DI SISI SCADA UMUM
+    """
+    if not camera_code:
+        return jsonify({"success": False, "message": "camera_code wajib diisi"}), 400
+        
+    try:
+        conn = get_db_ai_connection()
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM security_ai_cctv_configs WHERE camera_code = %s", (camera_code,))
+        conn.close()
+        return jsonify({"success": True, "message": f"Kamera AI {camera_code} berhasil dihapus"})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
