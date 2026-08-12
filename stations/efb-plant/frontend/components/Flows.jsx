@@ -9,6 +9,7 @@ export const LiquidFlowSVG = ({
   color = "#38bdf8",
   dotColor,
   thickness = 8,
+  glowOpacity = 0.1,
 }) => {
   if (!isRunning) return null;
 
@@ -23,9 +24,9 @@ export const LiquidFlowSVG = ({
         className="oc-water-path-base"
         style={{
           stroke: color,
-          strokeWidth: `${thickness + Math.min(12, thickness * 0.8)}px`,
-          filter: `blur(${Math.min(6, thickness * 0.4)}px)`,
-          opacity: 0.4,
+          strokeWidth: `${thickness + Math.min(3, thickness * 0.2)}px`,
+          filter: `blur(${Math.min(1.5, thickness * 0.15)}px)`,
+          opacity: glowOpacity,
         }}
         fill="none"
         strokeLinecap="round"
@@ -38,9 +39,9 @@ export const LiquidFlowSVG = ({
         className="oc-water-path-base"
         style={{
           stroke: color,
-          strokeWidth: `${thickness + Math.min(2, thickness * 0.2)}px`,
-          filter: `blur(${Math.min(3, thickness * 0.2)}px)`,
-          opacity: 0.6,
+          strokeWidth: `${thickness + 1}px`,
+          filter: `blur(1px)`,
+          opacity: 0.2,
         }}
         fill="none"
         strokeLinecap="round"
@@ -54,7 +55,7 @@ export const LiquidFlowSVG = ({
         style={{
           stroke: color,
           strokeWidth: `${Math.max(thickness * 0.7, 1)}px`,
-          filter: `blur(${thickness < 8 ? 0 : 1.5}px) drop-shadow(0px 0px 5px rgba(0,0,0,0.7))`,
+          filter: `drop-shadow(0px 0px 2px rgba(0,0,0,0.5))`,
           opacity: 1,
         }}
         fill="none"
