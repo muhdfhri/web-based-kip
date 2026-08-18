@@ -65,6 +65,7 @@ function SterilizerStationSettingsPage({
   configMode = false,
   handleEquipmentClick,
   tagMap = {},
+  getMappedValue,
 }) {
   const getDeveloperStyle = (id, signalKey) => {
     if (!configMode) return {};
@@ -81,6 +82,8 @@ function SterilizerStationSettingsPage({
   const [copySourceLine, setCopySourceLine] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [activeKeypad, setActiveKeypad] = useState(null);
+  const [pendingEdits, setPendingEdits] = useState({}); // key: "line_step_field" → numeric edits (bar) committed to DB on Save
+  const [draftEdits, setDraftEdits] = useState({}); // key: "line_step_field" → valve/mode/door user-toggled but NOT yet saved
   const [selectedCategory, setSelectedCategory] = useState("ripe"); // "ripe" | "unripe" | "overripe"
 
   // Merge parent recipe state with realistic default settings to populate Unfresh/Wet timers and door override states
@@ -203,8 +206,10 @@ function SterilizerStationSettingsPage({
   const [bpvSafetyMaxClose, setBpvSafetyMaxClose] = useState(3.00);
   const [initialVals, setInitialVals] = useState({});
   const tags = usePlcStore((state) => state.tags);
+  const scoreLogicsRef = useRef([]);
   const [availableTags, setAvailableTags] = useState([]);
   const [initialRecipes, setInitialRecipes] = useState(null);
+  const [initialScoreLogics, setInitialScoreLogics] = useState(null);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -218,35 +223,72 @@ function SterilizerStationSettingsPage({
         if (json.success && json.data) {
           const { recipes: dbRecipes, parameters: dbParams } = json.data;
 
-          if (dbRecipes) {
-             const mappedValues = json.data.mappedValues || [];
-             const getMapVal = (eq, sig) => {
-               const row = mappedValues.find(m => m.equipment === eq && m.signal_key === sig);
-               return row ? row.value : undefined;
-             };
+          // Apply mappedValues from PLC tags to recipes (run even if recipe_settings DB is empty)
+          const mappedValues = json.data.mappedValues || [];
+          console.log('[Settings] mappedValues from API:', mappedValues);
+          const getMapVal = (eq, sig) => {
+            const row = mappedValues.find(m => m.equipment === eq && m.signal_key === sig);
+            return row ? row.value : undefined;
+          };
 
-             ["ripe", "unripe", "overripe"].forEach(cat => {
-               for(let line=1; line<=4; line++) {
-                 if (dbRecipes[cat] && dbRecipes[cat][line]) {
-                   dbRecipes[cat][line].forEach((stepObj) => {
-                      const stepNum = stepObj.step;
-                      const checkMap = (eq, sig) => {
-                         if (!tagMap || !tagMap[`${eq}__${sig}`]) return null;
-                         const val = getMapVal(eq, sig);
-                         return val !== undefined ? val : null;
-                      };
-                      
-                      stepObj.bar = checkMap(`recipe_line_${line}_step_${stepNum}_press`, "SETPOINT");
-                      stepObj.nrm = checkMap(`recipe_line_${line}_step_${stepNum}_nrm`, "DURATION");
-                      stepObj.unf = checkMap(`recipe_line_${line}_step_${stepNum}_unf`, "DURATION");
-                      stepObj.wet = checkMap(`recipe_line_${line}_step_${stepNum}_wet`, "DURATION");
-                   });
-                 }
-               }
-             });
+          if (dbRecipes) {
+             // Load from DB only — live PLC values are shown in real-time via getLiveRecipeVal() at render time
              setLocalRecipes(dbRecipes);
              setInitialRecipes(JSON.parse(JSON.stringify(dbRecipes)));
-           }
+          } else if (mappedValues.length > 0) {
+            // recipe_settings DB is empty, but we still have PLC mappings — apply them to localRecipes
+            // Compute the updated recipes explicitly so we can set initialRecipes to the same snapshot
+            setLocalRecipes(prev => {
+              const next = JSON.parse(JSON.stringify(prev));
+              ["ripe", "unripe", "overripe"].forEach(cat => {
+                for (let line = 1; line <= 4; line++) {
+                  if (!next[cat] || !next[cat][line]) continue;
+                  next[cat][line] = next[cat][line].map(stepObj => {
+                    const stepNum = stepObj.step;
+                    const checkMap = (eq, sig) => {
+                      const val = getMapVal(eq, sig);
+                      return val !== undefined ? val : null;
+                    };
+                    const barVal = checkMap(`recipe_line_${line}_step_${stepNum}_press`, "SETPOINT");
+                    const nrmVal = checkMap(`recipe_line_${line}_step_${stepNum}_nrm`, "DURATION");
+                    const unfVal = checkMap(`recipe_line_${line}_step_${stepNum}_unf`, "DURATION");
+                    const wetVal = checkMap(`recipe_line_${line}_step_${stepNum}_wet`, "DURATION");
+                    const updated = { ...stepObj };
+                    if (barVal !== null) { updated.bar = Number(barVal); console.log(`[Settings] Applying tag value bar=${barVal} to line=${line} step=${stepNum}`); }
+                    if (nrmVal !== null) updated.nrm = Number(nrmVal);
+                    if (unfVal !== null) updated.unf = Number(unfVal);
+                    if (wetVal !== null) updated.wet = Number(wetVal);
+
+                    const valveFields = [
+                      { field: "inl1", eq: `recipe_line_${line}_step_${stepNum}_inl1` },
+                      { field: "inl2", eq: `recipe_line_${line}_step_${stepNum}_inl2` },
+                      { field: "dinl", eq: `recipe_line_${line}_step_${stepNum}_dinl` },
+                      { field: "con",  eq: `recipe_line_${line}_step_${stepNum}_con`  },
+                      { field: "rcon", eq: `recipe_line_${line}_step_${stepNum}_rcon` },
+                      { field: "dcon", eq: `recipe_line_${line}_step_${stepNum}_dcon` },
+                      { field: "exh",  eq: `recipe_line_${line}_step_${stepNum}_exh`  },
+                    ];
+                    valveFields.forEach(({ field, eq: veq }) => {
+                      const rawVal = checkMap(veq, "VALVE");
+                      if (rawVal !== null) updated[field] = Number(rawVal) > 0;
+                    });
+
+                    const modeRaw = checkMap(`recipe_line_${line}_step_${stepNum}_mode`, "VALVE_MODE");
+                    if (modeRaw !== null) {
+                      const modeNum = Number(modeRaw);
+                      if (modeNum === 1) updated.mode = "Below";
+                      else if (modeNum === 2) updated.mode = "Above";
+                      else updated.mode = "OFF";
+                    }
+                    return updated;
+                  });
+                }
+              });
+              // Also update initialRecipes to the same snapshot so real-time sync guard works
+              setInitialRecipes(JSON.parse(JSON.stringify(next)));
+              return next;
+            });
+          }
 
           if (dbParams) {
             const mappedValues = json.data.mappedValues || [];
@@ -258,22 +300,21 @@ function SterilizerStationSettingsPage({
             const tempInit = {};
 
             const initParam = (dbKey, eq, sig, setter) => {
-              const isMapped = tagMap && tagMap[`${eq}__${sig}`];
-              let finalVal = null;
-              if (!isMapped) {
-                setter(null);
-              } else {
+              let finalVal = dbParams[dbKey];
+              if (finalVal === undefined || finalVal === null) {
                 const liveVal = getMapVal(eq, sig);
                 finalVal = liveVal !== undefined ? liveVal : null;
-                setter(finalVal);
+              } else {
+                finalVal = Number(finalVal);
               }
+              setter(finalVal);
               tempInit[dbKey] = finalVal;
             };
 
-            initParam("designCapacity", "settings_capacity_design_capacity", "MILL_CAP°CITY", setDesignCapacity);
+            initParam("designCapacity", "settings_capacity_design_capacity", "DESIGN_CAPACITY", setDesignCapacity);
             initParam("numberSterilizer", "settings_capacity_number_sterilizer", "NUMBER_STERILIZER", setNumberSterilizer);
-            initParam("millDesignCapacity", "settings_capacity_mill_design_capacity", "MILL_DESIGN_CAP°CITY", setMillDesignCapacity);
-            initParam("actualThroughput", "settings_capacity_actual_throughput", "°CTUAL_THROUGHPUT", setActualThroughput);
+            initParam("millDesignCapacity", "settings_capacity_mill_design_capacity", "MILL_DESIGN_CAPACITY", setMillDesignCapacity);
+            initParam("actualThroughput", "settings_capacity_actual_throughput", "ACTUAL_THROUGHPUT", setActualThroughput);
             initParam("sterilScore", "settings_score_perf_steril", "SCORE", setSterilScore);
             initParam("leadTimeScore", "settings_score_perf_lead_time", "SCORE", setLeadTimeScore);
             initParam("throughputScore", "settings_score_perf_throughput", "SCORE", setThroughputScore);
@@ -303,21 +344,22 @@ function SterilizerStationSettingsPage({
             if (dbParams.scoreLogics !== undefined) {
                const logics = [...dbParams.scoreLogics];
                logics.forEach(row => {
-                  const isMapped = tagMap && tagMap[`settings_score_logic_${row.param}_target__TARGET`];
-                  if (!isMapped) {
-                     row.target = null;
-                  } else {
-                     const liveTgt = getMapVal(`settings_score_logic_${row.param}_target`, "TARGET");
-                     row.target = liveTgt !== undefined ? liveTgt : null;
+                  // TARGET: read from DB only (user sets this, writes to PLC)
+                  // Do NOT override with PLC tag value — PLC may lag behind the saved value.
+
+                  // ACTUAL: read from PLC only (PLC feeds this back, read-only)
+                  const liveAct = getMapVal(`settings_score_logic_${row.param}_actual`, "ACTUAL");
+                  if (liveAct !== undefined) {
+                     row.actual = liveAct;
                   }
                });
                setScoreLogics(logics);
+               setInitialScoreLogics(JSON.parse(JSON.stringify(logics)));
             }
             if (dbParams.bpvSettings !== undefined) {
                const bSettings = [...dbParams.bpvSettings];
                bSettings.forEach((row, i) => {
                   const checkMap = (eq, sig) => {
-                     if (!tagMap || !tagMap[`${eq}__${sig}`]) return null;
                      const val = getMapVal(eq, sig);
                      return val !== undefined ? val : null;
                   };
@@ -355,21 +397,30 @@ function SterilizerStationSettingsPage({
   }, []);
 
   useEffect(() => {
-    if (!availableTags.length || !Object.keys(tags).length) return;
+    if (!availableTags.length) return;
 
     const getMapLiveVal = (eq, sig) => {
+      if (getMappedValue) {
+        const val = getMappedValue(eq, sig);
+        if (val !== "No Tag" && val !== "--" && val !== undefined && val !== null) {
+          if (eq.includes("press")) console.log(`[DEBUG] getMapLiveVal via getMappedValue for ${eq}__${sig}:`, val);
+          return val;
+        }
+      }
       const key = `${eq}__${sig}`;
       const tagId = tagMap[key];
       if (!tagId) return undefined;
       const tagObj = availableTags.find((t) => String(t.id) === String(tagId));
       if (!tagObj) return undefined;
       const live = tags[tagObj.tag_name];
-      return live !== undefined ? Number(live.value) : undefined;
+      const result = live !== undefined ? Number(live.value) : undefined;
+      if (eq.includes("press")) console.log(`[DEBUG] getMapLiveVal fallback for ${key}: tag=${tagObj.tag_name}, liveValue=`, live, `result=`, result);
+      return result;
     };
 
     // 1. Sync single parameters
     const paramsList = [
-      { key: "designCapacity", eq: "settings_capacity_design_capacity", sig: "MILL_CAPACITY", val: designCapacity, set: setDesignCapacity },
+      { key: "designCapacity", eq: "settings_capacity_design_capacity", sig: "DESIGN_CAPACITY", val: designCapacity, set: setDesignCapacity },
       { key: "numberSterilizer", eq: "settings_capacity_number_sterilizer", sig: "NUMBER_STERILIZER", val: numberSterilizer, set: setNumberSterilizer },
       { key: "millDesignCapacity", eq: "settings_capacity_mill_design_capacity", sig: "MILL_DESIGN_CAPACITY", val: millDesignCapacity, set: setMillDesignCapacity },
       { key: "actualThroughput", eq: "settings_capacity_actual_throughput", sig: "ACTUAL_THROUGHPUT", val: actualThroughput, set: setActualThroughput },
@@ -418,11 +469,10 @@ function SterilizerStationSettingsPage({
       setInitialVals(nextInitVals);
     }
 
-    // 2. Sync recipes
-    if (!initialRecipes) return;
+    // 2. Sync recipes — always run even if initialRecipes is null (PLC drives the values)
     let recipesChanged = false;
     const nextRecipes = { ...localRecipes };
-    const nextInitRecipes = JSON.parse(JSON.stringify(initialRecipes));
+    const nextInitRecipes = initialRecipes ? JSON.parse(JSON.stringify(initialRecipes)) : JSON.parse(JSON.stringify(localRecipes));
 
     ["ripe", "unripe", "overripe"].forEach((cat) => {
       if (!nextRecipes[cat]) return;
@@ -433,26 +483,115 @@ function SterilizerStationSettingsPage({
           const checkAndSync = (eq, sig, currentVal, field) => {
             const live = getMapLiveVal(eq, sig);
             if (live !== undefined && live !== null) {
-              const initStep = initialRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
-              const initVal = initStep ? initStep[field] : null;
-              if (currentVal === initVal) {
-                if (currentVal !== live) {
-                  recipesChanged = true;
-                  const nextInitStep = nextInitRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
-                  if (nextInitStep) nextInitStep[field] = live;
-                  return live;
-                }
+              // Always update from PLC live value when a tag is mapped
+              let isDifferent = false;
+              if (field === "bar") {
+                isDifferent = parseFloat(currentVal) !== parseFloat(live);
+              } else if (field === "nrm" || field === "unf" || field === "wet") {
+                isDifferent = parseInt(currentVal) !== parseInt(live);
+              } else {
+                isDifferent = currentVal !== live;
+              }
+              if (isDifferent) {
+                recipesChanged = true;
+                const nextInitStep = nextInitRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
+                if (nextInitStep) nextInitStep[field] = live;
+                return live;
               }
             }
             return currentVal;
           };
 
-          const bar = checkAndSync(`recipe_line_${line}_step_${stepNum}_press`, "SETPOINT", stepObj.bar, "bar");
+          // NOTE: bar (pressure) is NOT synced here — it is displayed real-time via getLiveRecipeVal()
+          // at render time. localRecipes.bar holds the DB/user-intended value for SAVE only.
+          const bar = stepObj.bar;
           const nrm = checkAndSync(`recipe_line_${line}_step_${stepNum}_nrm`, "DURATION", stepObj.nrm, "nrm");
           const unf = checkAndSync(`recipe_line_${line}_step_${stepNum}_unf`, "DURATION", stepObj.unf, "unf");
           const wet = checkAndSync(`recipe_line_${line}_step_${stepNum}_wet`, "DURATION", stepObj.wet, "wet");
 
-          return { ...stepObj, bar, nrm, unf, wet };
+          // Sync valve fields: tag 0 = CLOSE (false), tag >= 1 = OPEN (true), or "OPEN"/"CLOSE"
+          const syncValve = (eq, sig, currentVal, field) => {
+            // Guard: if user has a draft or pending edit for this valve on this line/step, do NOT overwrite it
+            const pendingKey = `${line}_${stepNum}_${field}`;
+            if (draftEdits[pendingKey] !== undefined || pendingEdits[pendingKey] !== undefined) {
+              return currentVal;
+            }
+
+            const live = getMapLiveVal(eq, sig);
+            if (live !== undefined && live !== null) {
+              const liveBool = live === true || live === "true" || live === 1 || live === "1" || live === "OPEN";
+              const initStep = initialRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
+              const initVal = initStep ? initStep[field] : null;
+              if (currentVal === initVal && currentVal !== liveBool) {
+                recipesChanged = true;
+                const nextInitStep = nextInitRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
+                if (nextInitStep) nextInitStep[field] = liveBool;
+                return liveBool;
+              }
+            }
+            return currentVal;
+          };
+
+          const inl1 = syncValve(`recipe_line_${line}_step_${stepNum}_inl1`, "VALVE", stepObj.inl1, "inl1");
+          const inl2 = syncValve(`recipe_line_${line}_step_${stepNum}_inl2`, "VALVE", stepObj.inl2, "inl2");
+          const dinl = syncValve(`recipe_line_${line}_step_${stepNum}_dinl`, "VALVE", stepObj.dinl, "dinl");
+          const con  = syncValve(`recipe_line_${line}_step_${stepNum}_con`,  "VALVE", stepObj.con,  "con");
+          const rcon = syncValve(`recipe_line_${line}_step_${stepNum}_rcon`, "VALVE", stepObj.rcon, "rcon");
+          const dcon = syncValve(`recipe_line_${line}_step_${stepNum}_dcon`, "VALVE", stepObj.dcon, "dcon");
+          const exh  = syncValve(`recipe_line_${line}_step_${stepNum}_exh`,  "VALVE", stepObj.exh,  "exh");
+
+          // Sync mode / Jumper field: tag 0=OFF, 1=Below, 2=Above, or matching string names
+          const syncMode = (eq, sig, currentVal, field) => {
+            const pendingKey = `${line}_${stepNum}_${field}`;
+            if (draftEdits[pendingKey] !== undefined || pendingEdits[pendingKey] !== undefined) {
+              return currentVal;
+            }
+
+            const live = getMapLiveVal(eq, sig);
+            if (live !== undefined && live !== null) {
+              let liveMode = "OFF";
+              if (live === 1 || live === "1" || live === "Below") liveMode = "Below";
+              else if (live === 2 || live === "2" || live === "Above") liveMode = "Above";
+              const initStep = initialRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
+              const initVal = initStep ? initStep[field] : null;
+              if (currentVal === initVal && currentVal !== liveMode) {
+                recipesChanged = true;
+                const nextInitStep = nextInitRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
+                if (nextInitStep) nextInitStep[field] = liveMode;
+                return liveMode;
+              }
+            }
+            return currentVal;
+          };
+
+          const mode = syncMode(`recipe_line_${line}_step_${stepNum}_mode`, "VALVE_MODE", stepObj.mode, "mode");
+
+          const syncDoor = (eq, sig, currentVal, field) => {
+            const pendingKey = `${line}_${stepNum}_${field}`;
+            if (draftEdits[pendingKey] !== undefined || pendingEdits[pendingKey] !== undefined) {
+              return currentVal;
+            }
+
+            const live = getMapLiveVal(eq, sig);
+            if (live !== undefined && live !== null) {
+              const liveBool = live === true || live === "true" || live === 1 || live === "1" || live === "OPEN" || String(live).toUpperCase() === "OPEN";
+              const liveStr = liveBool ? "Open" : "Close";
+              const initStep = initialRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
+              const initVal = initStep ? initStep[field] : null;
+              if (currentVal === initVal && currentVal !== liveStr) {
+                recipesChanged = true;
+                const nextInitStep = nextInitRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
+                if (nextInitStep) nextInitStep[field] = liveStr;
+                return liveStr;
+              }
+            }
+            return currentVal;
+          };
+
+          const doorIn = syncDoor(`recipe_line_${line}_step_${stepNum}_doorIn`, "VALVE", stepObj.doorIn, "doorIn");
+          const doorOut = syncDoor(`recipe_line_${line}_step_${stepNum}_doorOut`, "VALVE", stepObj.doorOut, "doorOut");
+
+          return { ...stepObj, bar, nrm, unf, wet, inl1, inl2, dinl, con, rcon, dcon, exh, mode, doorIn, doorOut };
         });
       }
     });
@@ -461,7 +600,43 @@ function SterilizerStationSettingsPage({
       setLocalRecipes(nextRecipes);
       setInitialRecipes(nextInitRecipes);
     }
-  }, [tags, availableTags, tagMap, initialVals, localRecipes, initialRecipes]);
+
+  }, [tags, availableTags, tagMap, initialVals, localRecipes, initialRecipes, getMappedValue, pendingEdits, draftEdits]);
+
+  // ─── Dedicated live sync for scoreLogics ACTUAL (read-only from PLC) ───────
+  // Kept separate to avoid circular dependency with scoreLogics state.
+  // Uses scoreLogicsRef so we always read the latest state without it being
+  // a useEffect dependency (which would cause an infinite update loop).
+  useEffect(() => {
+    scoreLogicsRef.current = scoreLogics;
+  });
+
+  useEffect(() => {
+    if (!getMappedValue) return;
+
+    const currentLogics = scoreLogicsRef.current;
+    if (!currentLogics || currentLogics.length === 0) return;
+
+    let changed = false;
+    const next = currentLogics.map((row) => {
+      const liveVal = getMappedValue(
+        `settings_score_logic_${row.param}_actual`,
+        "ACTUAL"
+      );
+      // getMappedValue returns "No Tag" or "--" when not mapped/no data
+      if (liveVal === "No Tag" || liveVal === "--" || liveVal === undefined || liveVal === null) return row;
+
+      const numVal = Number(liveVal);
+      if (isNaN(numVal) || numVal === row.actual) return row;
+
+      changed = true;
+      return { ...row, actual: numVal };
+    });
+
+    if (changed) {
+      setScoreLogics(next);
+    }
+  }, [getMappedValue]);
 
   // Handlers
   const handleBackToOverview = () => {
@@ -490,6 +665,13 @@ function SterilizerStationSettingsPage({
     alert(`Recipe configurations for Ripe, Unripe, and Overripe copied from Line ${copySourceLine} to Line ${selectedLine}!`);
   };
   const updateStepField = (idx, field, val) => {
+    const step = localRecipes[selectedCategory]?.[selectedLine]?.[idx];
+    const stepNum = step?.step ?? (idx + 1);
+    // Store pending edit so display shows user's value (not live PLC) before SAVE
+    if (field === 'bar') {
+      const pendingKey = `${selectedLine}_${stepNum}_bar`;
+      setPendingEdits((prev) => ({ ...prev, [pendingKey]: Number(val) }));
+    }
     setLocalRecipes((prev) => {
       const next = JSON.parse(JSON.stringify(prev));
       if (!next[selectedCategory]) next[selectedCategory] = {};
@@ -497,16 +679,66 @@ function SterilizerStationSettingsPage({
       next[selectedCategory][selectedLine][idx][field] = val;
       return next;
     });
+
+    if (field === 'doorIn' || field === 'doorOut' || field === 'mode') {
+      const equipmentKey = `recipe_line_${selectedLine}_step_${stepNum}_${field}`;
+      const signalKey = "VALVE_MODE";
+      const key = `${equipmentKey}__${signalKey}`;
+      const tagId = tagMap[key];
+      if (tagId) {
+        let sendVal = val;
+        if (val === "Open") sendVal = 1;
+        else if (val === "Close") sendVal = 0;
+        else if (val === "OFF") sendVal = 0;
+        else if (val === "Below") sendVal = 1;
+        else if (val === "Above") sendVal = 2;
+        usePlcStore.getState().sendCommand(tagId, sendVal, key, "sterilizer");
+      }
+    }
+  };
+  const cycleModeField = (idx) => {
+    const step = localRecipes[selectedCategory]?.[selectedLine]?.[idx];
+    const stepNum = step?.step ?? (idx + 1);
+
+    const currentLive = getLiveRecipeVal(selectedLine, stepNum, "mode");
+    const currentValue = currentLive !== null ? currentLive : (step?.mode || "OFF");
+
+    let nextValue;
+    if (currentValue === "OFF") nextValue = "Below";
+    else if (currentValue === "Below") nextValue = "Above";
+    else nextValue = "OFF";
+
+    // Write to draftEdits (visual preview only — NOT saved until Save is clicked)
+    const draftKey = `${selectedLine}_${stepNum}_mode`;
+    setDraftEdits((prev) => ({ ...prev, [draftKey]: nextValue }));
+  };
+
+  const cycleDoorField = (idx, field) => {
+    const step = localRecipes[selectedCategory]?.[selectedLine]?.[idx];
+    const stepNum = step?.step ?? (idx + 1);
+
+    const currentLive = getLiveRecipeVal(selectedLine, stepNum, field);
+    const currentValue = currentLive !== null ? currentLive : (step?.[field] || "Close");
+
+    const nextValue = currentValue === "Close" ? "Open" : "Close";
+
+    // Write to draftEdits (visual preview only — NOT saved until Save is clicked)
+    const draftKey = `${selectedLine}_${stepNum}_${field}`;
+    setDraftEdits((prev) => ({ ...prev, [draftKey]: nextValue }));
   };
 
   const toggleField = (idx, field) => {
-    setLocalRecipes((prev) => {
-      const next = JSON.parse(JSON.stringify(prev));
-      if (!next[selectedCategory]) next[selectedCategory] = {};
-      if (!next[selectedCategory][selectedLine]) next[selectedCategory][selectedLine] = [];
-      next[selectedCategory][selectedLine][idx][field] = !next[selectedCategory][selectedLine][idx][field];
-      return next;
-    });
+    const step = localRecipes[selectedCategory]?.[selectedLine]?.[idx];
+    const stepNum = step?.step ?? (idx + 1);
+
+    // Fetch the current displayed value (live PLC or draft edit) and toggle it
+    const currentLive = getLiveRecipeVal(selectedLine, stepNum, field);
+    const currentValue = currentLive !== null ? currentLive : !!(step?.[field]);
+    const toggledValue = !currentValue;
+
+    // Write to draftEdits (visual preview only — NOT sent to PLC or DB until Save is clicked)
+    const draftKey = `${selectedLine}_${stepNum}_${field}`;
+    setDraftEdits((prev) => ({ ...prev, [draftKey]: toggledValue }));
   };
 
   const updateBpvRow = (idx, field, val) => {
@@ -524,17 +756,60 @@ function SterilizerStationSettingsPage({
     if (kp.section === 'recipe') {
       updateStepField(kp.stepIdx, kp.param, val);
     } else if (kp.section === 'scoreLogic') {
+      const newVal = val;
       setScoreLogics((prev) => {
         const next = [...prev];
-        next[kp.idx] = { ...next[kp.idx], target: val };
+        next[kp.idx] = { ...next[kp.idx], target: newVal };
         return next;
       });
+      // Update initialScoreLogics so live sync doesn't overwrite user's new value
+      setInitialScoreLogics((prev) => {
+        if (!prev) return prev;
+        const next = [...prev];
+        next[kp.idx] = { ...next[kp.idx], target: newVal };
+        return next;
+      });
+      // Immediately write to PLC
+      const row = scoreLogics[kp.idx];
+      if (row) {
+        const plcKey = `settings_score_logic_${row.param}_target__TARGET`;
+        const tagId = tagMap[plcKey];
+        if (tagId) {
+          usePlcStore.getState().sendCommand(tagId, newVal, plcKey, "sterilizer");
+        }
+      }
     } else if (kp.section === 'capacity') {
-      if (kp.param === 'designCapacity') setDesignCapacity(val);
-      if (kp.param === 'numberSterilizer') setNumberSterilizer(val);
-      if (kp.param === 'millDesignCapacity') setMillDesignCapacity(val);
-      if (kp.param === 'overLimitTime') setOverLimitTime(val);
-      if (kp.param === 'overLimitScore') setOverLimitScore(val);
+      const sendToPlc = (plcVal, equipmentKey, signalKey) => {
+        const key = `${equipmentKey}__${signalKey}`;
+        const tagId = tagMap[key];
+        console.log(`[DEBUG] sendToPlc: val=${plcVal}, key=${key}, tagId=${tagId}`);
+        if (tagId) {
+          usePlcStore.getState().sendCommand(tagId, Number(plcVal), key, "sterilizer");
+        } else {
+          console.warn(`[WARN] tagId not found in tagMap for key: ${key}`);
+        }
+      };
+
+      if (kp.param === 'designCapacity') {
+        setDesignCapacity(Number(val));
+        sendToPlc(val, "settings_capacity_design_capacity", "DESIGN_CAPACITY");
+      }
+      if (kp.param === 'numberSterilizer') {
+        setNumberSterilizer(Number(val));
+        sendToPlc(val, "settings_capacity_number_sterilizer", "NUMBER_STERILIZER");
+      }
+      if (kp.param === 'millDesignCapacity') {
+        setMillDesignCapacity(Number(val));
+        sendToPlc(val, "settings_capacity_mill_design_capacity", "MILL_DESIGN_CAPACITY");
+      }
+      if (kp.param === 'overLimitTime') {
+        setOverLimitTime(Number(val));
+        sendToPlc(val, "settings_tolerance_over_limit_time", "TIME");
+      }
+      if (kp.param === 'overLimitScore') {
+        setOverLimitScore(Number(val));
+        sendToPlc(val, "settings_tolerance_over_limit_score", "SCORE");
+      }
     } else if (kp.section === 'sequencing') {
       if (kp.param === 'sequencingStep') setSequencingStep(val);
     } else if (kp.section === 'safety') {
@@ -582,9 +857,6 @@ function SterilizerStationSettingsPage({
         numberSterilizer,
         millDesignCapacity,
         actualThroughput,
-        sterilScore,
-        leadTimeScore,
-        throughputScore,
         overLimitTime,
         overLimitScore,
         scoreLogics,
@@ -610,6 +882,35 @@ function SterilizerStationSettingsPage({
       };
 
       const token = localStorage.getItem("kip_token");
+
+      // Build the final recipes payload, injecting both pendingEdits (numeric) and
+      // draftEdits (valve/mode/door toggles) to guarantee the user's latest inputs are saved
+      const recipesPayload = JSON.parse(JSON.stringify(localRecipes));
+
+      const applyEditsToPayload = (edits) => {
+        Object.entries(edits).forEach(([key, val]) => {
+          // key format: "line_stepNum_field" e.g. "1_3_bar" or "1_3_con"
+          const parts = key.split("_");
+          if (parts.length === 3) {
+            const line = parseInt(parts[0]);
+            const stepNum = parseInt(parts[1]);
+            const field = parts[2];
+            ["ripe", "unripe", "overripe"].forEach((cat) => {
+              const stepArr = recipesPayload[cat]?.[line];
+              if (stepArr) {
+                const step = stepArr.find((s) => s.step === stepNum);
+                if (step) step[field] = val;
+              }
+            });
+          }
+        });
+      };
+
+      applyEditsToPayload(pendingEdits);
+      applyEditsToPayload(draftEdits);
+
+      const editedKeys = [...Object.keys(pendingEdits), ...Object.keys(draftEdits)];
+
       const res = await fetch("/api/sterilizer/settings/recipes-and-params", {
         method: "POST",
         headers: {
@@ -617,8 +918,10 @@ function SterilizerStationSettingsPage({
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          recipes: localRecipes,
-          parameters
+          recipes: recipesPayload,
+          parameters,
+          activeCategory: selectedCategory,
+          editedKeys
         })
       });
 
@@ -646,13 +949,10 @@ function SterilizerStationSettingsPage({
         }
       };
 
-      sendPlc(designCapacity, "designCapacity", "settings_capacity_design_capacity", "MILL_CAPACITY");
+      sendPlc(designCapacity, "designCapacity", "settings_capacity_design_capacity", "DESIGN_CAPACITY");
       sendPlc(numberSterilizer, "numberSterilizer", "settings_capacity_number_sterilizer", "NUMBER_STERILIZER");
       sendPlc(millDesignCapacity, "millDesignCapacity", "settings_capacity_mill_design_capacity", "MILL_DESIGN_CAPACITY");
       sendPlc(actualThroughput, "actualThroughput", "settings_capacity_actual_throughput", "ACTUAL_THROUGHPUT");
-      sendPlc(sterilScore, "sterilScore", "settings_score_perf_steril", "SCORE");
-      sendPlc(leadTimeScore, "leadTimeScore", "settings_score_perf_lead_time", "SCORE");
-      sendPlc(throughputScore, "throughputScore", "settings_score_perf_throughput", "SCORE");
       sendPlc(overLimitTime, "overLimitTime", "settings_tolerance_over_limit_time", "TIME");
       sendPlc(overLimitScore, "overLimitScore", "settings_tolerance_over_limit_score", "SCORE");
       sendPlc(sequencingStep, "sequencingStep", "settings_logic_sequencing_step", "STEP");
@@ -674,7 +974,23 @@ function SterilizerStationSettingsPage({
       sendPlc(bpvSafetyMaxOpen, "bpvSafetyMaxOpen", "settings_logic_bpv_safety_max_open", "SETPOINT");
       sendPlc(bpvSafetyMaxClose, "bpvSafetyMaxClose", "settings_logic_bpv_safety_max_close", "SETPOINT");
       
-      alert("Settings saved successfully to database!");
+      scoreLogics.forEach((row) => {
+        const key = `settings_score_logic_${row.param}_target__TARGET`;
+        const tagId = tagMap[key];
+        if (tagId) {
+          usePlcStore.getState().sendCommand(tagId, row.target, key, "sterilizer");
+        }
+      });
+
+      // Update local & initial recipes state with the exact payload saved
+      setLocalRecipes(recipesPayload);
+      setInitialRecipes(JSON.parse(JSON.stringify(recipesPayload)));
+      setInitialScoreLogics(JSON.parse(JSON.stringify(scoreLogics)));
+
+      // Clear pending & draft edits — PLC & DB now hold the new values
+      setPendingEdits({});
+      setDraftEdits({});
+      alert("Settings saved successfully to database and PLC!");
       handleBackToOverview();
     } catch (err) {
       console.error(err);
@@ -872,7 +1188,7 @@ const handleRestoreDefault = () => {
       writeBlock(19, 11, globalPerfData);
 
       const capacityData = [
-        ["CAP°CITY SETTINGS"],
+        ["CAPACITY SETTINGS"],
         ["Parameter", "Value", "Unit"],
         ["Sterilizer Design Cap.", designCapacity, "ton"],
         ["No. of Sterilizer", numberSterilizer, "unit"],
@@ -1239,7 +1555,7 @@ const handleRestoreDefault = () => {
         }
 
         // -------------------------------------------------------------
-        // SECTION 2: SCORE LOGICS & CAP°CITIES (Columns L-P)
+        // SECTION 2: SCORE LOGICS & CAPACITIES (Columns L-P)
         // -------------------------------------------------------------
         const newScoreLogics = [...scoreLogics];
         
@@ -1387,6 +1703,116 @@ const handleRestoreDefault = () => {
 
   const currentLineSteps = localRecipes[selectedCategory]?.[selectedLine] || [];
 
+  // Real-time live value resolver — called at render time so always fresh from PLC
+  // Priority: pendingEdits (user typed new value) → getMappedValue (live PLC) → direct tags lookup → null
+  const getLiveRecipeVal = (line, stepNum, field) => {
+    const isValve = ['inl1', 'inl2', 'dinl', 'con', 'rcon', 'dcon', 'exh'].includes(field);
+    const isMode = field === 'mode';
+    const isDoor = field === 'doorIn' || field === 'doorOut';
+    if (field !== 'bar' && !isValve && !isMode && !isDoor) return null;
+
+    // 1. User has a draft edit (valve toggled but not yet saved) — show that first
+    const pendingKey = `${line}_${stepNum}_${field}`;
+    if (draftEdits[pendingKey] !== undefined) {
+      return draftEdits[pendingKey];
+    }
+    // 2. User has a committed numeric edit (bar/pressure) — show that
+    if (pendingEdits[pendingKey] !== undefined) {
+      return pendingEdits[pendingKey];
+    }
+
+    const mapModeValue = (val) => {
+      if (val === 1 || val === "1" || val === "Below") return "Below";
+      if (val === 2 || val === "2" || val === "Above") return "Above";
+      return "OFF";
+    };
+
+    // 2. Live PLC value via getMappedValue
+    const eq = `recipe_line_${line}_step_${stepNum}_${field === 'bar' ? 'press' : field}`;
+    let sig = 'SETPOINT';
+    if (isValve || isDoor) sig = 'VALVE';
+    if (isMode) sig = 'VALVE_MODE';
+
+    if (getMappedValue) {
+      const val = getMappedValue(eq, sig);
+      if (val !== 'No Tag' && val !== '--' && val !== undefined && val !== null) {
+        if (isValve) {
+          return val === true || val === 'true' || val === 1 || val === '1' || val === 'OPEN';
+        }
+        if (isDoor) {
+          const v = val === true || val === 'true' || val === 1 || val === '1' || val === 'OPEN' || String(val).toUpperCase() === 'OPEN';
+          return v ? "Open" : "Close";
+        }
+        if (isMode) {
+          return mapModeValue(val);
+        }
+        return Number(val);
+      }
+    }
+    // 3. Fallback: direct tags store lookup
+    const key = `${eq}__${sig}`;
+    const tagId = tagMap[key];
+    if (tagId) {
+      const tagObj = availableTags.find((t) => String(t.id) === String(tagId));
+      if (tagObj) {
+        const live = tags[tagObj.tag_name];
+        if (live !== undefined && live !== null) {
+          const liveVal = live.value;
+          if (isValve) {
+            return liveVal === true || liveVal === 'true' || liveVal === 1 || liveVal === '1' || liveVal === 'OPEN';
+          }
+          if (isDoor) {
+            const v = liveVal === true || liveVal === 'true' || liveVal === 1 || liveVal === '1' || liveVal === 'OPEN' || String(liveVal).toUpperCase() === 'OPEN';
+            return v ? "Open" : "Close";
+          }
+          if (isMode) {
+            return mapModeValue(liveVal);
+          }
+          return Number(liveVal);
+        }
+      }
+    }
+    return null;
+  };
+
+  // Helper to render each valve cell (INL1, INL2, etc.) using live PLC / draft / local values
+  const renderValveCell = (step, idx, field, label) => {
+    const live = getLiveRecipeVal(selectedLine, step.step, field);
+    const isOpen = live !== null ? live : !!(step[field]);
+    const draftKey = `${selectedLine}_${step.step}_${field}`;
+    const hasDraft = draftEdits[draftKey] !== undefined;
+
+    return (
+      <td
+        onClick={
+          configMode
+            ? () => handleEquipmentClick(
+                `recipe_line_${selectedLine}_step_${step.step}_${field}`,
+                [],
+                [{ key: "VALVE", label: `Line ${selectedLine} Step ${step.step} ${label}` }]
+              )
+            : () => toggleField(idx, field)
+        }
+      >
+        <div
+          className={`som-rect-status ${isOpen ? "open" : "close"} som-editable`}
+          style={{
+            ...getDeveloperStyle(`recipe_line_${selectedLine}_step_${step.step}_${field}`, "VALVE"),
+            ...(hasDraft ? {
+              outline: "2px dashed #f59e0b",
+              outlineOffset: "1px",
+              opacity: 0.85,
+            } : {})
+          }}
+          title={hasDraft ? "Unsaved change — click Save to commit" : undefined}
+        >
+          {isOpen ? "OPEN" : "CLOSE"}{hasDraft ? " *" : ""}
+        </div>
+      </td>
+    );
+  };
+
+
   return (
     <section className="som-sterilizer-station">
       {/* Header section */}
@@ -1412,40 +1838,6 @@ const handleRestoreDefault = () => {
 
       {/* Main Settings Panel */}
       <div className="som-ster-page">
-        {/* Top Tab Bar Menu */}
-        <div className="som-settings-top-bar">
-          <div className="som-line-tabs-container">
-            <span className="som-tab-group-label">Sterilizer Line</span>
-            <div className="som-line-tabs">
-              {[1, 2, 3, 4].map((num) => (
-                <button
-                  key={num}
-                  className={`som-line-tab-btn ${selectedLine === num ? "active" : ""}`}
-                  onClick={() => setSelectedLine(num)}
-                >
-                  Line {num}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="som-copy-setting-container">
-            <span className="som-copy-label">Copy Setting From Line</span>
-            <select
-              className="som-copy-select"
-              value={copySourceLine}
-              onChange={(e) => setCopySourceLine(Number(e.target.value))}
-            >
-              <option value={1}>Line 1</option>
-              <option value={2}>Line 2</option>
-              <option value={3}>Line 3</option>
-              <option value={4}>Line 4</option>
-            </select>
-            <button className="som-copy-btn" onClick={handleCopySettings}>
-              Copy
-            </button>
-          </div>
-        </div>
-
         {/* Content columns */}
         <div className="som-settings-columns-container">
           {/* Column 1: Card 1 - Recipe / Sterilizer Control Logics */}
@@ -1505,139 +1897,20 @@ const handleRestoreDefault = () => {
                     <tbody>
                       {currentLineSteps.map((step, idx) => (
                         <tr key={step.step || idx}>
-                            <td className="som-n">{step.step}</td>
-                            <td className="som-tiny-txt" style={{ fontWeight: "800" }}>
-                              MODULATE
-                            </td>
-                            <td
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick(
-                                      `recipe_line_${selectedLine}_step_${step.step}_inl1`,
-                                      [],
-                                      [{ key: "VALVE", label: `Line ${selectedLine} Step ${step.step} Inlet 1 Valve` }]
-                                    )
-                                  : () => toggleField(idx, "inl1")
-                              }
-                            >
-                              <div
-                                className={`som-rect-status ${step.inl1 ? "open" : "close"} som-editable`}
-                                style={getDeveloperStyle(`recipe_line_${selectedLine}_step_${step.step}_inl1`, "VALVE")}
-                              >
-                                {step.inl1 ? "OPEN" : "CLOSE"}
-                              </div>
-                            </td>
-                            <td
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick(
-                                      `recipe_line_${selectedLine}_step_${step.step}_inl2`,
-                                      [],
-                                      [{ key: "VALVE", label: `Line ${selectedLine} Step ${step.step} Inlet 2 Valve` }]
-                                    )
-                                  : () => toggleField(idx, "inl2")
-                              }
-                            >
-                              <div
-                                className={`som-rect-status ${step.inl2 ? "open" : "close"} som-editable`}
-                                style={getDeveloperStyle(`recipe_line_${selectedLine}_step_${step.step}_inl2`, "VALVE")}
-                              >
-                                {step.inl2 ? "OPEN" : "CLOSE"}
-                              </div>
-                            </td>
-                            <td
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick(
-                                      `recipe_line_${selectedLine}_step_${step.step}_dinl`,
-                                      [],
-                                      [{ key: "VALVE", label: `Line ${selectedLine} Step ${step.step} D. Inlet Valve` }]
-                                    )
-                                  : () => toggleField(idx, "dinl")
-                              }
-                            >
-                              <div
-                                className={`som-rect-status ${step.dinl ? "open" : "close"} som-editable`}
-                                style={getDeveloperStyle(`recipe_line_${selectedLine}_step_${step.step}_dinl`, "VALVE")}
-                              >
-                                {step.dinl ? "OPEN" : "CLOSE"}
-                              </div>
-                            </td>
-                            <td
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick(
-                                      `recipe_line_${selectedLine}_step_${step.step}_con`,
-                                      [],
-                                      [{ key: "VALVE", label: `Line ${selectedLine} Step ${step.step} Condensate Valve` }]
-                                    )
-                                  : () => toggleField(idx, "con")
-                              }
-                            >
-                              <div
-                                className={`som-rect-status ${step.con ? "open" : "close"} som-editable`}
-                                style={getDeveloperStyle(`recipe_line_${selectedLine}_step_${step.step}_con`, "VALVE")}
-                              >
-                                {step.con ? "OPEN" : "CLOSE"}
-                              </div>
-                            </td>
-                            <td
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick(
-                                      `recipe_line_${selectedLine}_step_${step.step}_rcon`,
-                                      [],
-                                      [{ key: "VALVE", label: `Line ${selectedLine} Step ${step.step} R. Condensate Valve` }]
-                                    )
-                                  : () => toggleField(idx, "rcon")
-                              }
-                            >
-                              <div
-                                className={`som-rect-status ${step.rcon ? "open" : "close"} som-editable`}
-                                style={getDeveloperStyle(`recipe_line_${selectedLine}_step_${step.step}_rcon`, "VALVE")}
-                              >
-                                {step.rcon ? "OPEN" : "CLOSE"}
-                              </div>
-                            </td>
-                            <td
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick(
-                                      `recipe_line_${selectedLine}_step_${step.step}_dcon`,
-                                      [],
-                                      [{ key: "VALVE", label: `Line ${selectedLine} Step ${step.step} D. Condensate Valve` }]
-                                    )
-                                  : () => toggleField(idx, "dcon")
-                              }
-                            >
-                              <div
-                                className={`som-rect-status ${step.dcon ? "open" : "close"} som-editable`}
-                                style={getDeveloperStyle(`recipe_line_${selectedLine}_step_${step.step}_dcon`, "VALVE")}
-                              >
-                                {step.dcon ? "OPEN" : "CLOSE"}
-                              </div>
-                            </td>
-                            <td
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick(
-                                      `recipe_line_${selectedLine}_step_${step.step}_exh`,
-                                      [],
-                                      [{ key: "VALVE", label: `Line ${selectedLine} Step ${step.step} Exhaust Valve` }]
-                                    )
-                                  : () => toggleField(idx, "exh")
-                              }
-                            >
-                              <div
-                                className={`som-rect-status ${step.exh ? "open" : "close"} som-editable`}
-                                style={getDeveloperStyle(`recipe_line_${selectedLine}_step_${step.step}_exh`, "VALVE")}
-                              >
-                                {step.exh ? "OPEN" : "CLOSE"}
-                              </div>
-                            </td>
+                          <td className="som-n">{step.step}</td>
+                          <td className="som-tiny-txt" style={{ fontWeight: "800" }}>
+                            MODULATE
+                          </td>
+                          {renderValveCell(step, idx, "inl1", "Inlet 1 Valve")}
+                          {renderValveCell(step, idx, "inl2", "Inlet 2 Valve")}
+                          {renderValveCell(step, idx, "dinl", "D. Inlet Valve")}
+                          {renderValveCell(step, idx, "con", "Condensate Valve")}
+                          {renderValveCell(step, idx, "rcon", "R. Condensate Valve")}
+                          {renderValveCell(step, idx, "dcon", "D. Condensate Valve")}
+                          {renderValveCell(step, idx, "exh", "Exhaust Valve")}
                           <td>
                             <ValBox
-                              value={step.bar}
+                              value={(() => { const live = getLiveRecipeVal(selectedLine, step.step, "bar"); return live !== null ? live : step.bar; })()}
                               decimals={2}
                               onClick={
                                 configMode
@@ -1658,136 +1931,155 @@ const handleRestoreDefault = () => {
                           </td>
                           <td style={{ fontSize: '10px', color: '#64748b', textAlign: 'center', verticalAlign: 'middle' }}>bar</td>
                           <td>
-                            {configMode ? (
-                              <div
-                                className="som-recipe-select-tiny som-val-box--editable"
-                                style={{
-                                  ...getDeveloperStyle(`recipe_line_${selectedLine}_step_${step.step}_mode`, "VALVE_MODE"),
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontWeight: "850",
-                                  fontSize: "8.5px",
-                                  height: "18px",
-                                }}
-                                onClick={() => handleEquipmentClick(
-                                  `recipe_line_${selectedLine}_step_${step.step}_mode`,
-                                  [],
-                                  [{ key: "VALVE_MODE", label: `Line ${selectedLine} Step ${step.step} Valve Mode` }]
-                                )}
-                              >
-                                {step.mode || "OFF"}
-                                </div>
-                              ) : (
-                                <select
-                                  className="som-recipe-select-tiny"
-                                  value={step.mode}
-                                  onChange={(e) => updateStepField(idx, "mode", e.target.value)}
-                                >
-                                  <option value="OFF">OFF</option>
-                                  <option value="Below">Below</option>
-                                  <option value="Above">Above</option>
-                                </select>
-                              )}
+                            {(() => {
+                                const liveModeRaw = getLiveRecipeVal(selectedLine, step.step, "mode");
+                                const displayMode = liveModeRaw !== null ? liveModeRaw : (step.mode || "OFF");
+                                return configMode ? (
+                                  <div
+                                    className="som-rect-val"
+                                    style={{
+                                      ...getDeveloperStyle(`recipe_line_${selectedLine}_step_${step.step}_mode`, "VALVE_MODE"),
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontWeight: "850",
+                                      fontSize: "8.5px",
+                                      height: "18px",
+                                    }}
+                                    onClick={() => handleEquipmentClick(
+                                      `recipe_line_${selectedLine}_step_${step.step}_mode`,
+                                      [],
+                                      [{ key: "VALVE_MODE", label: `Line ${selectedLine} Step ${step.step} Valve Mode` }]
+                                    )}
+                                  >
+                                    {displayMode}
+                                  </div>
+                                ) : (
+                                  <div
+                                    className="som-rect-status som-editable"
+                                    style={{
+                                      border: `1px solid ${displayMode === "OFF" ? "#ef4444" : (displayMode === "Below" ? "#eab308" : "#10b981")}`,
+                                      color: displayMode === "OFF" ? "#ef4444" : (displayMode === "Below" ? "#eab308" : "#10b981"),
+                                      background: "#ffffff",
+                                      cursor: "pointer",
+                                      width: "90%",
+                                      margin: "0 auto",
+                                      textAlign: "center",
+                                      padding: "1px 0",
+                                      fontSize: "8px",
+                                      boxSizing: "border-box",
+                                      borderRadius: "2px",
+                                      height: "18px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontWeight: "800",
+                                    }}
+                                    onClick={() => cycleModeField(idx)}
+                                  >
+                                    {displayMode}
+                                  </div>
+                                );
+                              })()}
+                          </td>
+                            <td>
+                              {(() => {
+                                const liveDoorInRaw = getLiveRecipeVal(selectedLine, step.step, "doorIn");
+                                const displayDoorIn = liveDoorInRaw !== null ? liveDoorInRaw : (step.doorIn || "Close");
+                                return configMode ? (
+                                  <div
+                                    className="som-rect-val"
+                                    style={getDeveloperStyle(
+                                      `recipe_line_${selectedLine}_step_${step.step}_doorIn`,
+                                      "VALVE"
+                                    )}
+                                    onClick={() => handleEquipmentClick(
+                                      `recipe_line_${selectedLine}_step_${step.step}_doorIn`,
+                                      [],
+                                      [{ key: "VALVE", label: `Line ${selectedLine} Step ${step.step} Door In` }]
+                                    )}
+                                  >
+                                    {displayDoorIn}
+                                  </div>
+                                ) : (
+                                  <div
+                                    className={`som-rect-status ${displayDoorIn === "Open" ? "open" : "close"} som-editable`}
+                                    style={{
+                                      border: `1px solid ${displayDoorIn === "Close" ? "#ef4444" : "#10b981"}`,
+                                      color: displayDoorIn === "Close" ? "#0f172a" : "#0f172a",
+                                      background: displayDoorIn === "Close" ? "#fee2e2" : "#dcfce7",
+                                      cursor: "pointer",
+                                      width: "90%",
+                                      margin: "0 auto",
+                                      textAlign: "center",
+                                      padding: "1px 0",
+                                      fontSize: "11px",
+                                      boxSizing: "border-box",
+                                      borderRadius: "2px",
+                                      height: "18px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontWeight: "700",
+                                    }}
+                                    onClick={() => cycleDoorField(idx, "doorIn")}
+                                  >
+                                    {displayDoorIn}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td>
-                              {configMode ? (
-                                <div
-                                  className="som-rect-val"
-                                  style={getDeveloperStyle(
-                                    `recipe_line_${selectedLine}_step_${step.step}_doorIn`,
-                                    "VALVE_MODE"
-                                  )}
-                                  onClick={() => handleEquipmentClick(
-                                    `recipe_line_${selectedLine}_step_${step.step}_doorIn`,
-                                    [],
-                                    [{ key: "VALVE_MODE", label: `Line ${selectedLine} Step ${step.step} Door In` }]
-                                  )}
-                                >
-                                  {step.doorIn || "Close"}
-                                </div>
-                              ) : (
-                                <select
-                                  className="som-recipe-select-tiny"
-                                  value={step.doorIn || "Close"}
-                                  onChange={(e) => updateStepField(idx, "doorIn", e.target.value)}
-                                >
-                                  <option value="Close">Close</option>
-                                  <option value="Open">Open</option>
-                                </select>
-                              )}
+                              {(() => {
+                                const liveDoorOutRaw = getLiveRecipeVal(selectedLine, step.step, "doorOut");
+                                const displayDoorOut = liveDoorOutRaw !== null ? liveDoorOutRaw : (step.doorOut || "Close");
+                                return configMode ? (
+                                  <div
+                                    className="som-rect-val"
+                                    style={getDeveloperStyle(
+                                      `recipe_line_${selectedLine}_step_${step.step}_doorOut`,
+                                      "VALVE"
+                                    )}
+                                    onClick={() => handleEquipmentClick(
+                                      `recipe_line_${selectedLine}_step_${step.step}_doorOut`,
+                                      [],
+                                      [{ key: "VALVE", label: `Line ${selectedLine} Step ${step.step} Door Out` }]
+                                    )}
+                                  >
+                                    {displayDoorOut}
+                                  </div>
+                                ) : (
+                                  <div
+                                    className={`som-rect-status ${displayDoorOut === "Open" ? "open" : "close"} som-editable`}
+                                    style={{
+                                      border: `1px solid ${displayDoorOut === "Close" ? "#ef4444" : "#10b981"}`,
+                                      color: displayDoorOut === "Close" ? "#0f172a" : "#0f172a",
+                                      background: displayDoorOut === "Close" ? "#fee2e2" : "#dcfce7",
+                                      cursor: "pointer",
+                                      width: "90%",
+                                      margin: "0 auto",
+                                      textAlign: "center",
+                                      padding: "1px 0",
+                                      fontSize: "11px",
+                                      boxSizing: "border-box",
+                                      borderRadius: "2px",
+                                      height: "18px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontWeight: "700",
+                                    }}
+                                    onClick={() => cycleDoorField(idx, "doorOut")}
+                                  >
+                                    {displayDoorOut}
+                                  </div>
+                                );
+                              })()}
                             </td>
-                            <td>
-                              {configMode ? (
-                                <div
-                                  className="som-rect-val"
-                                  style={getDeveloperStyle(
-                                    `recipe_line_${selectedLine}_step_${step.step}_doorOut`,
-                                    "VALVE_MODE"
-                                  )}
-                                  onClick={() => handleEquipmentClick(
-                                    `recipe_line_${selectedLine}_step_${step.step}_doorOut`,
-                                    [],
-                                    [{ key: "VALVE_MODE", label: `Line ${selectedLine} Step ${step.step} Door Out` }]
-                                  )}
-                                >
-                                  {step.doorOut || "Close"}
-                                </div>
-                              ) : (
-                                <select
-                                  className="som-recipe-select-tiny"
-                                  value={step.doorOut || "Close"}
-                                  onChange={(e) => updateStepField(idx, "doorOut", e.target.value)}
-                                >
-                                  <option value="Close">Close</option>
-                                  <option value="Open">Open</option>
-                                </select>
-                              )}
-                            </td>
-                            
-                        </tr>
+                          </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
-
-                {/* Totals displays */}
-                <div className="som-totals-container">
-                  <div className="som-total-item">
-                    <span className="som-total-label">Total Sterilization Time (s)</span>
-                    <div className="som-total-boxes">
-                      <div className="som-total-box">
-                        <span className="som-total-box-val">{formatSec(totals.steril.unf)}</span>
-                        <span className="som-total-box-lbl">(Unfresh)</span>
-                      </div>
-                      <div className="som-total-box">
-                        <span className="som-total-box-val">{formatSec(totals.steril.nrm)}</span>
-                        <span className="som-total-box-lbl">(Normal)</span>
-                      </div>
-                      <div className="som-total-box">
-                        <span className="som-total-box-val">{formatSec(totals.steril.wet)}</span>
-                        <span className="som-total-box-lbl">(Wet)</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="som-total-item">
-                    <span className="som-total-label">Total Cycle Time (s)</span>
-                    <div className="som-total-boxes">
-                      <div className="som-total-box">
-                        <span className="som-total-box-val">{formatSec(totals.cycle.unf)}</span>
-                        <span className="som-total-box-lbl">(Unfresh)</span>
-                      </div>
-                      <div className="som-total-box">
-                        <span className="som-total-box-val">{formatSec(totals.cycle.nrm)}</span>
-                        <span className="som-total-box-lbl">(Normal)</span>
-                      </div>
-                      <div className="som-total-box">
-                        <span className="som-total-box-val">{formatSec(totals.cycle.wet)}</span>
-                        <span className="som-total-box-lbl">(Wet)</span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1857,11 +2149,11 @@ const handleRestoreDefault = () => {
                                       ? () => handleEquipmentClick(
                                           `settings_score_logic_${row.param}_actual`,
                                           [],
-                                          [{ key: "°CTUAL", label: `${row.function} Actual Value` }]
+                                          [{ key: "ACTUAL", label: `${row.function} Actual Value` }]
                                         )
                                       : null
                                   }
-                                  style={getDeveloperStyle(`settings_score_logic_${row.param}_actual`, "°CTUAL")}
+                                  style={getDeveloperStyle(`settings_score_logic_${row.param}_actual`, "ACTUAL")}
                                 />
                               </td>
                               <td className="som-score-cell">
@@ -1893,7 +2185,7 @@ const handleRestoreDefault = () => {
                             ? () => handleEquipmentClick(
                                 "settings_capacity_design_capacity",
                                 [],
-                                [{ key: "DESIGN_CAP°CITY", label: "Sterilizer Design Capacity" }]
+                                [{ key: "DESIGN_CAPACITY", label: "Sterilizer Design Capacity" }]
                               )
                             : () => setActiveKeypad({
                                 section: "capacity",
@@ -1902,7 +2194,7 @@ const handleRestoreDefault = () => {
                                 unit: "ton"
                               })
                         }
-                        style={getDeveloperStyle("settings_capacity_design_capacity", "DESIGN_CAP°CITY")}
+                        style={getDeveloperStyle("settings_capacity_design_capacity", "DESIGN_CAPACITY")}
                       />
                     </div>
                     <div className="som-capacity-row">
@@ -1939,7 +2231,7 @@ const handleRestoreDefault = () => {
                             ? () => handleEquipmentClick(
                                 "settings_capacity_mill_design_capacity",
                                 [],
-                                [{ key: "MILL_DESIGN_CAP°CITY", label: "Mill Design Capacity" }]
+                                [{ key: "MILL_DESIGN_CAPACITY", label: "Mill Design Capacity" }]
                               )
                             : () => setActiveKeypad({
                                 section: "capacity",
@@ -1948,7 +2240,7 @@ const handleRestoreDefault = () => {
                                 unit: "mt/hr"
                               })
                         }
-                        style={getDeveloperStyle("settings_capacity_mill_design_capacity", "MILL_DESIGN_CAP°CITY")}
+                        style={getDeveloperStyle("settings_capacity_mill_design_capacity", "MILL_DESIGN_CAPACITY")}
                       />
                     </div>
                     <div className="som-capacity-row actual-row">
@@ -1962,11 +2254,11 @@ const handleRestoreDefault = () => {
                             ? () => handleEquipmentClick(
                                 "settings_capacity_actual_throughput",
                                 [],
-                                [{ key: "°CTUAL_THROUGHPUT", label: "Actual Throughput" }]
+                                [{ key: "ACTUAL_THROUGHPUT", label: "Actual Throughput" }]
                               )
                             : null
                         }
-                        style={getDeveloperStyle("settings_capacity_actual_throughput", "°CTUAL_THROUGHPUT")}
+                        style={getDeveloperStyle("settings_capacity_actual_throughput", "ACTUAL_THROUGHPUT")}
                       />
                     </div>
                   </div>
@@ -2405,42 +2697,94 @@ const handleRestoreDefault = () => {
                         <tr>
                           <td className="som-logic-label font-bold" style={{ textAlign: 'center', color: '#475569', verticalAlign: 'middle' }}>Actual</td>
                           <td style={{ padding: '3px 6px' }}>
-                            <div style={{
-                              width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
-                              fontSize: '9.5px', fontWeight: '900', color: '#0f172a'
-                            }}>
-                              0.00 <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>bar</span>
+                            <div
+                              onClick={
+                                configMode
+                                  ? () => handleEquipmentClick("settings_bpv_makeup_actual", [], [{ key: "PRESSURE", label: "Make-up Valve Actual Pressure" }])
+                                  : null
+                              }
+                              style={{
+                                width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
+                                fontSize: '9.5px', fontWeight: '900', color: '#0f172a',
+                                cursor: configMode ? 'pointer' : 'default',
+                                ...getDeveloperStyle("settings_bpv_makeup_actual", "PRESSURE")
+                              }}
+                            >
+                              {(() => {
+                                const val = getMappedValue ? getMappedValue("settings_bpv_makeup_actual", "PRESSURE") : null;
+                                return (val === "No Tag" || val === "--" || val === null || val === undefined) ? "-- --" : Number(val).toFixed(2);
+                              })()}
+                              <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>bar</span>
                             </div>
                           </td>
                           <td style={{ padding: '3px 6px' }}>
-                            <div style={{
-                              width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
-                              fontSize: '9.5px', fontWeight: '900', color: '#0f172a'
-                            }}>
-                              0.00 <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>bar</span>
+                            <div
+                              onClick={
+                                configMode
+                                  ? () => handleEquipmentClick("settings_bpv_surplus_actual", [], [{ key: "PRESSURE", label: "Surplus Valve Actual Pressure" }])
+                                  : null
+                              }
+                              style={{
+                                width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
+                                fontSize: '9.5px', fontWeight: '900', color: '#0f172a',
+                                cursor: configMode ? 'pointer' : 'default',
+                                ...getDeveloperStyle("settings_bpv_surplus_actual", "PRESSURE")
+                              }}
+                            >
+                              {(() => {
+                                const val = getMappedValue ? getMappedValue("settings_bpv_surplus_actual", "PRESSURE") : null;
+                                return (val === "No Tag" || val === "--" || val === null || val === undefined) ? "-- --" : Number(val).toFixed(2);
+                              })()}
+                              <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>bar</span>
                             </div>
                           </td>
                         </tr>
                         <tr>
                           <td className="som-logic-label font-bold" style={{ textAlign: 'center', color: '#475569', verticalAlign: 'middle' }}>Position</td>
                           <td style={{ padding: '3px 6px' }}>
-                            <div style={{
-                              width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
-                              fontSize: '9.5px', fontWeight: '900', color: '#0f172a'
-                            }}>
-                              0.0 <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>%</span>
+                            <div
+                              onClick={
+                                configMode
+                                  ? () => handleEquipmentClick("settings_bpv_makeup_position", [], [{ key: "POSITION", label: "Make-up Valve Actual Position" }])
+                                  : null
+                              }
+                              style={{
+                                width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
+                                fontSize: '9.5px', fontWeight: '900', color: '#0f172a',
+                                cursor: configMode ? 'pointer' : 'default',
+                                ...getDeveloperStyle("settings_bpv_makeup_position", "POSITION")
+                              }}
+                            >
+                              {(() => {
+                                const val = getMappedValue ? getMappedValue("settings_bpv_makeup_position", "POSITION") : null;
+                                return (val === "No Tag" || val === "--" || val === null || val === undefined) ? "-- --" : Number(val).toFixed(1);
+                              })()}
+                              <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>%</span>
                             </div>
                           </td>
                           <td style={{ padding: '3px 6px' }}>
-                            <div style={{
-                              width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
-                              fontSize: '9.5px', fontWeight: '900', color: '#0f172a'
-                            }}>
-                              0.0 <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>%</span>
+                            <div
+                              onClick={
+                                configMode
+                                  ? () => handleEquipmentClick("settings_bpv_surplus_position", [], [{ key: "POSITION", label: "Surplus Valve Actual Position" }])
+                                  : null
+                              }
+                              style={{
+                                width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
+                                fontSize: '9.5px', fontWeight: '900', color: '#0f172a',
+                                cursor: configMode ? 'pointer' : 'default',
+                                ...getDeveloperStyle("settings_bpv_surplus_position", "POSITION")
+                              }}
+                            >
+                              {(() => {
+                                const val = getMappedValue ? getMappedValue("settings_bpv_surplus_position", "POSITION") : null;
+                                return (val === "No Tag" || val === "--" || val === null || val === undefined) ? "-- --" : Number(val).toFixed(1);
+                              })()}
+                              <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>%</span>
                             </div>
                           </td>
                         </tr>
@@ -2585,7 +2929,11 @@ const handleRestoreDefault = () => {
         <NumericKeypad
           value={(() => {
             const kp = activeKeypad;
-            if (kp.section === 'recipe') return currentLineSteps[kp.stepIdx][kp.param];
+            if (kp.section === 'recipe') {
+              const stepNum = currentLineSteps[kp.stepIdx]?.step;
+              const live = getLiveRecipeVal(selectedLine, stepNum, kp.param);
+              return live !== null ? live : currentLineSteps[kp.stepIdx][kp.param];
+            }
             if (kp.section === 'scoreLogic') return scoreLogics[kp.idx].target;
             if (kp.section === 'capacity') {
               if (kp.param === 'designCapacity') return designCapacity;

@@ -38,24 +38,48 @@ export const SteamFlowSVG = ({ d, active, isRunning, mode = "flowing", color = "
   );
 };
 
-export const ValveModernCardSVG = ({ x, y, scale = 1, title = "", position = "0.0", onClick, style = {} }) => {
+export const ValveModernCardSVG = ({ x, y, scale = 1, title = "", position = "0.0", onClick, onToggle, style = {} }) => {
   const isNoTag = !position || String(position).toLowerCase() === "no tag";
   const isOffline = String(position) === "--";
   const displayPos = isNoTag ? "No Tag" : isOffline ? "--" : `${position}%`;
 
+  const numPos = parseFloat(position) || 0;
+  const isOpen = numPos > 50;
+
   return (
-    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-100, -65)`}>
-      <foreignObject width="200" height="90" style={{ overflow: "visible", pointerEvents: "none" }}>
+    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-100, -80)`}>
+      <foreignObject width="200" height="130" style={{ overflow: "visible", pointerEvents: "none" }}>
         <div 
           onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
           onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
           style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", padding: "12px", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column", gap: "8px", cursor: "pointer", pointerEvents: "auto", ...style }}>
+          
           <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "950", color: "#0f172a", borderBottom: "2px solid #ffdb3b", paddingBottom: "6px", textTransform: "uppercase", letterSpacing: "1px" }}>{title}</div>
+          
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "10px", fontWeight: "800", color: "#64748b" }}>COMMAND</span>
+              <button 
+                  onClick={(e) => { e.stopPropagation(); onToggle && onToggle(); }}
+                  style={{
+                      background: isOpen ? '#f0fdf4' : '#fef2f2',
+                      border: isOpen ? '1.5px solid #22c55e' : '1.5px solid #ef4444',
+                      color: isOpen ? '#22c55e' : '#ef4444',
+                      fontWeight: '800',
+                      fontSize: '10px',
+                      padding: '4px 12px',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                  }}
+              >
+                  {isOpen ? 'OPEN' : 'CLOSE'}
+              </button>
+          </div>
+
           <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "2px" }}>
               <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "800", marginBottom: "2px" }}>POSITION</span>
               <div style={{ position: "relative", width: "100%", height: "24px", background: "#f1f5f9", borderRadius: "6px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
-                <div style={{ width: isNoTag || isOffline ? "0%" : `${Math.min(100, Math.max(0, parseFloat(position) || 0))}%`, height: "100%", background: `linear-gradient(90deg, #ffdb3b, #d4ac0d)`, transition: "width 0.5s ease" }}></div>
+                <div style={{ width: isNoTag || isOffline ? "0%" : `${Math.min(100, Math.max(0, numPos))}%`, height: "100%", background: `linear-gradient(90deg, #ffdb3b, #d4ac0d)`, transition: "width 0.5s ease" }}></div>
                 <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "950", color: isNoTag ? "#64748b" : "#0f172a" }}>{displayPos}</div>
               </div>
             </div>
@@ -270,8 +294,13 @@ export default function BpvTab({
     };
   };
 
-  const currentMakeupPos = parseFloat(getMappedValue ? getMappedValue("bpv_makeup_valve", "MONITOR", bpvMakeupPos) : bpvMakeupPos) || 0;
-  const currentBlowoffPos = parseFloat(getMappedValue ? getMappedValue("bpv_blowoff_valve", "MONITOR", bpvBlowoffPos) : bpvBlowoffPos) || 0;
+  let displayMakeupPos = getMappedValue ? getMappedValue("bpv_makeup_valve", "MONITOR", typeof bpvMakeupPos === "number" ? bpvMakeupPos.toFixed(1) : bpvMakeupPos) : bpvMakeupPos;
+  if (displayMakeupPos === "No Tag" || displayMakeupPos === "--") displayMakeupPos = bpvMakeupPos;
+  const currentMakeupPos = parseFloat(displayMakeupPos) || 0;
+
+  let displayBlowoffPos = getMappedValue ? getMappedValue("bpv_blowoff_valve", "MONITOR", typeof bpvBlowoffPos === "number" ? bpvBlowoffPos.toFixed(1) : bpvBlowoffPos) : bpvBlowoffPos;
+  if (displayBlowoffPos === "No Tag" || displayBlowoffPos === "--") displayBlowoffPos = bpvBlowoffPos;
+  const currentBlowoffPos = parseFloat(displayBlowoffPos) || 0;
 
   return (
     <div className="som-sterilizer-station-layout">
@@ -425,8 +454,9 @@ export default function BpvTab({
                 y={1080} 
                 scale={1.4} 
                 title="MAKE-UP VALVE" 
-                position={getMappedValue ? getMappedValue("bpv_makeup_valve", "MONITOR", typeof bpvMakeupPos === "number" ? bpvMakeupPos.toFixed(1) : bpvMakeupPos) : bpvMakeupPos} 
+                position={displayMakeupPos} 
                 onClick={() => handleEquipmentClick && handleEquipmentClick("bpv_makeup_valve")} 
+                onToggle={() => setBpvMakeupPos && setBpvMakeupPos(prev => parseFloat(prev) > 50 ? 0 : 100)}
                 style={getDeveloperStyle && getDeveloperStyle("bpv_makeup_valve")} 
               />
 
@@ -436,8 +466,9 @@ export default function BpvTab({
                 y={740} 
                 scale={1.1} 
                 title="BLOW-OFF VALVE" 
-                position={getMappedValue ? getMappedValue("bpv_blowoff_valve", "MONITOR", typeof bpvBlowoffPos === "number" ? bpvBlowoffPos.toFixed(1) : bpvBlowoffPos) : bpvBlowoffPos} 
+                position={displayBlowoffPos} 
                 onClick={() => handleEquipmentClick && handleEquipmentClick("bpv_blowoff_valve")} 
+                onToggle={() => setBpvBlowoffPos && setBpvBlowoffPos(prev => parseFloat(prev) > 50 ? 0 : 100)}
                 style={getDeveloperStyle && getDeveloperStyle("bpv_blowoff_valve")} 
               />
 

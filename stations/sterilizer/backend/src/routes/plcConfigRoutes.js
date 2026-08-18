@@ -3,7 +3,8 @@ import multer from 'multer';
 import xlsx from 'xlsx';
 import { dbPoolPlc } from '../config/db.js';
 import { requireAuth, authorize } from '../middleware/jwtMiddleware.js';
-import { getOpcUaClient, resetDeviceBackoff } from '../plcCollector.js';
+const resetDeviceBackoff = (id) => { console.log("resetDeviceBackoff stub for", id); };
+const getOpcUaClient = (id) => { return null; };
 import { liveDataCache } from './monitorRoutes.js';
 const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
@@ -45,13 +46,13 @@ router.get('/devices', async (_req, res) => {
 
 // POST /api/{station}/plc-config/devices
 router.post('/devices', requireAuth, authorize(['developer', 'admin']), async (req, res) => {
-  const { name, ip_address, rack, slot, enabled, protocol } = req.body;
+  const { name, ip_address, rack, slot, enabled } = req.body;
   try {
     const [result] = await dbPoolPlc.query(
-      `INSERT INTO plc_devices (name, ip_address, rack, slot, enabled, protocol)
-       VALUES (?,?,?,?,?,?)
-       ON DUPLICATE KEY UPDATE ip_address=?, rack=?, slot=?, enabled=?, protocol=?`,
-      [name, ip_address, rack, slot, enabled, protocol || 'SNAP7', ip_address, rack, slot, enabled, protocol || 'SNAP7']
+      `INSERT INTO plc_devices (name, ip_address, rack, slot, enabled)
+       VALUES (?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE ip_address=?, rack=?, slot=?, enabled=?`,
+      [name, ip_address, rack, slot, enabled ?? 1, ip_address, rack, slot, enabled ?? 1]
     );
     if (result.insertId) resetDeviceBackoff(result.insertId);
     res.json({ success: true, id: result.insertId });
@@ -62,11 +63,11 @@ router.post('/devices', requireAuth, authorize(['developer', 'admin']), async (r
 
 // PUT /api/{station}/plc-config/devices/:id
 router.put('/devices/:id', requireAuth, authorize(['developer', 'admin']), async (req, res) => {
-  const { name, ip_address, rack, slot, enabled, protocol } = req.body;
+  const { name, ip_address, rack, slot, enabled } = req.body;
   try {
     await dbPoolPlc.query(
-      `UPDATE plc_devices SET name=?, ip_address=?, rack=?, slot=?, enabled=?, protocol=? WHERE id=?`,
-      [name, ip_address, rack, slot, enabled, protocol || 'SNAP7', req.params.id]
+      `UPDATE plc_devices SET name=?, ip_address=?, rack=?, slot=?, enabled=? WHERE id=?`,
+      [name, ip_address, rack, slot, enabled, req.params.id]
     );
     resetDeviceBackoff(req.params.id);
     res.json({ success: true });
@@ -107,12 +108,11 @@ router.get('/tags-live', async (_req, res) => {
 router.get('/tags', async (_req, res) => {
   try {
     const [rows] = await dbPoolPlc.query(`
-      SELECT t.*, d.name AS device_name, d.protocol
+      SELECT t.*, d.name AS device_name
       FROM plc_tags t
       LEFT JOIN plc_devices d ON t.plc_id = d.id
       ORDER BY t.tag_name ASC
     `);
-    console.log("GET /tags returning first tag node_id:", rows[0]?.node_id);
     res.json({ success: true, data: rows });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -128,8 +128,8 @@ router.post('/tags', requireAuth, authorize(['developer', 'admin']), async (req,
       `INSERT INTO plc_tags (plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled, node_id)
        VALUES (?,?,?,?,?,?,?,?,?)
        ON DUPLICATE KEY UPDATE db_number=?, byte_offset=?, bit_offset=?, data_type=?, access=?, enabled=?, node_id=?`,
-      [plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled, node_id || null,
-        db_number, byte_offset, bit_offset, data_type, access, enabled, node_id || null]
+      [plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled, node_id || 'DB',
+        db_number, byte_offset, bit_offset, data_type, access, enabled, node_id || 'DB']
     );
     res.json({ success: true, id: result.insertId });
   } catch (err) {
@@ -144,7 +144,7 @@ router.put('/tags/:id', requireAuth, authorize(['developer', 'admin']), async (r
   try {
     await dbPoolPlc.query(
       `UPDATE plc_tags SET plc_id=?, db_number=?, byte_offset=?, bit_offset=?, data_type=?, tag_name=?, access=?, enabled=?, node_id=? WHERE id=?`,
-      [plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled, node_id || null, req.params.id]
+      [plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled, node_id || 'DB', req.params.id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -197,7 +197,7 @@ router.post('/tags/import', requireAuth, authorize(['developer', 'admin']), uplo
 });
 
 // GET /api/{station}/plc-config/station-mappings
-router.get('/station-mappings', async (req, res) => {
+router.get(['/station-mappings', '/station-mappings/:station'], async (req, res) => {
   try {
     const [rows] = await dbPoolPlc.query(
       `SELECT m.*, t.tag_name, t.access, t.data_type

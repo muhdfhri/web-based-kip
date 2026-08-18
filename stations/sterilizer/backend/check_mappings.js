@@ -6,7 +6,7 @@ async function main() {
     host: "localhost",
     user: "root",
     password: "",
-    database: "mewah_pis_sterilizer_trial"
+    database: "mewah_sterilizer"
   });
 
   console.log("Checking station tag mappings...");

@@ -452,6 +452,8 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
 
   useEffect(() => {
     fetchAvailableTags();
+    const interval = setInterval(fetchAvailableTags, 5000);
+    return () => clearInterval(interval);
   }, [fetchAvailableTags]);
 
   useEffect(() => {
@@ -461,17 +463,18 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
   }, [tagEdit, fetchAvailableTags]);
 
   useEffect(() => {
+    let active = true;
     const loadMappings = async () => {
       try {
         const res = await fetch(
-          "/api/sterilizer/plc-config/station-mappings/sterilizer",
+          "/api/sterilizer/plc-config/station-mappings",
           { headers: authHeaders() },
         );
 
         if (!res.ok) return;
 
         const data = await res.json();
-        if (data.success && Array.isArray(data.data)) {
+        if (active && data.success && Array.isArray(data.data)) {
           const restored = {};
           data.data.forEach((mapping) => {
             if (mapping.tag_id !== null && mapping.tag_id !== undefined && String(mapping.tag_id) !== "null" && String(mapping.tag_id) !== "") {
@@ -488,6 +491,11 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
     };
 
     loadMappings();
+    const interval = setInterval(loadMappings, 3000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const handleTagEditRequest = (id, subs = [], signals = null) => {
@@ -1101,6 +1109,7 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
           configMode={configMode}
           handleEquipmentClick={handleEquipmentClick}
           tagMap={tagMap}
+          getMappedValue={getMappedValue}
         />
       ) : (
         <div className="som-sterilizer-station-main" style={{ position: 'relative' }}>

@@ -30,37 +30,6 @@ import {
   SterilizerStatusPanelSVG,
 } from "../../components/SharedComponents.jsx";
 
-// ==========================================
-// PENGATURAN TESTING UNTUK MANUAL VALVE 5, 6, 7, 12, 13, 14, 20, 21, 26, & 27
-// Ubah "0" (CLOSE) menjadi "1" (OPEN) untuk melihat animasi valve & flow
-export const TEST_MANUAL_VALVE_1 = "0";
-export const TEST_MANUAL_VALVE_2 = "1";
-export const TEST_MANUAL_VALVE_3 = "1";
-export const TEST_MANUAL_VALVE_4 = "0";
-export const TEST_MANUAL_VALVE_5 = "1";
-export const TEST_MANUAL_VALVE_6 = "0";
-export const TEST_MANUAL_VALVE_7 = "1";
-export const TEST_MANUAL_VALVE_8 = "0";
-export const TEST_MANUAL_VALVE_9 = "0";
-export const TEST_MANUAL_VALVE_10 = "1";
-export const TEST_MANUAL_VALVE_11 = "0";
-export const TEST_MANUAL_VALVE_12 = "1";
-export const TEST_MANUAL_VALVE_13 = "0";
-export const TEST_MANUAL_VALVE_14 = "0";
-export const TEST_MANUAL_VALVE_15 = "0";
-export const TEST_MANUAL_VALVE_16 = "0";
-export const TEST_MANUAL_VALVE_17 = "0";
-export const TEST_MANUAL_VALVE_18 = "0";
-export const TEST_MANUAL_VALVE_19 = "1";
-export const TEST_MANUAL_VALVE_20 = "0";
-export const TEST_MANUAL_VALVE_21 = "1";
-export const TEST_MANUAL_VALVE_22 = "0";
-export const TEST_MANUAL_VALVE_23 = "1";
-export const TEST_MANUAL_VALVE_24 = "0";
-export const TEST_MANUAL_VALVE_25 = "1";
-export const TEST_MANUAL_VALVE_26 = "0";
-export const TEST_MANUAL_VALVE_27 = "0";
-export const TEST_MANUAL_VALVE_28 = "1";
 
 export const TEST_INLET_DOOR_ST1 = "CLOSE";
 export const TEST_INLET_DOOR_ST2 = "CLOSE";
@@ -358,37 +327,37 @@ const formatValveStatus = (rawVal) => {
 
 // 24 Manual Actuators - Ubah x, y, dan size untuk masing-masing valve di bawah ini:
 const MANUAL_VALVES = [
-  { id: "manual_valve_1", x: -246, y: 46, size: 85, rotation: 270 },
-  { id: "manual_valve_2", x: -266, y: 269, size: 92, rotation: 270 },
-  { id: "manual_valve_3", x: -266, y: 485, size: 92, rotation: 270 },
-  { id: "manual_valve_4", x: -266, y: 673, size: 92, rotation: 270 },
-  { id: "manual_valve_5", x: 228, y: 912, size: 85, rotation: 270 },
-  { id: "manual_valve_6", x: 228, y: 1003, size: 85, rotation: 270 },
-  { id: "manual_valve_7", x: 158, y: 800, size: 85, rotation: 0 },
+  { id: "valve_exhaust_steam_st1", x: -246, y: 46, size: 85, rotation: 270 },
+  { id: "valve_inlet_steam_1_st1", x: -266, y: 269, size: 92, rotation: 270 },
+  { id: "valve_inlet_steam_2_st1", x: -266, y: 485, size: 92, rotation: 270 },
+  { id: "valve_flashing_st1", x: -266, y: 673, size: 92, rotation: 270 },
+  { id: "valve_condensate_1_st1", x: 228, y: 912, size: 85, rotation: 270 },
+  { id: "valve_condensate_2_st1", x: 228, y: 1003, size: 85, rotation: 270 },
+  { id: "valve_d_cond_st1", x: 158, y: 800, size: 85, rotation: 0 },
 
-  { id: "manual_valve_8", x: 394, y: 46, size: 85, rotation: 270 },
-  { id: "manual_valve_9", x: 375, y: 269, size: 92, rotation: 270 },
-  { id: "manual_valve_10", x: 375, y: 485, size: 92, rotation: 270 },
-  { id: "manual_valve_11", x: 375, y: 673, size: 92, rotation: 270 },
-  { id: "manual_valve_12", x: 868, y: 912, size: 85, rotation: 270 },
-  { id: "manual_valve_13", x: 868, y: 1003, size: 85, rotation: 270 },
-  { id: "manual_valve_14", x: 797, y: 800, size: 85, rotation: 0 },
+  { id: "valve_exhaust_steam_st2", x: 394, y: 46, size: 85, rotation: 270 },
+  { id: "valve_inlet_steam_1_st2", x: 375, y: 269, size: 92, rotation: 270 },
+  { id: "valve_inlet_steam_2_st2", x: 375, y: 485, size: 92, rotation: 270 },
+  { id: "valve_flashing_st2", x: 375, y: 673, size: 92, rotation: 270 },
+  { id: "valve_condensate_1_st2", x: 868, y: 912, size: 85, rotation: 270 },
+  { id: "valve_condensate_2_st2", x: 868, y: 1003, size: 85, rotation: 270 },
+  { id: "valve_d_cond_st2", x: 797, y: 800, size: 85, rotation: 0 },
 
-  { id: "manual_valve_15", x: 1076, y: 46, size: 85, rotation: 270 },
-  { id: "manual_valve_16", x: 1057, y: 269, size: 92, rotation: 270 },
-  { id: "manual_valve_17", x: 1057, y: 485, size: 92, rotation: 270 },
-  { id: "manual_valve_18", x: 1057, y: 673, size: 92, rotation: 270 },
-  { id: "manual_valve_20", x: 1550, y: 912, size: 85, rotation: 270 },
-  { id: "manual_valve_21", x: 1550, y: 1003, size: 85, rotation: 270 },
-  { id: "manual_valve_19", x: 1480, y: 800, size: 85, rotation: 0 },
+  { id: "valve_exhaust_steam_st3", x: 1076, y: 46, size: 85, rotation: 270 },
+  { id: "valve_inlet_steam_1_st3", x: 1057, y: 269, size: 92, rotation: 270 },
+  { id: "valve_inlet_steam_2_st3", x: 1057, y: 485, size: 92, rotation: 270 },
+  { id: "valve_flashing_st3", x: 1057, y: 673, size: 92, rotation: 270 },
+  { id: "valve_condensate_1_st3", x: 1550, y: 912, size: 85, rotation: 270 },
+  { id: "valve_condensate_2_st3", x: 1550, y: 1003, size: 85, rotation: 270 },
+  { id: "valve_d_cond_st3", x: 1480, y: 800, size: 85, rotation: 0 },
 
-  { id: "manual_valve_22", x: 1745, y: 46, size: 85, rotation: 270 },
-  { id: "manual_valve_23", x: 1725, y: 269, size: 92, rotation: 270 },
-  { id: "manual_valve_24", x: 1725, y: 485, size: 92, rotation: 270 },
-  { id: "manual_valve_25", x: 1725, y: 673, size: 92, rotation: 270 },
-  { id: "manual_valve_26", x: 2218, y: 912, size: 85, rotation: 270 },
-  { id: "manual_valve_27", x: 2218, y: 1003, size: 85, rotation: 270 },
-  { id: "manual_valve_28", x: 2147, y: 800, size: 80, rotation: 0 },
+  { id: "valve_exhaust_steam_st4", x: 1745, y: 46, size: 85, rotation: 270 },
+  { id: "valve_inlet_steam_1_st4", x: 1725, y: 269, size: 92, rotation: 270 },
+  { id: "valve_inlet_steam_2_st4", x: 1725, y: 485, size: 92, rotation: 270 },
+  { id: "valve_flashing_st4", x: 1725, y: 673, size: 92, rotation: 270 },
+  { id: "valve_condensate_1_st4", x: 2218, y: 912, size: 85, rotation: 270 },
+  { id: "valve_condensate_2_st4", x: 2218, y: 1003, size: 85, rotation: 270 },
+  { id: "valve_d_cond_st4", x: 2147, y: 800, size: 80, rotation: 0 },
 ];
 
 // Konfigurasi Top Open dan Top Close Doors - Ubah x, y, size, dan rotation di sini
@@ -432,17 +401,21 @@ const TAG_MONITOR_CARDS = [
   { id: "card_inlet_door_st2", x: 620, y: 220, title: "INLET DOOR ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "card_inlet_door_st3", x: 1300, y: 220, title: "INLET DOOR ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "card_inlet_door_st4", x: 1980, y: 220, title: "INLET DOOR ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+
   { id: "card_inlet_steam_1_st1", x: -250, y: 200, title: "INLET STEAM 1 ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "card_inlet_steam_2_st1", x: -250, y: 420, title: "INLET STEAM 2 ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "card_flashing_st1", x: -250, y: 610, title: "FLASHING ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam", x: 400, y: 200, title: "INLET STEAM 1 ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam", x: 400, y: 420, title: "INLET STEAM 2 ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam", x: 400, y: 610, title: "FLASHING  STEAM  ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam", x: 1070, y: 200, title: "INLET STEAM 1 ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam", x: 1070, y: 420, title: "INLET STEAM 2 ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+
+  { id: "card_inlet_steam_1_st2", x: 400, y: 200, title: "INLET STEAM 1 ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam_2_st2", x: 400, y: 420, title: "INLET STEAM 2 ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_flashing_st2", x: 400, y: 610, title: "FLASHING STEAM ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+
+  { id: "card_inlet_steam_1_st3", x: 1070, y: 200, title: "INLET STEAM 1 ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam_2_st3", x: 1070, y: 420, title: "INLET STEAM 2 ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "card_flashing_st3", x: 1070, y: 610, title: "FLASHING ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam", x: 1740, y: 200, title: "INLET STEAM 1 ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam", x: 1740, y: 420, title: "INLET STEAM 2 ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+
+  { id: "card_inlet_steam_1_st4", x: 1740, y: 200, title: "INLET STEAM 1 ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_inlet_steam_2_st4", x: 1740, y: 420, title: "INLET STEAM 2 ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "card_flashing_st4", x: 1740, y: 610, title: "FLASHING ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
 
   // Overview Cards (Pressure & Temperature)
@@ -462,18 +435,18 @@ const TAG_MONITOR_CARDS = [
   { id: "card_outlet_door_st2", x: 850, y: 580, title: "OUTLET DOOR ST2", defaultVal: TEST_OUTLET_DOOR_ST2, unit: "", status: "grey", width: 150 },
   { id: "card_outlet_door_st3", x: 1540, y: 580, title: "OUTLET DOOR ST3", defaultVal: TEST_OUTLET_DOOR_ST3, unit: "", status: "grey", width: 150 },
   { id: "card_outlet_door_st4", x: 2220, y: 580, title: "OUTLET DOOR ST4", defaultVal: TEST_OUTLET_DOOR_ST4, unit: "", status: "grey", width: 150 },
-  { id: "card_exhaust_steam", x: -240, y: -10, title: "EXHAUST STEAM ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_exhaust_steam", x: 400, y: -30, title: "EXHAUST STEAM ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_exhaust_steam", x: 1080, y: -30, title: "EXHAUST STEAM ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_exhaust_steam", x: 1750, y: -30, title: "EXHAUST STEAM ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "condensate", x: 320, y: 900, title: "RELIEF CONDENSATE VALVE ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "condensate", x: 320, y: 990, title: "CONDENSATE ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "condensate", x: 960, y: 900, title: "RELIEF CONDENSATE VALVE ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "condensate", x: 960, y: 990, title: "CONDENSATE ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "condensate", x: 1645, y: 900, title: "RELIEF CONDENSATE VALVE ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "condensate", x: 1645, y: 990, title: "CONDENSATE ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "condensate", x: 2320, y: 900, title: "RELIEF CONDENSATE VALVE ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "condensate", x: 2320, y: 990, title: "CONDENSATE ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_exhaust_steam_st1", x: -240, y: -10, title: "EXHAUST STEAM ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_exhaust_steam_st2", x: 400, y: -30, title: "EXHAUST STEAM ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_exhaust_steam_st3", x: 1080, y: -30, title: "EXHAUST STEAM ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_exhaust_steam_st4", x: 1750, y: -30, title: "EXHAUST STEAM ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_relief_condensate_st1", x: 320, y: 900, title: "RELIEF CONDENSATE VALVE ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_condensate_1_st1", x: 320, y: 990, title: "CONDENSATE ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_relief_condensate_st2", x: 960, y: 900, title: "RELIEF CONDENSATE VALVE ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_condensate_1_st2", x: 960, y: 990, title: "CONDENSATE ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_relief_condensate_st3", x: 1645, y: 900, title: "RELIEF CONDENSATE VALVE ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_condensate_1_st3", x: 1645, y: 990, title: "CONDENSATE ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_relief_condensate_st4", x: 2320, y: 900, title: "RELIEF CONDENSATE VALVE ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "card_condensate_1_st4", x: 2320, y: 990, title: "CONDENSATE ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
 
   // D. CONDENSATE Door Cards
   { id: "d_cond_st1", x: 300, y: 800, title: "D. COND ST1", defaultVal: "OPEN", unit: "", status: "grey", width: 160, scale: 1 },
@@ -2196,7 +2169,29 @@ export default function OverviewTab({
 
   const getSmartValveValue = useCallback((valveId, fallbackTestVar) => {
     if (getMappedValue) {
-      const mapped = getMappedValue(valveId, "STATUS", "No Tag");
+      let targetId = valveId.replace("valve_", "card_");
+
+      // Fix D.Cond naming
+      if (targetId.startsWith("card_d_cond_")) {
+        targetId = targetId.replace("card_d_cond_", "d_cond_");
+      }
+
+      // Fix Condensate and Relief Condensate naming mismatch
+      if (targetId.includes("card_condensate_1_")) {
+        // valve_condensate_1 corresponds to RELIEF CONDENSATE card
+        targetId = targetId.replace("card_condensate_1_", "card_relief_condensate_");
+      } else if (targetId.includes("card_condensate_2_")) {
+        // valve_condensate_2 corresponds to CONDENSATE 1 card
+        targetId = targetId.replace("card_condensate_2_", "card_condensate_1_");
+      }
+
+      // Try reading from MONITOR first (for card mappings)
+      let mapped = getMappedValue(targetId, "MONITOR", "No Tag");
+      if (String(mapped).trim().toLowerCase() === "no tag" || mapped === undefined || mapped === null || String(mapped).trim() === "") {
+        // Fallback to STATUS
+        mapped = getMappedValue(targetId, "STATUS", "No Tag");
+      }
+
       if (mapped !== undefined && mapped !== null && String(mapped).trim().toLowerCase() !== "no tag") {
         return mapped;
       }
@@ -2285,6 +2280,46 @@ export default function OverviewTab({
                                    ========================================== */}
             <g className="som-steam-flows">
               {/* Flows temporarily hidden as requested */}
+              {activeTab === "overview" && (() => {
+                const valveVal = getSmartValveValue("valve_inlet_steam_1_st1", "0");
+                const isOpen = formatValveStatus(valveVal) === "OPEN";
+
+                return (
+                  <g id="overview_inlet_steam_1_st1">
+                    {/* Aliran Lurus (Standby) - Hanya tampil saat valve tertutup (merah) */}
+                    {!isOpen && (
+                      <LiquidSteamFlowSVG
+                        d="M -360,218 L -351,218 Q -343,218 -343,226 L -342,278 Q -342,303 -317,300 L -298,296"
+                        active={true}
+                        mode="standby"
+                        color="#38bdf8"
+                        thickness={8}
+                      />
+                    )}
+
+                    {/* Aliran Putus-putus (Flowing) - Hanya tampil saat valve terbuka (hijau) */}
+                    {isOpen && (
+                      <>
+                        <LiquidSteamFlowSVG
+                          d="M -360,218 L -351,218 Q -343,218 -343,226 L -342,278 Q -342,303 -317,300 L -298,296"
+                          active={true}
+                          mode="flowing"
+                          color="#38bdf8"
+                          thickness={8}
+                        />
+                        {/* Pipa Lanjutan setelah Valve */}
+                        <LiquidSteamFlowSVG
+                          d="M -247,296 L 118,296"
+                          active={true}
+                          mode="flowing"
+                          color="#38bdf8"
+                          thickness={8}
+                        />
+                      </>
+                    )}
+                  </g>
+                );
+              })()}
             </g>
 
             {/* ==========================================
@@ -2379,100 +2414,6 @@ export default function OverviewTab({
                   <g>
                     {/* PROCESS FLOWS FOR LINE VIEW (Synced with Overview) */}
                     <g className="som-line-flows">
-                      {/* Blue Flow 1 */}
-                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
-                        let valveVal2, valveVal3, valveVal4;
-                        if (n === 1) {
-                          valveVal2 = getSmartValveValue("manual_valve_2", TEST_MANUAL_VALVE_2);
-                          valveVal3 = getSmartValveValue("manual_valve_3", TEST_MANUAL_VALVE_3);
-                          valveVal4 = getSmartValveValue("manual_valve_4", TEST_MANUAL_VALVE_4);
-                        } else if (n === 2) {
-                          valveVal2 = getSmartValveValue("manual_valve_9", TEST_MANUAL_VALVE_9);
-                          valveVal3 = getSmartValveValue("manual_valve_10", TEST_MANUAL_VALVE_10);
-                          valveVal4 = getSmartValveValue("manual_valve_11", TEST_MANUAL_VALVE_11);
-                        } else if (n === 3) {
-                          valveVal2 = getSmartValveValue("manual_valve_16", TEST_MANUAL_VALVE_16);
-                          valveVal3 = getSmartValveValue("manual_valve_17", TEST_MANUAL_VALVE_17);
-                          valveVal4 = getSmartValveValue("manual_valve_18", TEST_MANUAL_VALVE_18);
-                        } else {
-                          valveVal2 = getSmartValveValue("manual_valve_23", TEST_MANUAL_VALVE_23);
-                          valveVal3 = getSmartValveValue("manual_valve_24", TEST_MANUAL_VALVE_24);
-                          valveVal4 = getSmartValveValue("manual_valve_25", TEST_MANUAL_VALVE_25);
-                        }
-                        const valve2 = formatValveStatus(valveVal2) === "OPEN";
-                        const valve3 = formatValveStatus(valveVal3) === "OPEN";
-                        const valve4 = formatValveStatus(valveVal4) === "OPEN";
-
-                        return (
-                          <>
-                            {/* Valve 2 Source + Branch */}
-                            {(() => {
-                              if (valve2) {
-                                return (
-                                  <>
-                                    <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                                    <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                                    <LiquidSteamFlowSVG d="M 147,302 L 512,303" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                                  </>
-                                );
-                              } else {
-                                return (
-                                  <>
-                                    <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
-                                    <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
-                                  </>
-                                );
-                              }
-                            })()}
-
-                            {/* Valve 3 Source + Branch */}
-                            {(() => {
-                              if (valve3) {
-                                return (
-                                  <>
-                                    <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                                    <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                                    <LiquidSteamFlowSVG d="M 146,515 L 160,515 Q 174,514 174,500 L 175,472 Q 175,453 194,453 L 194,453 Q 213,452 232,452 L 515,453" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                                    <LiquidSteamFlowSVG d="M 145,514 L 160,512 Q 174,510 174,525 L 173,559 Q 173,573 187,576 L 187,576 Q 201,578 215,578 L 341,578 Q 366,578 387,591 L 540,686" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                                  </>
-                                );
-                              } else {
-                                return (
-                                  <>
-                                    <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
-                                    <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
-                                  </>
-                                );
-                              }
-                            })()}
-
-                            {/* Valve 4 Source + Post */}
-                            <LiquidSteamFlowSVG d="M 47,514 L 46,656 Q 46,671 50,686 L 50,686 Q 54,700 69,701 L 70,703  " active={true} mode={valve4 ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                            {valve4 && (
-                              <LiquidSteamFlowSVG d="M 146,703 L 332,700 Q 357,700 379,712 " active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                            )}
-                          </>
-                        );
-                      })()}
-
-                      {/* Blue Flow 8 (Originally n !== 2) */}
-                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
-                        let valve1Val;
-                        if (n === 1) valve1Val = getSmartValveValue("manual_valve_1", TEST_MANUAL_VALVE_1);
-                        else if (n === 2) valve1Val = getSmartValveValue("manual_valve_8", TEST_MANUAL_VALVE_8);
-                        else if (n === 3) valve1Val = getSmartValveValue("manual_valve_15", TEST_MANUAL_VALVE_15);
-                        else valve1Val = getSmartValveValue("manual_valve_22", TEST_MANUAL_VALVE_22);
-
-                        const valve1 = formatValveStatus(valve1Val) === "OPEN";
-                        return (
-                          <>
-                            <LiquidSteamFlowSVG d="M 265,143 L 264,98 Q 263,81 247,78 L 247,78 Q 230,74 213,74 L 171,73" active={true} mode={valve1 ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                            {valve1 && (
-                              <LiquidSteamFlowSVG d="M 171,73 L -9,71" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                            )}
-                          </>
-                        );
-                      })()}
                       {(n === 4) && (true || parseFloat(lv('flow_1784282895579', 'FLOW', '0')) > 0) && (
                         <LiquidFlowSVG
                           d="M 265,143 L 264,98 Q 263,81 247,78 L 247,78 Q 230,74 213,74 L 171,73"
@@ -2484,203 +2425,189 @@ export default function OverviewTab({
                       {(n === 3) && (true || parseFloat(lv('flow_1784254637309', 'FLOW', '0')) > 0) && (
                         <LiquidFlowSVG d="M 265,143 L 266,112 Q 266,98 259,86 L 259,86 Q 252,73 238,73 L 170,73" isRunning={true} color="#38bdf8" thickness={8} />
                       )}
-                      {/* Orange Flows: Steam for Line 1 & 4, Liquid for Line 2 & 3 */}
-                      {/* Orange Flow 1 */}
-                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
-                        let valveVal;
-                        if (n === 1) valveVal = getMappedValue ? getMappedValue("d_cond_st1", "STATUS", TEST_MANUAL_VALVE_7) : TEST_MANUAL_VALVE_7;
-                        else if (n === 2) valveVal = getMappedValue ? getMappedValue("d_cond_st2", "STATUS", TEST_MANUAL_VALVE_14) : TEST_MANUAL_VALVE_14;
-                        else if (n === 3) valveVal = getMappedValue ? getMappedValue("d_cond_st3", "STATUS", TEST_MANUAL_VALVE_19) : TEST_MANUAL_VALVE_19;
-                        else valveVal = getMappedValue ? getMappedValue("d_cond_st4", "STATUS", TEST_MANUAL_VALVE_28) : TEST_MANUAL_VALVE_28;
-                        const isOpen = formatValveStatus(valveVal) === "OPEN";
-                        const openPath = "M 524,729 L 524,1012";
-                        const closedPath = "M 524,729 L 524,783";
-                        if (isOpen) {
-                          return <LiquidSteamFlowSVG d={openPath} active={true} mode="liquid" color="#f59e0b" thickness={8} />;
-                        } else {
-                          return <LiquidSteamFlowSVG d={closedPath} active={true} mode="standby" color="#f59e0b" thickness={8} />;
-                        }
-                      })()}
-
-                      {/* Orange Flow 2 */}
-                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
-                        let valveVal;
-                        if (n === 1) valveVal = getSmartValveValue("manual_valve_6", TEST_MANUAL_VALVE_6);
-                        else if (n === 2) valveVal = getSmartValveValue("manual_valve_13", TEST_MANUAL_VALVE_13);
-                        else if (n === 3) valveVal = getSmartValveValue("manual_valve_21", TEST_MANUAL_VALVE_21);
-                        else valveVal = getSmartValveValue("manual_valve_27", TEST_MANUAL_VALVE_27);
-                        const isOpen = formatValveStatus(valveVal) === "OPEN";
-                        return isOpen ? (
-                          <LiquidSteamFlowSVG d="M 359,1012 L 365,1022 Q 370,1031 381,1031 L 402,1032" active={true} mode="flowing" color="#f59e0b" thickness={8} />
-                        ) : null;
-                      })()}
-
-                      {/* Orange Flow 3 */}
-                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
-                        let valveVal;
-                        if (n === 1) valveVal = getSmartValveValue("manual_valve_6", TEST_MANUAL_VALVE_6);
-                        else if (n === 2) valveVal = getSmartValveValue("manual_valve_13", TEST_MANUAL_VALVE_13);
-                        else if (n === 3) valveVal = getSmartValveValue("manual_valve_21", TEST_MANUAL_VALVE_21);
-                        else valveVal = getSmartValveValue("manual_valve_27", TEST_MANUAL_VALVE_27);
-                        const isOpen = formatValveStatus(valveVal) === "OPEN";
-                        return isOpen ? (
-                          <LiquidSteamFlowSVG d="M 505,1030 L 523,1031 Q 541,1031 559,1031 L 599,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
-                        ) : null;
-                      })()}
-
-                      {/* Orange Flow 4 */}
-                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
-                        let valveVal;
-                        if (n === 1) valveVal = getSmartValveValue("manual_valve_5", TEST_MANUAL_VALVE_5);
-                        else if (n === 2) valveVal = getSmartValveValue("manual_valve_12", TEST_MANUAL_VALVE_12);
-                        else if (n === 3) valveVal = getSmartValveValue("manual_valve_20", TEST_MANUAL_VALVE_20);
-                        else valveVal = getSmartValveValue("manual_valve_26", TEST_MANUAL_VALVE_26);
-                        const isOpen = formatValveStatus(valveVal) === "OPEN";
-                        if (isOpen) {
-                          return <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />;
-                        } else {
-                          return <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="standby" color="#f59e0b" thickness={8} />;
-                        }
-                      })()}
-
-                      {/* Orange Flow 5 */}
-                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
-                        let valveVal;
-                        if (n === 1) valveVal = getSmartValveValue("manual_valve_5", TEST_MANUAL_VALVE_5);
-                        else if (n === 2) valveVal = getSmartValveValue("manual_valve_12", TEST_MANUAL_VALVE_12);
-                        else if (n === 3) valveVal = getSmartValveValue("manual_valve_20", TEST_MANUAL_VALVE_20);
-                        else valveVal = getSmartValveValue("manual_valve_26", TEST_MANUAL_VALVE_26);
-                        const isOpen = formatValveStatus(valveVal) === "OPEN";
-                        return isOpen && (
-                          <LiquidSteamFlowSVG d="M 641,939 L 761,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />
-                        );
-                      })()}
-
-                      {/* Orange Flow 6 */}
-                      {(n === 1 || n === 2 || n === 3 || n === 4) && (() => {
-                        let valveVal;
-                        if (n === 1) valveVal = TEST_MANUAL_VALVE_6;
-                        else if (n === 2) valveVal = TEST_MANUAL_VALVE_13;
-                        else if (n === 3) valveVal = TEST_MANUAL_VALVE_21;
-                        else valveVal = TEST_MANUAL_VALVE_27;
-                        const isOpen = formatValveStatus(valveVal) === "OPEN";
-                        return isOpen && (
-                          <LiquidSteamFlowSVG d="M 644,1031 L 776,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
-                        );
-                      })()}
                     </g>
-                    {viewMode === "process" ? (
-                      <g>
-                        {/* Edit posisi X dan Y untuk 7 valve di sini: */}
-                        {[
-                          { x: 145, y: 50, rotate: 270, size: 90 }, // Valve ke-1
-                          { x: 125, y: 275, rotate: 270, size: 100 }, // Valve ke-2
-                          { x: 125, y: 488, rotate: 270, size: 100 }, // Valve ke-3
-                          { x: 125, y: 675, rotate: 270, size: 100 }, // Valve ke-4
-                          { x: 550, y: 800, rotate: 0, size: 90 }, // Valve ke-5
-                          { x: 620, y: 914, rotate: 270, size: 90 }, // Valve ke-6
-                          { x: 620, y: 1005, rotate: 270, size: 90 }, // Valve ke-7
-                        ].map((coord, i) => {
-                          const valveIndex = (n - 1) * 7 + i + 1;
-                          const valveId = `manual_valve_${valveIndex}`;
-                          let valveVal = "0";
-                          switch (valveIndex) {
-                            case 1: valveVal = TEST_MANUAL_VALVE_1; break;
-                            case 2: valveVal = TEST_MANUAL_VALVE_2; break;
-                            case 3: valveVal = TEST_MANUAL_VALVE_3; break;
-                            case 4: valveVal = TEST_MANUAL_VALVE_4; break;
-                            case 5: valveVal = getMappedValue ? getMappedValue("d_cond_st1", "STATUS", TEST_MANUAL_VALVE_7) : TEST_MANUAL_VALVE_7; break;
-                            case 6: valveVal = TEST_MANUAL_VALVE_5; break;
-                            case 7: valveVal = TEST_MANUAL_VALVE_6; break;
-                            case 8: valveVal = TEST_MANUAL_VALVE_8; break;
-                            case 9: valveVal = TEST_MANUAL_VALVE_9; break;
-                            case 10: valveVal = TEST_MANUAL_VALVE_10; break;
-                            case 11: valveVal = TEST_MANUAL_VALVE_11; break;
-                            case 12: valveVal = getMappedValue ? getMappedValue("d_cond_st2", "STATUS", TEST_MANUAL_VALVE_14) : TEST_MANUAL_VALVE_14; break;
-                            case 13: valveVal = TEST_MANUAL_VALVE_12; break;
-                            case 14: valveVal = TEST_MANUAL_VALVE_13; break;
-                            case 15: valveVal = TEST_MANUAL_VALVE_15; break;
-                            case 16: valveVal = TEST_MANUAL_VALVE_16; break;
-                            case 17: valveVal = TEST_MANUAL_VALVE_17; break;
-                            case 18: valveVal = TEST_MANUAL_VALVE_18; break;
-                            case 19: valveVal = getMappedValue ? getMappedValue("d_cond_st3", "STATUS", TEST_MANUAL_VALVE_19) : TEST_MANUAL_VALVE_19; break;
-                            case 20: valveVal = TEST_MANUAL_VALVE_20; break;
-                            case 21: valveVal = TEST_MANUAL_VALVE_21; break;
-                            case 22: valveVal = TEST_MANUAL_VALVE_22; break;
-                            case 23: valveVal = TEST_MANUAL_VALVE_23; break;
-                            case 24: valveVal = TEST_MANUAL_VALVE_24; break;
-                            case 25: valveVal = TEST_MANUAL_VALVE_25; break;
-                            case 26: valveVal = getMappedValue ? getMappedValue("d_cond_st4", "STATUS", TEST_MANUAL_VALVE_28) : TEST_MANUAL_VALVE_28; break; // Valve 5 in layout is Condensate (28)
-                            case 27: valveVal = TEST_MANUAL_VALVE_26; break; // Valve 6 in layout is Steam (26)
-                            case 28: valveVal = TEST_MANUAL_VALVE_27; break; // Valve 7 in layout is Steam Exh (27)
-                            default: valveVal = "0";
-                          }
-                          const isOpen = formatValveStatus(valveVal) === "OPEN";
-                          return (
-                            <EquipmentIconSVG
-                              key={valveId}
-                              x={coord.x}
-                              y={coord.y}
-                              icon={valvePositionerSvg}
-                              size={coord.size || 100}
-                              rotation={coord.rotate || 0}
-                              isRunning={isOpen}
-                            />
-                          );
-                        })}
-                      </g>
-                    ) : (
-                      <g>
-                      </g>
-                    )}
 
                     {/* Render Tag Monitor Cards khusus untuk tab LINE 1 */}
                     {n === 1 && (
-                      <g>
-                        <TagMonitorCardSVG
-                          x={40}
-                          y={20}
-                          title="EXHAUST STEAM ST1"
-                          value={getMappedValue ? String(getMappedValue("card_exhaust_steam_st1", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st1")}
-                          style={getDeveloperStyle("card_exhaust_steam_st1")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={200}
-                          title="INLET STEAM 1 ST1"
-                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_1_st1", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st1")}
-                          style={getDeveloperStyle("card_inlet_steam_1_st1")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={415}
-                          title="INLET STEAM 2 ST1"
-                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_2_st1", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st1")}
-                          style={getDeveloperStyle("card_inlet_steam_2_st1")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={610}
-                          title="FLASHING ST1"
-                          value={getMappedValue ? String(getMappedValue("card_flashing_st1", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st1")}
-                          style={getDeveloperStyle("card_flashing_st1")}
-                        />
+                      <g id="line1_equipment_blocks">
+                        {/* // EXHAUST STEAM ST1 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_exhaust_steam_st1", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_exhaust_steam_st1">
+                              <LiquidSteamFlowSVG d="M 265,143 L 264,98 Q 263,81 247,78 L 247,78 Q 230,74 213,74 L 171,73" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                              {isOpen && (
+                                <LiquidSteamFlowSVG d="M 171,73 L -9,71" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_exhaust_steam_st1"
+                                x={145}
+                                y={50}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={40}
+                                y={20}
+                                title="EXHAUST STEAM ST1"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st1")}
+                                style={getDeveloperStyle("card_exhaust_steam_st1")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END EXHAUST STEAM ST1 */}
+
+                        {/* // INLET STEAM 1 ST1 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_inlet_steam_1_st1", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) && numericVal > 0;
+                          return (
+                            <g id="block_inlet_steam_1_st1">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 147,302 L 512,303" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_inlet_steam_1_st1"
+                                x={125}
+                                y={275}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={200}
+                                title="INLET STEAM 1 ST1"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st1")}
+                                style={getDeveloperStyle("card_inlet_steam_1_st1")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END INLET STEAM 1 ST1 */}
+
+                        {/* // INLET STEAM 2 ST1 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_inlet_steam_2_st1", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_inlet_steam_2_st1">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 146,515 L 160,515 Q 174,514 174,500 L 175,472 Q 175,453 194,453 L 194,453 Q 213,452 232,452 L 515,453" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 145,514 L 160,512 Q 174,510 174,525 L 173,559 Q 173,573 187,576 L 187,576 Q 201,578 215,578 L 341,578 Q 366,578 387,591 L 540,686" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_inlet_steam_2_st1"
+                                x={125}
+                                y={488}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={415}
+                                title="INLET STEAM 2 ST1"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st1")}
+                                style={getDeveloperStyle("card_inlet_steam_2_st1")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END INLET STEAM 2 ST1 */}
+
+                        {/* // FLASHING ST1 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_flashing_st1", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_flashing_st1">
+                              <LiquidSteamFlowSVG
+                                d="M 47,514 L 46,656 Q 46,671 50,686 L 50,686 Q 54,700 69,701 L 70,703"
+                                active={true}
+                                mode={isOpen ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={8}
+                              />
+                              {isOpen && (
+                                <LiquidSteamFlowSVG
+                                  d="M 146,703 L 332,700 Q 357,700 379,712"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={8}
+                                />
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_flashing_st1"
+                                x={125}
+                                y={675}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={610}
+                                title="FLASHING ST1"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st1")}
+                                style={getDeveloperStyle("card_flashing_st1")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END FLASHING ST1 */}
+
+                        {/* // OUTLET ST1 */}
                         <TagMonitorCardSVG
                           x={740}
                           y={695}
@@ -2692,28 +2619,136 @@ export default function OverviewTab({
                           onClick={() => handleEquipmentClick && handleEquipmentClick("card_outlet_st1")}
                           style={getDeveloperStyle("card_outlet_st1")}
                         />
-                        <TagMonitorCardSVG
-                          x={725}
-                          y={900}
-                          title="RELIEF CONDENSATE 1 ST1"
-                          value={getMappedValue ? String(getMappedValue("card_condensate_1_st1", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st1")}
-                          style={getDeveloperStyle("card_condensate_1_st1")}
-                        />
-                        <TagMonitorCardSVG
-                          x={725}
-                          y={995}
-                          title="CONDENSATE 2 ST1"
-                          value={getMappedValue ? String(getMappedValue("card_condensate_2_st1", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st1")}
-                          style={getDeveloperStyle("card_condensate_2_st1")}
-                        />
+
+                        {/* // D.CONDENSATE ST1 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("d_cond_st1", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_d_cond_st1">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 524,729 L 524,1012" active={true} mode="liquid" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 524,729 L 524,783" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_d_cond_st1"
+                                x={550}
+                                y={800}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={0}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={700}
+                                y={800}
+                                title="D.CONDE DOOR ST1"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st1_line")}
+                                style={getDeveloperStyle("d_cond_st1_line")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END D.CONDENSATE ST1 */}
+
+                        {/* // CONDENSATE 1 ST1 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_condensate_1_st1", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_condensate_1_st1">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 641,939 L 761,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_condensate_1_st1"
+                                x={620}
+                                y={914}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={725}
+                                y={900}
+                                title="RELIEF CONDENSATE 1 ST1"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st1")}
+                                style={getDeveloperStyle("card_condensate_1_st1")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END CONDENSATE 1 ST1 */}
+
+                        {/* // CONDENSATE 2 ST1 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_condensate_2_st1", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_condensate_2_st1">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 359,1012 L 365,1022 Q 370,1031 381,1031 L 402,1032" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 505,1030 L 523,1031 Q 541,1031 559,1031 L 599,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 644,1031 L 776,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 359,1012 L 365,1022 Q 370,1031 381,1031 L 402,1032" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 505,1030 L 523,1031 Q 541,1031 559,1031 L 599,1030" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_condensate_2_st1"
+                                x={620}
+                                y={1005}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={725}
+                                y={995}
+                                title="CONDENSATE 2 ST1"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st1")}
+                                style={getDeveloperStyle("card_condensate_2_st1")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END CONDENSATE 2 ST1 */}
 
                         {/* PRESSURE & TEMP CARDS FOR LINE 1 */}
                         <TagMonitorCardSVG
@@ -2741,19 +2776,6 @@ export default function OverviewTab({
                           style={getDeveloperStyle("st1_temp_card")}
                         />
 
-                        {/* D.CONDENSATE DOOR CARDS FOR LINE 1 */}
-                        <TagMonitorCardSVG
-                          x={700}
-                          y={800}
-                          title="D.CONDE DOOR ST1"
-                          value={dCondDisplayLine}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st1_line")}
-                          style={getDeveloperStyle("d_cond_st1_line")}
-                        />
-
                         {/* VALVE MODULATE SETTINGS (LINE 1 ONLY) */}
                         <SettingValveModulateSVG
                           x={800}
@@ -2764,57 +2786,190 @@ export default function OverviewTab({
                           handleEquipmentClick={handleEquipmentClick}
                           getDeveloperStyle={getDeveloperStyle}
                         />
-
                       </g>
                     )}
 
                     {/* Render Tag Monitor Cards khusus untuk tab LINE 2 */}
                     {n === 2 && (
-                      <g>
-                        <TagMonitorCardSVG
-                          x={40}
-                          y={20}
-                          title="EXHAUST STEAM ST2"
-                          value={getMappedValue ? String(getMappedValue("card_exhaust_steam_st2", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st2")}
-                          style={getDeveloperStyle("card_exhaust_steam_st2")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={200}
-                          title="INLET STEAM 1 ST2"
-                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_1_st2", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st2")}
-                          style={getDeveloperStyle("card_inlet_steam_1_st2")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={415}
-                          title="INLET STEAM 2 ST2"
-                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_2_st2", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st2")}
-                          style={getDeveloperStyle("card_inlet_steam_2_st2")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={610}
-                          title="FLASHING ST2"
-                          value={getMappedValue ? String(getMappedValue("card_flashing_st2", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st2")}
-                          style={getDeveloperStyle("card_flashing_st2")}
-                        />
+                      <g id="line2_equipment_blocks">
+                        {/* // EXHAUST STEAM ST2 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_exhaust_steam_st2", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_exhaust_steam_st2">
+                              <LiquidSteamFlowSVG d="M 265,143 L 264,98 Q 263,81 247,78 L 247,78 Q 230,74 213,74 L 171,73" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                              {isOpen && (
+                                <LiquidSteamFlowSVG d="M 171,73 L -9,71" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_exhaust_steam_st2"
+                                x={145}
+                                y={50}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={40}
+                                y={20}
+                                title="EXHAUST STEAM ST2"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st2")}
+                                style={getDeveloperStyle("card_exhaust_steam_st2")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END EXHAUST STEAM ST2 */}
+
+                        {/* // INLET STEAM 1 ST2 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_inlet_steam_1_st2", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) && numericVal > 0;
+                          return (
+                            <g id="block_inlet_steam_1_st2">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 147,302 L 512,303" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_inlet_steam_1_st2"
+                                x={125}
+                                y={275}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={200}
+                                title="INLET STEAM 1 ST2"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st2")}
+                                style={getDeveloperStyle("card_inlet_steam_1_st2")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END INLET STEAM 1 ST2 */}
+
+                        {/* // INLET STEAM 2 ST2 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_inlet_steam_2_st2", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_inlet_steam_2_st2">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 146,515 L 160,515 Q 174,514 174,500 L 175,472 Q 175,453 194,453 L 194,453 Q 213,452 232,452 L 515,453" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 145,514 L 160,512 Q 174,510 174,525 L 173,559 Q 173,573 187,576 L 187,576 Q 201,578 215,578 L 341,578 Q 366,578 387,591 L 540,686" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_inlet_steam_2_st2"
+                                x={125}
+                                y={488}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={415}
+                                title="INLET STEAM 2 ST2"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st2")}
+                                style={getDeveloperStyle("card_inlet_steam_2_st2")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END INLET STEAM 2 ST2 */}
+
+                        {/* // FLASHING ST2 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_flashing_st2", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_flashing_st2">
+                              <LiquidSteamFlowSVG
+                                d="M 47,514 L 46,656 Q 46,671 50,686 L 50,686 Q 54,700 69,701 L 70,703"
+                                active={true}
+                                mode={isOpen ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={8}
+                              />
+                              {isOpen && (
+                                <LiquidSteamFlowSVG
+                                  d="M 146,703 L 332,700 Q 357,700 379,712"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={8}
+                                />
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_flashing_st2"
+                                x={125}
+                                y={675}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={610}
+                                title="FLASHING ST2"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st2")}
+                                style={getDeveloperStyle("card_flashing_st2")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END FLASHING ST2 */}
+
+                        {/* // OUTLET ST2 */}
                         <TagMonitorCardSVG
                           x={710}
                           y={695}
@@ -2826,28 +2981,136 @@ export default function OverviewTab({
                           onClick={() => handleEquipmentClick && handleEquipmentClick("card_outlet_st2")}
                           style={getDeveloperStyle("card_outlet_st2")}
                         />
-                        <TagMonitorCardSVG
-                          x={725}
-                          y={900}
-                          title="RELIEF CONDENSATE 1 ST2"
-                          value={getMappedValue ? String(getMappedValue("card_condensate_1_st2", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st2")}
-                          style={getDeveloperStyle("card_condensate_1_st2")}
-                        />
-                        <TagMonitorCardSVG
-                          x={725}
-                          y={995}
-                          title="CONDENSATE 2 ST2"
-                          value={getMappedValue ? String(getMappedValue("card_condensate_2_st2", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st2")}
-                          style={getDeveloperStyle("card_condensate_2_st2")}
-                        />
+
+                        {/* // D.CONDENSATE ST2 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("d_cond_st2", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_d_cond_st2">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 524,729 L 524,1012" active={true} mode="liquid" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 524,729 L 524,783" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_d_cond_st2"
+                                x={550}
+                                y={800}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={0}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={700}
+                                y={800}
+                                title="D.CONDE DOOR ST2"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st2_line")}
+                                style={getDeveloperStyle("d_cond_st2_line")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END D.CONDENSATE ST2 */}
+
+                        {/* // CONDENSATE 1 ST2 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_condensate_1_st2", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_condensate_1_st2">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 641,939 L 761,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_condensate_1_st2"
+                                x={620}
+                                y={914}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={725}
+                                y={900}
+                                title="RELIEF CONDENSATE 1 ST2"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st2")}
+                                style={getDeveloperStyle("card_condensate_1_st2")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END CONDENSATE 1 ST2 */}
+
+                        {/* // CONDENSATE 2 ST2 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_condensate_2_st2", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_condensate_2_st2">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 359,1012 L 365,1022 Q 370,1031 381,1031 L 402,1032" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 505,1030 L 523,1031 Q 541,1031 559,1031 L 599,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 644,1031 L 776,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 359,1012 L 365,1022 Q 370,1031 381,1031 L 402,1032" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 505,1030 L 523,1031 Q 541,1031 559,1031 L 599,1030" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_condensate_2_st2"
+                                x={620}
+                                y={1005}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={725}
+                                y={995}
+                                title="CONDENSATE 2 ST2"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st2")}
+                                style={getDeveloperStyle("card_condensate_2_st2")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END CONDENSATE 2 ST2 */}
 
                         {/* PRESSURE & TEMP CARDS FOR LINE 2 */}
                         <TagMonitorCardSVG
@@ -2875,20 +3138,7 @@ export default function OverviewTab({
                           style={getDeveloperStyle("st2_temp_card")}
                         />
 
-                        {/* D. CONDENSATE DOOR CARDS FOR LINE 2 */}
-                        <TagMonitorCardSVG
-                          x={700}
-                          y={800}
-                          title="D. COND ST2"
-                          value={dCondDisplayLine}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st2_line")}
-                          style={getDeveloperStyle("d_cond_st2_line")}
-                        />
-
-                        {/* VALVE MODULATE SETTINGS (LINE 2) */}
+                        {/* VALVE MODULATE SETTINGS (LINE 2 ONLY) */}
                         <SettingValveModulateSVG
                           x={800}
                           y={120}
@@ -2903,51 +3153,185 @@ export default function OverviewTab({
 
                     {/* Render Tag Monitor Cards khusus untuk tab LINE 3 */}
                     {n === 3 && (
-                      <g>
-                        <TagMonitorCardSVG
-                          x={40}
-                          y={20}
-                          title="EXHAUST STEAM ST3"
-                          value={getMappedValue ? String(getMappedValue("card_exhaust_steam_st3", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st3")}
-                          style={getDeveloperStyle("card_exhaust_steam_st3")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={200}
-                          title="INLET STEAM 1 ST3"
-                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_1_st3", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st3")}
-                          style={getDeveloperStyle("card_inlet_steam_1_st3")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={415}
-                          title="INLET STEAM 2 ST3"
-                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_2_st3", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st3")}
-                          style={getDeveloperStyle("card_inlet_steam_2_st3")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={610}
-                          title="FLASHING ST3"
-                          value={getMappedValue ? String(getMappedValue("card_flashing_st3", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st3")}
-                          style={getDeveloperStyle("card_flashing_st3")}
-                        />
+                      <g id="line3_equipment_blocks">
+                        {/* // EXHAUST STEAM ST3 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_exhaust_steam_st3", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_exhaust_steam_st3">
+                              <LiquidSteamFlowSVG d="M 265,143 L 266,112 Q 266,98 259,86 L 259,86 Q 252,73 238,73 L 170,73" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                              {isOpen && (
+                                <LiquidSteamFlowSVG d="M 170,73 L -9,71" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_exhaust_steam_st3"
+                                x={145}
+                                y={50}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={40}
+                                y={20}
+                                title="EXHAUST STEAM ST3"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st3")}
+                                style={getDeveloperStyle("card_exhaust_steam_st3")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END EXHAUST STEAM ST3 */}
+
+                        {/* // INLET STEAM 1 ST3 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_inlet_steam_1_st3", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) && numericVal > 0;
+                          return (
+                            <g id="block_inlet_steam_1_st3">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 147,302 L 512,303" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_inlet_steam_1_st3"
+                                x={125}
+                                y={275}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={200}
+                                title="INLET STEAM 1 ST3"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st3")}
+                                style={getDeveloperStyle("card_inlet_steam_1_st3")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END INLET STEAM 1 ST3 */}
+
+                        {/* // INLET STEAM 2 ST3 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_inlet_steam_2_st3", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_inlet_steam_2_st3">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 146,515 L 160,515 Q 174,514 174,500 L 175,472 Q 175,453 194,453 L 194,453 Q 213,452 232,452 L 515,453" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 145,514 L 160,512 Q 174,510 174,525 L 173,559 Q 173,573 187,576 L 187,576 Q 201,578 215,578 L 341,578 Q 366,578 387,591 L 540,686" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_inlet_steam_2_st3"
+                                x={125}
+                                y={488}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={415}
+                                title="INLET STEAM 2 ST3"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st3")}
+                                style={getDeveloperStyle("card_inlet_steam_2_st3")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END INLET STEAM 2 ST3 */}
+
+                        {/* // FLASHING ST3 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_flashing_st3", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_flashing_st3">
+                              <LiquidSteamFlowSVG
+                                d="M 47,514 L 46,656 Q 46,671 50,686 L 50,686 Q 54,700 69,701 L 70,703"
+                                active={true}
+                                mode={isOpen ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={8}
+                              />
+                              {isOpen && (
+                                <LiquidSteamFlowSVG
+                                  d="M 146,703 L 332,700 Q 357,700 379,712"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={8}
+                                />
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_flashing_st3"
+                                x={125}
+                                y={675}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={610}
+                                title="FLASHING ST3"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st3")}
+                                style={getDeveloperStyle("card_flashing_st3")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END FLASHING ST3 */}
+
+                        {/* // OUTLET ST3 */}
                         <TagMonitorCardSVG
                           x={710}
                           y={695}
@@ -2959,28 +3343,136 @@ export default function OverviewTab({
                           onClick={() => handleEquipmentClick && handleEquipmentClick("card_outlet_st3")}
                           style={getDeveloperStyle("card_outlet_st3")}
                         />
-                        <TagMonitorCardSVG
-                          x={725}
-                          y={900}
-                          title="RELIEF CONDENSATE 1 ST3"
-                          value={getMappedValue ? String(getMappedValue("card_condensate_1_st3", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st3")}
-                          style={getDeveloperStyle("card_condensate_1_st3")}
-                        />
-                        <TagMonitorCardSVG
-                          x={725}
-                          y={995}
-                          title="CONDENSATE 2 ST3"
-                          value={getMappedValue ? String(getMappedValue("card_condensate_2_st3", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st3")}
-                          style={getDeveloperStyle("card_condensate_2_st3")}
-                        />
+
+                        {/* // D.CONDENSATE ST3 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("d_cond_st3", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_d_cond_st3">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 524,729 L 524,1012" active={true} mode="liquid" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 524,729 L 524,783" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_d_cond_st3"
+                                x={550}
+                                y={800}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={0}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={700}
+                                y={800}
+                                title="D.CONDE DOOR ST3"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st3_line")}
+                                style={getDeveloperStyle("d_cond_st3_line")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END D.CONDENSATE ST3 */}
+
+                        {/* // CONDENSATE 1 ST3 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_condensate_1_st3", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_condensate_1_st3">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 641,939 L 761,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_condensate_1_st3"
+                                x={620}
+                                y={914}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={725}
+                                y={900}
+                                title="RELIEF CONDENSATE 1 ST3"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st3")}
+                                style={getDeveloperStyle("card_condensate_1_st3")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END CONDENSATE 1 ST3 */}
+
+                        {/* // CONDENSATE 2 ST3 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_condensate_2_st3", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_condensate_2_st3">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 359,1012 L 365,1022 Q 370,1031 381,1031 L 402,1032" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 505,1030 L 523,1031 Q 541,1031 559,1031 L 599,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 644,1031 L 776,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 359,1012 L 365,1022 Q 370,1031 381,1031 L 402,1032" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 505,1030 L 523,1031 Q 541,1031 559,1031 L 599,1030" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_condensate_2_st3"
+                                x={620}
+                                y={1005}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={725}
+                                y={995}
+                                title="CONDENSATE 2 ST3"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st3")}
+                                style={getDeveloperStyle("card_condensate_2_st3")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END CONDENSATE 2 ST3 */}
 
                         {/* PRESSURE & TEMP CARDS FOR LINE 3 */}
                         <TagMonitorCardSVG
@@ -3008,20 +3500,7 @@ export default function OverviewTab({
                           style={getDeveloperStyle("st3_temp_card")}
                         />
 
-                        {/* D. CONDENSATE DOOR CARDS FOR LINE 3 */}
-                        <TagMonitorCardSVG
-                          x={700}
-                          y={800}
-                          title="D. COND  ST3"
-                          value={dCondDisplayLine}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st3_line")}
-                          style={getDeveloperStyle("d_cond_st3_line")}
-                        />
-
-                        {/* VALVE MODULATE SETTINGS (LINE 3) */}
+                        {/* VALVE MODULATE SETTINGS (LINE 3 ONLY) */}
                         <SettingValveModulateSVG
                           x={800}
                           y={120}
@@ -3036,51 +3515,185 @@ export default function OverviewTab({
 
                     {/* Render Tag Monitor Cards khusus untuk tab LINE 4 */}
                     {n === 4 && (
-                      <g>
-                        <TagMonitorCardSVG
-                          x={40}
-                          y={20}
-                          title="EXHAUST STEAM ST4"
-                          value={getMappedValue ? String(getMappedValue("card_exhaust_steam_st4", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st4")}
-                          style={getDeveloperStyle("card_exhaust_steam_st4")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={200}
-                          title="INLET STEAM 1 ST4"
-                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_1_st4", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st4")}
-                          style={getDeveloperStyle("card_inlet_steam_1_st4")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={415}
-                          title="INLET STEAM 2 ST4"
-                          value={getMappedValue ? String(getMappedValue("card_inlet_steam_2_st4", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st4")}
-                          style={getDeveloperStyle("card_inlet_steam_2_st4")}
-                        />
-                        <TagMonitorCardSVG
-                          x={140}
-                          y={610}
-                          title="FLASHING ST4"
-                          value={getMappedValue ? String(getMappedValue("card_flashing_st4", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st4")}
-                          style={getDeveloperStyle("card_flashing_st4")}
-                        />
+                      <g id="line4_equipment_blocks">
+                        {/* // EXHAUST STEAM ST4 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_exhaust_steam_st4", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_exhaust_steam_st4">
+                              <LiquidSteamFlowSVG d="M 265,143 L 264,98 Q 263,81 247,78 L 247,78 Q 230,74 213,74 L 171,73" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                              {isOpen && (
+                                <LiquidSteamFlowSVG d="M 171,73 L -9,71" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_exhaust_steam_st4"
+                                x={145}
+                                y={50}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={40}
+                                y={20}
+                                title="EXHAUST STEAM ST4"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_exhaust_steam_st4")}
+                                style={getDeveloperStyle("card_exhaust_steam_st4")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END EXHAUST STEAM ST4 */}
+
+                        {/* // INLET STEAM 1 ST4 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_inlet_steam_1_st4", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) && numericVal > 0;
+                          return (
+                            <g id="block_inlet_steam_1_st4">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 147,302 L 512,303" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 28,220 L 38,221 Q 48,222 48,232 L 48,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 53,301 L 106,301" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_inlet_steam_1_st4"
+                                x={125}
+                                y={275}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={200}
+                                title="INLET STEAM 1 ST4"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_1_st4")}
+                                style={getDeveloperStyle("card_inlet_steam_1_st4")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END INLET STEAM 1 ST4 */}
+
+                        {/* // INLET STEAM 2 ST4 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_inlet_steam_2_st4", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_inlet_steam_2_st4">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 146,515 L 160,515 Q 174,514 174,500 L 175,472 Q 175,453 194,453 L 194,453 Q 213,452 232,452 L 515,453" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 145,514 L 160,512 Q 174,510 174,525 L 173,559 Q 173,573 187,576 L 187,576 Q 201,578 215,578 L 341,578 Q 366,578 387,591 L 540,686" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 48,301 L 47,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 51,514 L 103,514" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_inlet_steam_2_st4"
+                                x={125}
+                                y={488}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={415}
+                                title="INLET STEAM 2 ST4"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_inlet_steam_2_st4")}
+                                style={getDeveloperStyle("card_inlet_steam_2_st4")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END INLET STEAM 2 ST4 */}
+
+                        {/* // FLASHING ST4 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_flashing_st4", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_flashing_st4">
+                              <LiquidSteamFlowSVG
+                                d="M 47,514 L 46,656 Q 46,671 50,686 L 50,686 Q 54,700 69,701 L 70,703"
+                                active={true}
+                                mode={isOpen ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={8}
+                              />
+                              {isOpen && (
+                                <LiquidSteamFlowSVG
+                                  d="M 146,703 L 332,700 Q 357,700 379,712"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={8}
+                                />
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_flashing_st4"
+                                x={125}
+                                y={675}
+                                icon={valvePositionerSvg}
+                                size={100}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={140}
+                                y={610}
+                                title="FLASHING ST4"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_flashing_st4")}
+                                style={getDeveloperStyle("card_flashing_st4")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END FLASHING ST4 */}
+
+                        {/* // OUTLET ST4 */}
                         <TagMonitorCardSVG
                           x={710}
                           y={695}
@@ -3092,28 +3705,136 @@ export default function OverviewTab({
                           onClick={() => handleEquipmentClick && handleEquipmentClick("card_outlet_st4")}
                           style={getDeveloperStyle("card_outlet_st4")}
                         />
-                        <TagMonitorCardSVG
-                          x={725}
-                          y={900}
-                          title="RELIEF CONDENSATE 1 ST4"
-                          value={getMappedValue ? String(getMappedValue("card_condensate_1_st4", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st4")}
-                          style={getDeveloperStyle("card_condensate_1_st4")}
-                        />
-                        <TagMonitorCardSVG
-                          x={725}
-                          y={995}
-                          title="CONDENSATE 2 ST4"
-                          value={getMappedValue ? String(getMappedValue("card_condensate_2_st4", "MONITOR", "no tag")) : "no tag"}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st4")}
-                          style={getDeveloperStyle("card_condensate_2_st4")}
-                        />
+
+                        {/* // D.CONDENSATE ST4 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("d_cond_st4", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_d_cond_st4">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 524,729 L 524,1012" active={true} mode="liquid" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 524,729 L 524,783" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_d_cond_st4"
+                                x={550}
+                                y={800}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={0}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={700}
+                                y={800}
+                                title="D.CONDE DOOR ST4"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st4_line")}
+                                style={getDeveloperStyle("d_cond_st4_line")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END D.CONDENSATE ST4 */}
+
+                        {/* // CONDENSATE 1 ST4 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_condensate_1_st4", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_condensate_1_st4">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 641,939 L 761,939" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 544,1024 L 544,965 Q 544,953 554,946 L 554,946 Q 563,939 575,939 L 601,939" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_condensate_1_st4"
+                                x={620}
+                                y={914}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={725}
+                                y={900}
+                                title="RELIEF CONDENSATE 1 ST4"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_1_st4")}
+                                style={getDeveloperStyle("card_condensate_1_st4")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END CONDENSATE 1 ST4 */}
+
+                        {/* // CONDENSATE 2 ST4 (FLOW + VALVE + CARD) */}
+                        {(() => {
+                          const rawTagVal = getMappedValue ? getMappedValue("card_condensate_2_st4", "MONITOR", "0") : "0";
+                          const tagVal = String(rawTagVal);
+                          const numericVal = parseFloat(tagVal);
+                          const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal === "OPEN" || tagVal === "true" || tagVal === "1");
+                          return (
+                            <g id="block_condensate_2_st4">
+                              {isOpen ? (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 359,1012 L 365,1022 Q 370,1031 381,1031 L 402,1032" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 505,1030 L 523,1031 Q 541,1031 559,1031 L 599,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 644,1031 L 776,1030" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                                </>
+                              ) : (
+                                <>
+                                  <LiquidSteamFlowSVG d="M 359,1012 L 365,1022 Q 370,1031 381,1031 L 402,1032" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                  <LiquidSteamFlowSVG d="M 505,1030 L 523,1031 Q 541,1031 559,1031 L 599,1030" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                                </>
+                              )}
+                              <EquipmentIconSVG
+                                key="valve_condensate_2_st4"
+                                x={620}
+                                y={1005}
+                                icon={valvePositionerSvg}
+                                size={90}
+                                rotation={270}
+                                isRunning={isOpen}
+                              />
+                              <TagMonitorCardSVG
+                                x={725}
+                                y={995}
+                                title="CONDENSATE 2 ST4"
+                                value={tagVal}
+                                unit=""
+                                status={isOpen ? "green" : "red"}
+                                width={150}
+                                onClick={() => handleEquipmentClick && handleEquipmentClick("card_condensate_2_st4")}
+                                style={getDeveloperStyle("card_condensate_2_st4")}
+                              />
+                            </g>
+                          );
+                        })()}
+                        {/* // END CONDENSATE 2 ST4 */}
 
                         {/* PRESSURE & TEMP CARDS FOR LINE 4 */}
                         <TagMonitorCardSVG
@@ -3141,20 +3862,7 @@ export default function OverviewTab({
                           style={getDeveloperStyle("st4_temp_card")}
                         />
 
-                        {/* D. CONDENSATE  DOOR CARDS FOR LINE 4 */}
-                        <TagMonitorCardSVG
-                          x={700}
-                          y={800}
-                          title="D. COND ST4"
-                          value={dCondDisplayLine}
-                          unit=""
-                          status="grey"
-                          width={150}
-                          onClick={() => handleEquipmentClick && handleEquipmentClick("d_cond_st4_line")}
-                          style={getDeveloperStyle("d_cond_st4_line")}
-                        />
-
-                        {/* VALVE MODULATE SETTINGS (LINE 4) */}
+                        {/* VALVE MODULATE SETTINGS (LINE 4 ONLY) */}
                         <SettingValveModulateSVG
                           x={800}
                           y={120}
@@ -3226,336 +3934,362 @@ export default function OverviewTab({
 
             {activeTab === "overview" && (
               <>
-                {(true || parseFloat(lv('flow_1784098700116', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const isOpen = formatValveStatus(TEST_MANUAL_VALVE_6) === "OPEN";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d="M -32,1003 L -28,1014 Q -24,1025 -12,1026 L 17,1028" active={true} mode="flowing" color="#f59e0b" thickness={10} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d="M -32,1003 L -28,1014 Q -24,1025 -12,1026 L 17,1028" active={true} mode="standby" color="#f59e0b" thickness={10} />;
-                    }
-                  })()
-                )}
-
+                {/* Condensate 2 ST1 */}
                 {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_6;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 118,1027 L 324,1027" : "M 118,1027 L 207,1027";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={10} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={10} />;
-                    }
-                  })()
-                )}
-
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_5;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 152,1019 L 152,965 Q 157,940 182,936 L 324,936" : "M 152,1019 L 152,965 Q 157,940 182,936 L 211,936";
-                    if (isOpen) {
-                      return (
-                        <g className="liquid-flow--flowing" style={{ pointerEvents: "none" }}>
-                          <path
-                            d={pathD}
-                            fill="none"
-                            stroke="#f59e0b"
-                            className="liquid-flow-glow"
-                            style={{ strokeWidth: 16 }}
-                          />
-                          <path
-                            d={pathD}
-                            fill="none"
-                            stroke="#f59e0b"
-                            className="liquid-flow-aura"
-                            style={{ strokeWidth: 10 }}
-                          />
-                        </g>
-                      );
-                    } else {
-                      return (
-                        <LiquidFlowSVG
-                          d={pathD}
-                          isRunning={true}
-                          color="#f59e0b"
-                          thickness={10}
-                        />
-                      );
-                    }
-                  })()
-                )}
-
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const isOpen = formatValveStatus(TEST_MANUAL_VALVE_13) === "OPEN";
-                    const pathD = "M 609,999 L 611,1012 Q 613,1024 626,1025 L 652,1026";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={8} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
-                    }
-                  })()
-                )}
-
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_13;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 758,1028 L 1000,1028" : "M 758,1028 L 845,1028";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={8} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
-                    }
-                  })()
-                )}
-
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_12;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 793,1018 L 793,970 Q 793,965 797,952 L 797,952 Q 804,939 818,938 L 1000,935" : "M 793,1018 L 793,970 Q 793,965 797,952 L 797,952 Q 804,939 818,938 L 849,936";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={8} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
-                    }
-                  })()
-                )}
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const isOpen = formatValveStatus(TEST_MANUAL_VALVE_21) === "OPEN";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d="M 1289,1004 L 1295,1015 Q 1300,1025 1312,1026 L 1336,1028" active={true} mode="flowing" color="#f59e0b" thickness={10} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d="M 1289,1004 L 1295,1015 Q 1300,1025 1312,1026 L 1336,1028" active={true} mode="standby" color="#f59e0b" thickness={10} />;
-                    }
-                  })()
-                )}
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_21;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 1441,1027 L 1669,1027" : "M 1441,1027 L 1538,1027";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={10} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={10} />;
-                    }
-                  })()
-                )}
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_20;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 1474,1020 L 1476,964 Q 1477,939 1502,936 L 1664,935" : "M 1474,1020 L 1476,964 Q 1477,939 1502,936 L 1527,933";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={10} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={10} />;
-                    }
-                  })()
-                )}
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const isOpen = formatValveStatus(TEST_MANUAL_VALVE_27) === "OPEN";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d="M 1961,1007 L 1964,1016 Q 1970,1028 1984,1027 L 1999,1026" active={true} mode="flowing" color="#f59e0b" thickness={10} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d="M 1961,1007 L 1964,1016 Q 1970,1028 1984,1027 L 1999,1026" active={true} mode="standby" color="#f59e0b" thickness={10} />;
-                    }
-                  })()
-                )}
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_27;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 2110,1027 L 2330,1027" : "M 2110,1027 L 2204,1027";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={10} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={10} />;
-                    }
-                  })()
-                )}
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_26;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 2143,1018 L 2144,968 Q 2144,939 2173,937 L 2330,934" : "M 2143,1018 L 2144,968 Q 2144,939 2173,937 L 2202,934";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="flowing" color="#f59e0b" thickness={8} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
-                    }
-                  })()
-                )}
-
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_7;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 134,731 L 134,1012" : "M 134,731 L 134,783";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="liquid" color="#f59e0b" thickness={8} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
-                    }
-                  })()
-                )}
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_14;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 773,725 L 773,1012" : "M 773,725 L 773,783";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="liquid" color="#f59e0b" thickness={8} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
-                    }
-                  })()
-                )}
-
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_19;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 1457,722 L 1457,1012" : "M 1457,722 L 1457,786";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="liquid" color="#f59e0b" thickness={8} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
-                    }
-                  })()
-                )}
-
-
-                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_28;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    const pathD = isOpen ? "M 2125,728 L 2125,1012" : "M 2125,728 L 2125,785";
-                    if (isOpen) {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="liquid" color="#f59e0b" thickness={8} />;
-                    } else {
-                      return <LiquidSteamFlowSVG d={pathD} active={true} mode="standby" color="#f59e0b" thickness={8} />;
-                    }
-                  })()
-                )}
-
-                {(true || parseFloat(lv('flow_1784207451668', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_6;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    return isOpen ? (
-                      <LiquidSteamFlowSVG d="M 248,1027 L 360,1027" active={true} mode="flowing" color="#f59e0b" thickness={8} />
-                    ) : null;
-                  })()
-                )}
-
-                {(true || parseFloat(lv('flow_1784209025995', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_5;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    if (isOpen) {
-                      return (
-                        <g className="liquid-flow--flowing" style={{ pointerEvents: "none" }}>
-                          <path
-                            d="M 247,935 L 339,935"
-                            fill="none"
-                            stroke="#f59e0b"
-                            className="liquid-flow-glow"
-                          />
-                          <path
-                            d="M 247,935 L 339,935"
-                            fill="none"
-                            stroke="#f59e0b"
-                            className="liquid-flow-aura"
-                          />
-                        </g>
-                      );
-                    }
-                    return null;
-                  })()
-                )}
-
-                {(false || parseFloat(lv('flow_1784207451668', 'FLOW', '0')) > 0) && (
-                  <g className="liquid-flow--flowing" style={{ pointerEvents: "none" }}>
-                    <path
-                      d="M 2241,1027 L 2329,1026"
-                      fill="none"
-                      stroke="#f59e0b"
-                      className="liquid-flow-glow"
-                    />
-                    <path
-                      d="M 2241,1027 L 2329,1026"
-                      fill="none"
-                      stroke="#f59e0b"
-                      className="liquid-flow-aura"
-                    />
-                  </g>
-                )}
-
-                {(false || parseFloat(lv('flow_1784207451668', 'FLOW', '0')) > 0) && (
-                  <g className="liquid-flow--flowing" style={{ pointerEvents: "none" }}>
-                    <path
-                      d="M 2235,936 L 2324,935"
-                      fill="none"
-                      stroke="#f59e0b"
-                      className="liquid-flow-glow"
-                    />
-                    <path
-                      d="M 2235,936 L 2324,935"
-                      fill="none"
-                      stroke="#f59e0b"
-                      className="liquid-flow-aura"
-                    />
-                  </g>
-                )}
-
-                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_3;
+                    const valveVal = getSmartValveValue("valve_condensate_2_st1", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M -342,299 L -344,512" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M -336,511 L -291,511" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M -32,1003 L -28,1014 Q -24,1025 -12,1026 L 17,1028" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 118,1027 L 203,1027" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                          </>
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M -242,511 L -229,511 Q -217,510 -217,497 L -216,467 Q -216,454 -204,450 L -185,450 M -217,508 L -217,557 Q -217,569 -205,572 L -193,574 M -167,448 L 123,449 M -169,575 L -82,572 Q -29,570 16,598 L 144,679" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M -32,1003 L -28,1014 Q -24,1025 -12,1026 L 17,1028" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 118,1027 L 203,1027" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 253,1027 L 360,1027" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                          </>
                         )}
                       </>
                     );
                   })()
                 )}
-                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+
+                {/* Condensate 1 ST1 */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_4;
+                    const valveVal = getSmartValveValue("valve_condensate_1_st1", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M -344,512 L -344,669 Q -344,697 -330,698" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M -330,698 L -285,698" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <LiquidSteamFlowSVG d="M 152,1019 L 152,965 Q 157,940 182,936 L 203,936" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M -245,698 L -188,698 M -175,697 L -56,697 Q -30,697 -8,710 L 14,723" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M 152,1019 L 152,965 Q 157,940 182,936 L 203,936" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 253,936 L 339,936" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+
+                {/* Condensate 2 ST2 */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_condensate_2_st2", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 609,999 L 611,1012 Q 613,1024 626,1025 L 652,1026" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 758,1028 L 843,1028" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                          </>
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 609,999 L 611,1012 Q 613,1024 626,1025 L 652,1026" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 758,1028 L 843,1028" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 893,1028 L 1000,1028" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+
+                {/* Condensate 1 ST2 */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_condensate_1_st2", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <LiquidSteamFlowSVG d="M 793,1018 L 793,970 Q 793,965 797,952 L 797,952 Q 804,939 818,938 L 843,936" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 793,1018 L 793,970 Q 793,965 797,952 L 797,952 Q 804,939 818,938 L 843,936" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 893,936 L 1000,936" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* Condensate 2 ST3 */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_condensate_2_st3", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 1289,1004 L 1295,1015 Q 1300,1025 1312,1026 L 1336,1028" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 1441,1027 L 1525,1027" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                          </>
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 1289,1004 L 1295,1015 Q 1300,1025 1312,1026 L 1336,1028" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 1441,1027 L 1525,1027" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 1575,1027 L 1669,1027" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* Condensate 1 ST3 */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_condensate_1_st3", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <LiquidSteamFlowSVG d="M 1474,1020 L 1476,964 Q 1477,939 1502,936 L 1525,936" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 1474,1020 L 1476,964 Q 1477,939 1502,936 L 1525,936" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 1575,936 L 1664,936" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* Condensate 2 ST4 */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_condensate_2_st4", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 1961,1007 L 1964,1016 Q 1970,1028 1984,1027 L 1999,1026" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 2110,1027 L 2193,1027" active={true} mode="standby" color="#f59e0b" thickness={10} />
+                          </>
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 1961,1007 L 1964,1016 Q 1970,1028 1984,1027 L 1999,1026" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 2110,1027 L 2193,1027" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                            <LiquidSteamFlowSVG d="M 2243,1027 L 2330,1027" active={true} mode="flowing" color="#f59e0b" thickness={10} />
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* Condensate 1 ST4 */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_condensate_1_st4", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <LiquidSteamFlowSVG d="M 2143,1018 L 2144,968 Q 2144,939 2173,937 L 2193,937" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 2143,1018 L 2144,968 Q 2144,939 2173,937 L 2193,937" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 2243,937 L 2330,937" active={true} mode="flowing" color="#f59e0b" thickness={8} />
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+
+                {/* D.Cond ST1 - Orange Flow */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_d_cond_st1", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <LiquidSteamFlowSVG d="M 134,731 L 134,783" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                        )}
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 134,731 L 134,1012" active={true} mode="liquid" color="#f59e0b" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* D.Cond ST2 - Orange Flow */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_d_cond_st2", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <LiquidSteamFlowSVG d="M 773,725 L 773,783" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                        )}
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 773,725 L 773,1012" active={true} mode="liquid" color="#f59e0b" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+
+                {/* D.Cond ST3 - Orange Flow */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_d_cond_st3", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <LiquidSteamFlowSVG d="M 1457,722 L 1457,786" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                        )}
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 1457,722 L 1457,1012" active={true} mode="liquid" color="#f59e0b" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+
+
+                {/* D.Cond ST4 - Orange Flow */}
+                {(true || parseFloat(lv('flow_1784099909352', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_d_cond_st4", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <LiquidSteamFlowSVG d="M 2125,728 L 2125,785" active={true} mode="standby" color="#f59e0b" thickness={8} />
+                        )}
+                        {isOpen && (
+                          <LiquidSteamFlowSVG d="M 2125,728 L 2125,1012" active={true} mode="liquid" color="#f59e0b" thickness={8} />
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+
+
+
+                {(false || parseFloat(lv('flow_1784207451668', 'FLOW', '0')) > 0) && (
+                  <g className="liquid-flow--flowing" style={{ pointerEvents: "none" }}>
+                    <path
+                      d="M 2241,1027 L 2329,1026"
+                      fill="none"
+                      stroke="#f59e0b"
+                      className="liquid-flow-glow"
+                    />
+                    <path
+                      d="M 2241,1027 L 2329,1026"
+                      fill="none"
+                      stroke="#f59e0b"
+                      className="liquid-flow-aura"
+                    />
+                  </g>
+                )}
+
+                {(false || parseFloat(lv('flow_1784207451668', 'FLOW', '0')) > 0) && (
+                  <g className="liquid-flow--flowing" style={{ pointerEvents: "none" }}>
+                    <path
+                      d="M 2235,936 L 2324,935"
+                      fill="none"
+                      stroke="#f59e0b"
+                      className="liquid-flow-glow"
+                    />
+                    <path
+                      d="M 2235,936 L 2324,935"
+                      fill="none"
+                      stroke="#f59e0b"
+                      className="liquid-flow-aura"
+                    />
+                  </g>
+                )}
+
+                {/* Inlet Steam 2 ST1 - Valve 3 combined path */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_inlet_steam_2_st1", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M -342,299 L -344,512" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M -336,511 L -291,511" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M -342,299 L -344,512" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M -336,511 L -291,511" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M -242,511 L -229,511 Q -217,510 -217,497 L -216,467 Q -216,454 -204,450 L -185,450 M -217,508 L -217,557 Q -217,569 -205,572 L -193,574 M -167,448 L 123,449 M -169,575 L -82,572 Q -29,570 16,598 L 144,679" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* Flashing Steam ST1 - Valve 4 combined path */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_flashing_st1", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M -344,512 L -344,669 Q -344,697 -330,698" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M -330,698 L -285,698" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M -344,512 L -344,669 Q -344,697 -330,698" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M -330,698 L -285,698" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M -245,698 L -188,698 M -175,697 L -56,697 Q -30,697 -8,710 L 14,723" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
                   })()
                 )}
                 {/* M -338,511 digabung ke Valve 4 */}
+                {/* Inlet Steam 1 ST1 - Valve 2 combined path */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_2;
+                    const valveVal = getSmartValveValue("valve_inlet_steam_1_st1", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M -357,216 L -350,217 Q -343,217 -343,224 L -342,299" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M -335,297 L -291,297" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <LiquidSteamFlowSVG d="M -357,216 L -350,217 Q -343,217 -343,224 L -342,299" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M -245,298 L -187,298 M -175,300 L 129,300" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M -357,216 L -350,217 Q -343,217 -343,224 L -342,299" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M -335,297 L -291,297" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M -245,298 L -187,298 M -175,300 L 129,300" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
+                        {!isOpen && (
+                          <LiquidSteamFlowSVG d="M -335,297 L -291,297" active={true} mode="standby" color="#38bdf8" thickness={8} />
                         )}
                       </>
                     );
@@ -3566,75 +4300,113 @@ export default function OverviewTab({
                 {/* Path 2 digabung ke Valve 4 */}
                 {/* M -175,300 digabung ke Valve 2 */}
                 {/* M -167,448 & M -169,575 digabung ke Valve 4 */}
+                {/* Exhaust ST1 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_1;
+                    const valveVal = getSmartValveValue("valve_exhaust_steam_st1", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M -126,143 L -125,106 Q -125,69 -162,69 L -228,69" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <SteamFlowSVG d="M -126,143 L -125,106 Q -125,69 -162,69 L -228,69" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M -228,69 L -400,71" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M -126,143 L -125,106 Q -125,69 -162,69 L -228,69" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M -228,69 L -400,71" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
                   })()
                 )}
+                {/* Exhaust ST2 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_8;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    if (isOpen) {
-                      return (
-                        <LiquidSteamFlowSVG d="M 515,139 L 515,105 Q 515,71 481,70 L 412,69 L 373,69 L 220,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                      );
-                    } else {
-                      return (
-                        <SteamFlowSVG d="M 514,143 L 513,97 Q 513,72 488,71 L 417,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                      );
-                    }
-                  })()
-                )}
-                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_11;
+                    const valveVal = getSmartValveValue("valve_exhaust_steam_st2", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M 295,512 L 295,668 Q 295,695 322,697" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M 322,697 L 358,699" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <SteamFlowSVG d="M 514,143 L 513,97 Q 513,72 488,71 L 417,70" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M 400,698 L 578,696 Q 609,696 636,712 L 662,727" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M 514,143 L 513,97 Q 513,72 488,71 L 417,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 373,69 L 220,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
                   })()
                 )}
+                {/* Flashing ST2 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_9;
+                    const valveVal = getSmartValveValue("valve_flashing_st2", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M 285,224 L 285,212 Q 298,208 298,215 L 298,299" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M 307,297 L 352,297" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 295,512 L 295,668 Q 295,695 322,697" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 322,697 L 358,699" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M 400,300 L 762,300" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M 295,512 L 295,668 Q 295,695 322,697" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 322,697 L 358,699" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 400,698 L 578,696 Q 609,696 636,712 L 662,727" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
                   })()
                 )}
+                {/* Inlet 1 ST2 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_10;
+                    const valveVal = getSmartValveValue("valve_inlet_steam_1_st2", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M 298,299 L 295,512" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M 300,511 L 352,510" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 285,224 L 285,212 Q 298,208 298,215 L 298,299" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 307,297 L 352,297" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M 399,509 L 412,509 Q 425,509 424,496 L 423,479 Q 420,448 451,448 L 765,450 M 425,506 L 422,542 Q 419,577 455,576 L 585,573 Q 608,573 628,584 L 628,584 Q 648,595 667,607 L 797,686" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M 285,224 L 285,212 Q 298,208 298,215 L 298,299" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 307,297 L 352,297" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 400,300 L 762,300" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* Inlet 2 ST2 */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_inlet_steam_2_st2", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 298,299 L 295,512" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 300,511 L 352,510" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 298,299 L 295,512" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 300,511 L 352,510" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 399,509 L 412,509 Q 425,509 424,496 L 423,479 Q 420,448 451,448 L 765,450 M 425,506 L 422,542 Q 419,577 455,576 L 585,573 Q 608,573 628,584 L 628,584 Q 648,595 667,607 L 797,686" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
@@ -3644,62 +4416,94 @@ export default function OverviewTab({
                 {/* M 399,509 digabung ke Valve 10 */}
                 {/* M 425,506 digabung ke Valve 10 */}
                 {/* M 400,698 digabung ke Valve 11 */}
+                {/* Exhaust ST3 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_15;
-                    const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    if (isOpen) {
-                      return (
-                        <LiquidSteamFlowSVG d="M 1196,143 L 1197,106 Q 1198,68 1160,69 L 1098,70 L 900,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                      );
-                    } else {
-                      return (
-                        <SteamFlowSVG d="M 1196,143 L 1197,106 Q 1198,68 1160,69 L 1098,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                      );
-                    }
-                  })()
-                )}
-                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
-                  (() => {
-                    const valveVal = TEST_MANUAL_VALVE_18;
+                    const valveVal = getSmartValveValue("valve_exhaust_steam_st3", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M 979,520 L 978,666 Q 978,695 1007,698" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M 1007,698 L 1035,700" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <SteamFlowSVG d="M 1196,143 L 1197,106 Q 1198,68 1160,69 L 1098,70" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M 1083,698 L 1265,697 Q 1295,697 1320,714 L 1345,730" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M 1196,143 L 1197,106 Q 1198,68 1160,69 L 1098,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1054,69 L 900,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
                   })()
                 )}
+                {/* Flashing ST3 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_16;
+                    const valveVal = getSmartValveValue("valve_flashing_st3", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M 967,217 L 974,218 Q 980,218 980,225 L 979,299" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M 979,299 L 1036,297" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 979,520 L 978,666 Q 978,695 1007,698" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1007,698 L 1035,700" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M 1078,297 L 1445,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M 979,520 L 978,666 Q 978,695 1007,698" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1007,698 L 1035,700" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1083,698 L 1265,697 Q 1295,697 1320,714 L 1345,730" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
+                      </>
+                    );
+                  })()
+                )}
+                {/* Inlet 1 ST3 */}
+                {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
+                  (() => {
+                    const valveVal = getSmartValveValue("valve_inlet_steam_1_st3", "0");
+                    const isOpen = formatValveStatus(valveVal) === "OPEN";
+                    return (
+                      <>
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 967,217 L 974,218 Q 980,218 980,225 L 979,299" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 979,299 L 1036,297" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 967,217 L 974,218 Q 980,218 980,225 L 979,299" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 979,299 L 1036,297" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1078,297 L 1445,301" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
                   })()
                 )}
                 {/* M 1078,297 digabung ke Valve 16 */}
+                {/* Inlet 2 ST3 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_17;
+                    const valveVal = getSmartValveValue("valve_inlet_steam_2_st3", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M 979,299 L 979,520" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M 979,510 L 1042,510" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 979,299 L 979,520" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 979,510 L 1042,510" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M 1081,510 L 1094,511 Q 1106,511 1106,498 L 1106,479 Q 1105,447 1137,447 L 1447,449 M 1105,511 L 1105,545 Q 1105,578 1138,577 L 1283,574 Q 1300,574 1313,585 L 1313,585 Q 1326,596 1341,605 L 1468,678" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M 979,299 L 979,520" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 979,510 L 1042,510" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1081,510 L 1094,511 Q 1106,511 1106,498 L 1106,479 Q 1105,447 1137,447 L 1447,449 M 1105,511 L 1105,545 Q 1105,578 1138,577 L 1283,574 Q 1300,574 1313,585 L 1313,585 Q 1326,596 1341,605 L 1468,678" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
@@ -3707,67 +4511,99 @@ export default function OverviewTab({
                 )}
                 {/* Extensions merged into Valve 17 */}
                 {/* M 1083,698 digabung ke Valve 18 */}
+                {/* Flashing ST4 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_25;
+                    const valveVal = getSmartValveValue("valve_flashing_st4", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M 1644,511 L 1644,668 Q 1644,696 1672,698" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M 1672,698 L 1700,700" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 1644,511 L 1644,668 Q 1644,696 1672,698" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1672,698 L 1700,700" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M 1743,696 L 1936,697 Q 1962,697 1985,710 L 2007,723" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M 1644,511 L 1644,668 Q 1644,696 1672,698" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1672,698 L 1700,700" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1743,696 L 1936,697 Q 1962,697 1985,710 L 2007,723" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
                   })()
                 )}
                 {/* M 1748,298 digabung ke Valve 23 */}
+                {/* Inlet 1 ST4 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_23;
+                    const valveVal = getSmartValveValue("valve_inlet_steam_1_st4", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M 1631,214 L 1639,213 Q 1647,212 1647,220 L 1646,298" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M 1651,298 L 1702,298" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 1631,214 L 1639,213 Q 1647,212 1647,220 L 1646,298" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1651,298 L 1702,298" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M 1748,298 L 2112,298" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M 1631,214 L 1639,213 Q 1647,212 1647,220 L 1646,298" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1651,298 L 1702,298" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1748,298 L 2112,298" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
                   })()
                 )}
                 {/* M 1751,509 & M 1773,506 digabung ke Valve 24 */}
+                {/* Inlet 2 ST4 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_24;
+                    const valveVal = getSmartValveValue("valve_inlet_steam_2_st4", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
                     return (
                       <>
-                        <LiquidSteamFlowSVG d="M 1646,298 L 1644,511" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
-                        <LiquidSteamFlowSVG d="M 1653,511 L 1705,511" active={true} mode={isOpen ? "flowing" : "standby"} color="#38bdf8" thickness={8} />
+                        {!isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 1646,298 L 1644,511" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1653,511 L 1705,511" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
                         {isOpen && (
-                          <LiquidSteamFlowSVG d="M 1751,509 L 1763,511 Q 1774,512 1773,500 L 1773,480 Q 1771,448 1803,448 L 2117,448 M 1773,506 L 1772,541 Q 1771,576 1806,576 L 1936,574 Q 1966,574 1991,592 L 1991,592 Q 2015,609 2041,624 L 2134,679" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          <>
+                            <LiquidSteamFlowSVG d="M 1646,298 L 1644,511" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1653,511 L 1705,511" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1751,509 L 1763,511 Q 1774,512 1773,500 L 1773,480 Q 1771,448 1803,448 L 2117,448 M 1773,506 L 1772,541 Q 1771,576 1806,576 L 1936,574 Q 1966,574 1991,592 L 1991,592 Q 2015,609 2041,624 L 2134,679" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
                         )}
                       </>
                     );
                   })()
                 )}
                 {/* Static paths merged into Valve 23, 24, 25 blocks above */}
+                {/* Exhaust ST4 */}
                 {(true || parseFloat(lv('flow_1784166398324', 'FLOW', '0')) > 0) && (
                   (() => {
-                    const valveVal = TEST_MANUAL_VALVE_22;
+                    const valveVal = getSmartValveValue("valve_exhaust_steam_st4", "0");
                     const isOpen = formatValveStatus(valveVal) === "OPEN";
-                    if (isOpen) {
-                      return (
-                        <LiquidSteamFlowSVG d="M 1864,138 L 1864,104 Q 1863,69 1828,69 L 1773,70 L 1550,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                      );
-                    } else {
-                      return (
-                        <SteamFlowSVG d="M 1864,138 L 1864,104 Q 1863,69 1828,69 L 1765,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
-                      );
-                    }
+                    return (
+                      <>
+                        {!isOpen && (
+                          <SteamFlowSVG d="M 1864,138 L 1864,104 Q 1863,69 1828,69 L 1765,70" active={true} mode="standby" color="#38bdf8" thickness={8} />
+                        )}
+                        {isOpen && (
+                          <>
+                            <LiquidSteamFlowSVG d="M 1864,138 L 1864,104 Q 1863,69 1828,69 L 1765,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                            <LiquidSteamFlowSVG d="M 1727,69 L 1550,70" active={true} mode="flowing" color="#38bdf8" thickness={8} />
+                          </>
+                        )}
+                      </>
+                    );
                   })()
                 )}
                 {/* M 1727,69 digabung ke Valve 22 */}
@@ -3912,53 +4748,9 @@ export default function OverviewTab({
                 })}
 
                 {/* Render 24 Manual Valves */}
+                {/* Render 24 Manual Valves */}
                 {activeTab === "overview" && MANUAL_VALVES.map((valve) => {
-                  const getTestFallback = (id) => {
-                    switch (id) {
-                      case "manual_valve_1": return TEST_MANUAL_VALVE_1;
-                      case "manual_valve_2": return TEST_MANUAL_VALVE_2;
-                      case "manual_valve_3": return TEST_MANUAL_VALVE_3;
-                      case "manual_valve_4": return TEST_MANUAL_VALVE_4;
-                      case "manual_valve_5": return TEST_MANUAL_VALVE_5;
-                      case "manual_valve_6": return TEST_MANUAL_VALVE_6;
-                      case "manual_valve_7": return TEST_MANUAL_VALVE_7;
-                      case "manual_valve_8": return TEST_MANUAL_VALVE_8;
-                      case "manual_valve_9": return TEST_MANUAL_VALVE_9;
-                      case "manual_valve_10": return TEST_MANUAL_VALVE_10;
-                      case "manual_valve_11": return TEST_MANUAL_VALVE_11;
-                      case "manual_valve_12": return TEST_MANUAL_VALVE_12;
-                      case "manual_valve_13": return TEST_MANUAL_VALVE_13;
-                      case "manual_valve_14": return TEST_MANUAL_VALVE_14;
-                      case "manual_valve_15": return TEST_MANUAL_VALVE_15;
-                      case "manual_valve_16": return TEST_MANUAL_VALVE_16;
-                      case "manual_valve_17": return TEST_MANUAL_VALVE_17;
-                      case "manual_valve_18": return TEST_MANUAL_VALVE_18;
-                      case "manual_valve_19": return TEST_MANUAL_VALVE_19;
-                      case "manual_valve_20": return TEST_MANUAL_VALVE_20;
-                      case "manual_valve_21": return TEST_MANUAL_VALVE_21;
-                      case "manual_valve_22": return TEST_MANUAL_VALVE_22;
-                      case "manual_valve_23": return TEST_MANUAL_VALVE_23;
-                      case "manual_valve_24": return TEST_MANUAL_VALVE_24;
-                      case "manual_valve_25": return TEST_MANUAL_VALVE_25;
-                      case "manual_valve_26": return TEST_MANUAL_VALVE_26;
-                      case "manual_valve_27": return TEST_MANUAL_VALVE_27;
-                      case "manual_valve_28": return TEST_MANUAL_VALVE_28;
-                      default: return "0";
-                    }
-                  };
-                  const fallbackVar = getTestFallback(valve.id);
-                  let valveVal;
-                  if (valve.id === "manual_valve_7") {
-                    valveVal = getMappedValue ? getMappedValue("d_cond_st1", "STATUS", fallbackVar) : fallbackVar;
-                  } else if (valve.id === "manual_valve_14") {
-                    valveVal = getMappedValue ? getMappedValue("d_cond_st2", "STATUS", fallbackVar) : fallbackVar;
-                  } else if (valve.id === "manual_valve_19") {
-                    valveVal = getMappedValue ? getMappedValue("d_cond_st3", "STATUS", fallbackVar) : fallbackVar;
-                  } else if (valve.id === "manual_valve_28") {
-                    valveVal = getMappedValue ? getMappedValue("d_cond_st4", "STATUS", fallbackVar) : fallbackVar;
-                  } else {
-                    valveVal = getSmartValveValue(valve.id, fallbackVar);
-                  }
+                  let valveVal = getSmartValveValue(valve.id, "0");
                   const isOpen = formatValveStatus(valveVal) === "OPEN";
                   return (
                     <EquipmentIconSVG
@@ -4041,9 +4833,15 @@ export default function OverviewTab({
                 })}
               </>
             )}
+            
           </svg>
         </div>
       </div>
+
+      
+
+      
     </div >
   );
 }
+

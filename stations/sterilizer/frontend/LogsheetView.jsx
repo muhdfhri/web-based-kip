@@ -1,170 +1,226 @@
 import React, { useState, useEffect } from 'react';
 
-export default function LogsheetView({ stationSlug = 'template', stationTitle = 'Template Station', defaultParameters = {} }) {
-  const [history, setHistory] = useState([]);
-  const [form, setForm] = useState({
-    shift: '1',
-    log_date: new Date().toISOString().split('T')[0],
-    data_json: { ...defaultParameters },
-    notes: ''
-  });
-  const [msg, setMsg] = useState(null);
+const STEP_COLUMNS = [
+  { key: 'deaeration_temp', label: 'Deaer.', stepNum: 1 },
+  { key: 'peak1_press', label: 'Pk 1', stepNum: 2 },
+  { key: 'exhaust1_time', label: 'Exh 1', stepNum: 3 },
+  { key: 'peak2_press', label: 'Pk 2', stepNum: 4 },
+  { key: 'exhaust2_time', label: 'Exh 2', stepNum: 5 },
+  { key: 'peak3_press', label: 'Pk 3', stepNum: 6 },
+  { key: 'holding_press', label: 'Hld 1', stepNum: 7 },
+  { key: 'blow1_temp', label: 'Blw 1', stepNum: 8 },
+  { key: 'holding2_press', label: 'Hld 2', stepNum: 9 },
+  { key: 'blow2_temp', label: 'Blw 2', stepNum: 10 },
+  { key: 'holding3_press', label: 'Hld 3', stepNum: 11 },
+  { key: 'blow3_temp', label: 'Blw 3', stepNum: 12 },
+  { key: 'holding4_press', label: 'Hld 4', stepNum: 13 },
+  { key: 'blowdown_time', label: 'Blowd.', stepNum: 14 },
+  { key: 'exhaust_time', label: 'Exh 3', stepNum: 15 },
+];
 
-  const fetchHistory = async () => {
+const getTodayLocalDateStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export default function LogsheetView({ stationSlug = 'sterilizer' }) {
+  const [date, setDate] = useState(getTodayLocalDateStr());
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchData = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('kip_token');
-      const res = await fetch(`/api/${stationSlug}/logsheet`, {
+      const res = await fetch(`/api/${stationSlug}/logsheet?date=${date}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         const json = await res.json();
-        if (json.success) setHistory(json.data);
+        if (json.success) setData(json.data);
       }
     } catch (err) {
-      console.error("Failed to load logsheet history:", err);
+      console.error("Failed to load logsheet data:", err);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
-    fetchHistory();
-  }, [stationSlug]);
+    fetchData();
+  }, [date, stationSlug]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMsg(null);
+  const handleExport = async () => {
     try {
       const token = localStorage.getItem('kip_token');
-      const res = await fetch(`/api/${stationSlug}/logsheet`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(form)
+      const res = await fetch(`/api/${stationSlug}/logsheet/export-excel?date=${date}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      const json = await res.json();
-      if (json.success) {
-        setMsg({ type: 'success', text: 'Logsheet entry saved successfully!' });
-        fetchHistory();
-        setForm({
-          ...form,
-          data_json: { ...defaultParameters },
-          notes: ''
-        });
-      } else {
-        setMsg({ type: 'error', text: json.error || 'Failed to save entry.' });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText);
       }
-    } catch (err) {
-      setMsg({ type: 'error', text: 'Failed to communicate with server.' });
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Logsheet_Sterilizer_${date}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      alert("Gagal Export: " + e.message);
     }
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', overflowY: 'auto', flex: 1 }}>
-      <h2 style={{ margin: '0 0 20px 0', color: '#2c3e50' }}>{stationTitle} - Logsheet Form</h2>
+    <div style={{ padding: '24px', flex: 1, overflowY: 'auto', background: '#f8fafc' }}>
 
-      {msg && (
-        <div style={{
-          padding: '10px 15px',
-          background: msg.type === 'success' ? '#e8f5e9' : '#ffebee',
-          color: msg.type === 'success' ? '#2e7d32' : '#c62828',
-          borderRadius: '4px',
-          marginBottom: '20px'
-        }}>
-          {msg.text}
+      {/* Header section */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div>
+          <h2 style={{ margin: 0, color: '#0f172a', fontSize: '22px', fontWeight: '700' }}>Automatic Sterilizer Logsheet</h2>
+          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '13px' }}>Hari Operasional: Jam 07:00 Pagi s.d. 07:00 Pagi Besoknya</p>
         </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '30px' }}>
-        {/* Form Column */}
-        <form onSubmit={handleSubmit} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', color: '#475569' }}>New Shift Entry</h3>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '5px' }}>LOG DATE</label>
-            <input type="date" required value={form.log_date} onChange={e => setForm({ ...form, log_date: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+            <input 
+              type="date" 
+              value={date} 
+              onChange={e => setDate(e.target.value)} 
+              style={{ border: 'none', outline: 'none', padding: '8px 0', color: '#334155', fontWeight: '600', fontSize: '13px' }}
+            />
           </div>
-
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '5px' }}>SHIFT</label>
-            <select value={form.shift} onChange={e => setForm({ ...form, shift: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
-              <option value="1">Shift 1 (Morning)</option>
-              <option value="2">Shift 2 (Afternoon)</option>
-              <option value="3">Shift 3 (Night)</option>
-            </select>
-          </div>
-
-          {/* Dynamic Parameters based on defaultParameters keys */}
-          <h4 style={{ margin: '20px 0 10px 0', fontSize: '12px', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Parameters</h4>
-          {Object.keys(form.data_json).map(key => (
-            <div key={key} style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '13px', color: '#334155', marginBottom: '4px', textTransform: 'capitalize' }}>
-                {key.replace(/_/g, ' ')}
-              </label>
-              <input
-                type="number"
-                step="any"
-                required
-                value={form.data_json[key] || ''}
-                onChange={e => {
-                  const val = parseFloat(e.target.value);
-                  setForm({
-                    ...form,
-                    data_json: { ...form.data_json, [key]: isNaN(val) ? '' : val }
-                  });
-                }}
-                style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-              />
-            </div>
-          ))}
-
-          <div style={{ marginBottom: '20px', marginTop: '20px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#64748b', marginBottom: '5px' }}>OPERATOR NOTES</label>
-            <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px', height: '80px', resize: 'vertical' }} placeholder="Add observations, problems, or events..." />
-          </div>
-
-          <button type="submit" style={{ width: '100%', padding: '10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
-            Submit Entry
+          <button 
+            onClick={() => { setDate(''); fetchData(); }}
+            title="Tampilkan Seluruh Data Logsheet Tanpa Filter Tanggal"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: date === '' ? '#2563eb' : '#fff', color: date === '' ? '#fff' : '#334155', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+            Semua Data
           </button>
-        </form>
-
-        {/* History Column */}
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', color: '#475569' }}>Entry History</h3>
-          <div style={{ overflowY: 'auto', maxHeight: '500px' }}>
-            {history.length === 0 ? (
-              <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>No logsheet entries recorded yet.</p>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                    <th style={{ textAlign: 'left', padding: '10px' }}>Date</th>
-                    <th style={{ textAlign: 'left', padding: '10px' }}>Shift</th>
-                    <th style={{ textAlign: 'left', padding: '10px' }}>Operator</th>
-                    <th style={{ textAlign: 'left', padding: '10px' }}>Parameters</th>
-                    <th style={{ textAlign: 'left', padding: '10px' }}>Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {history.map(row => (
-                    <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px' }}>{new Date(row.log_date).toLocaleDateString()}</td>
-                      <td style={{ padding: '10px' }}>Shift {row.shift}</td>
-                      <td style={{ padding: '10px' }}>{row.operator_name}</td>
-                      <td style={{ padding: '10px', fontSize: '12px' }}>
-                        {Object.entries(row.data_json || {}).map(([k, v]) => (
-                          <div key={k}><strong>{k}</strong>: {v}</div>
-                        ))}
-                      </td>
-                      <td style={{ padding: '10px', color: '#64748b' }}>{row.notes}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          <button 
+            onClick={fetchData}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#fff', border: '1px solid #cbd5e1', color: '#334155', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+            Refresh
+          </button>
+          <button 
+            onClick={handleExport}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 18px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+            Export Excel
+          </button>
         </div>
       </div>
+
+      {/* Main Table */}
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '12px', whiteSpace: 'nowrap' }}>
+            <thead>
+              {/* Super Header */}
+              <tr style={{ background: '#FCD200', color: '#1e293b', fontWeight: 'bold' }}>
+                <th colSpan="4" style={{ padding: '8px 6px', borderRight: '1px solid #ca8a04' }}>CYCLE INFO</th>
+                <th colSpan="1" style={{ padding: '8px 6px', borderRight: '1px solid #ca8a04', background: '#eab308', color: '#fff' }}>LOADING</th>
+                <th colSpan="15" style={{ padding: '8px 6px', borderRight: '1px solid #ca8a04', background: '#FCD200' }}>15 STEP DURATIONS (SECONDS & MINUTES)</th>
+                <th colSpan="1" style={{ padding: '8px 6px', background: '#eab308', color: '#fff' }}>UNLOADING</th>
+              </tr>
+              {/* Sub Header */}
+              <tr style={{ background: '#fef9c3', color: '#854d0e', borderBottom: '2px solid #fde047', fontWeight: '700' }}>
+                <th style={{ padding: '8px 6px', borderRight: '1px solid #fef08a' }}>Line</th>
+                <th style={{ padding: '8px 6px', borderRight: '1px solid #fef08a' }}>Cycle</th>
+                <th style={{ padding: '8px 6px', borderRight: '1px solid #fef08a' }}>Start</th>
+                <th style={{ padding: '8px 6px', borderRight: '2px solid #fde047' }}>End</th>
+
+                <th style={{ padding: '8px 6px', borderRight: '2px solid #fde047' }}>Inlet</th>
+                
+                {STEP_COLUMNS.map((col, idx) => (
+                  <th key={col.key} style={{ padding: '8px 6px', borderRight: idx === 14 ? '2px solid #fde047' : '1px solid #fef08a' }}>
+                    {col.label}
+                  </th>
+                ))}
+                
+                <th style={{ padding: '8px 6px' }}>Outlet</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="21" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                    Memuat data logsheet...
+                  </td>
+                </tr>
+              ) : data.length === 0 ? (
+                <tr>
+                  <td colSpan="21" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                    Tidak ada data siklus pada hari operasional ini.
+                  </td>
+                </tr>
+              ) : (
+                data.map((row, idx) => {
+                  const door = row.door_details || {};
+                  const stepDetails = typeof row.step_details === 'string' ? JSON.parse(row.step_details || '[]') : (row.step_details || []);
+                  const dId = row.device_id;
+
+                  const stepDurations = STEP_COLUMNS.map(col => {
+                    const st = stepDetails.find(s => s.step === col.stepNum);
+                    const actual = st ? st.duration : 0;
+                    return { ...col, actual };
+                  });
+
+                  return (
+                    <tr 
+                      key={row.id} 
+                      style={{ 
+                        borderBottom: '1px solid #e2e8f0', 
+                        background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' 
+                      }}>
+                      
+                      {/* Line Number */}
+                      <td style={{ padding: '10px 6px', borderRight: '1px solid #e2e8f0', fontWeight: 'bold', fontSize: '13px', color: '#0f172a' }}>
+                        L{dId}
+                      </td>
+
+                      {/* Cycle Number */}
+                      <td style={{ padding: '10px 6px', borderRight: '1px solid #e2e8f0', fontWeight: 'bold', color: '#2563eb' }}>
+                        #{row.cycle_number}
+                      </td>
+
+                      {/* Start Time */}
+                      <td style={{ padding: '10px 6px', borderRight: '1px solid #e2e8f0', color: '#475569', fontWeight: '500' }}>
+                        {new Date(row.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+
+                      {/* End Time */}
+                      <td style={{ padding: '10px 6px', borderRight: '2px solid #cbd5e1', color: '#475569', fontWeight: '500' }}>
+                        {new Date(row.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+
+                      {/* Loading Inlet */}
+                      <td style={{ padding: '10px 6px', borderRight: '2px solid #cbd5e1', fontWeight: 'bold', color: '#0284c7' }}>
+                        {door.inlet?.duration ? `${door.inlet.duration}s (${Math.floor(door.inlet.duration / 60)}m)` : '-'}
+                      </td>
+
+                      {/* 15 Step Durations */}
+                      {stepDurations.map((s, cIdx) => (
+                        <td key={s.key} style={{ padding: '10px 6px', borderRight: cIdx === 14 ? '2px solid #cbd5e1' : '1px solid #e2e8f0', color: s.actual > 0 ? '#0f172a' : '#94a3b8', fontWeight: s.actual > 0 ? '600' : 'normal' }}>
+                          {s.actual > 0 ? `${s.actual}s (${Math.floor(s.actual / 60)}m)` : '-'}
+                        </td>
+                      ))}
+
+                      {/* Unloading Outlet */}
+                      <td style={{ padding: '10px 6px', fontWeight: 'bold', color: '#0284c7' }}>
+                        {door.outlet?.duration ? `${door.outlet.duration}s (${Math.floor(door.outlet.duration / 60)}m)` : '-'}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   );
 }

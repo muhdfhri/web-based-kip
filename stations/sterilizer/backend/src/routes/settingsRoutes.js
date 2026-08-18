@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import { dbPool } from '../config/db.js';
+import { dbPool, dbPoolPlc } from '../config/db.js';
 import { requireAuth, authorize } from '../middleware/jwtMiddleware.js';
+import { writeTagDirect } from '../plcCollector.js';
 
 const router = Router();
 
@@ -106,7 +107,12 @@ router.get('/recipes-and-params', async (_req, res) => {
           nrm: row.nrm,
           wet: row.wet,
           inl: row.inl === 1,
+          inl1: row.inl1 === 1,
+          inl2: row.inl2 === 1,
+          dinl: row.dinl === 1,
           con: row.con === 1,
+          rcon: row.rcon === 1,
+          dcon: row.dcon === 1,
           exh: row.exh === 1,
           bar: row.bar,
           mode: row.mode,
@@ -140,7 +146,8 @@ router.get('/recipes-and-params', async (_req, res) => {
 
 // POST /api/{station}/settings/recipes-and-params
 router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req, res) => {
-  const { recipes, parameters } = req.body;
+  const { recipes, parameters, activeCategory, editedKeys } = req.body;
+  console.log('[Settings-POST] Received request with activeCategory:', activeCategory, 'editedKeys:', editedKeys);
   const connection = await dbPool.getConnection();
   try {
     // 1. Fetch old data to compute diffs
@@ -153,13 +160,39 @@ router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req
     oldParamRows.forEach(r => oldParamsMap[r.param_key] = r.param_value);
 
     let changes = [];
+    const plcErrors = [];
 
     await connection.beginTransaction();
 
     if (recipes) {
+      // 2. Fetch PLC tag mappings to enable direct write
+      const [mappingRows] = await dbPoolPlc.query(
+        "SELECT equipment, signal_key, tag_id FROM station_tag_mappings WHERE station = 'sterilizer' AND tag_id IS NOT NULL"
+      );
+      const mappings = {};
+      mappingRows.forEach((row) => {
+        mappings[`${row.equipment}__${row.signal_key}`] = row.tag_id;
+      });
+
+      // 3. Fetch current live PLC tag values to compare against new inputs
+      const [liveTagRows] = await dbPoolPlc.query(
+        `SELECT m.equipment, m.signal_key, l.value 
+         FROM station_tag_mappings m 
+         JOIN plc_tag_latest l ON m.tag_id = l.tag_id
+         WHERE m.station = 'sterilizer'`
+      );
+      const livePlcMap = {};
+      liveTagRows.forEach(row => {
+        livePlcMap[`${row.equipment}__${row.signal_key}`] = row.value;
+      });
+
       const categories = ['ripe', 'unripe', 'overripe'];
       const insertValues = [];
-      
+      const writeTasks = [];
+
+      console.log('[Settings-POST] Recipe Payload mappings in DB:', mappings);
+      console.log('[Settings-POST] Category loop starting. Received recipes keys:', Object.keys(recipes));
+
       categories.forEach(cat => {
         const catRecipes = recipes[cat];
         if (catRecipes) {
@@ -167,9 +200,19 @@ router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req
             const steps = catRecipes[line];
             if (Array.isArray(steps)) {
               steps.forEach(step => {
-                const newInl = step.inl ? 1 : 0;
-                const newCon = step.con ? 1 : 0;
-                const newExh = step.exh ? 1 : 0;
+                // Map the 7 frontend valves to the 3 basic DB columns
+                const stepInl1 = step.inl1 ? 1 : 0;
+                const stepInl2 = step.inl2 ? 1 : 0;
+                const stepDinl = step.dinl ? 1 : 0;
+                const stepCon = step.con ? 1 : 0;
+                const stepRcon = step.rcon ? 1 : 0;
+                const stepDcon = step.dcon ? 1 : 0;
+                const stepExh = step.exh ? 1 : 0;
+
+                const newInl = (stepInl1 || stepInl2 || stepDinl) ? 1 : 0;
+                const newCon = (stepCon || stepRcon || stepDcon) ? 1 : 0;
+                const newExh = stepExh;
+
                 const newBar = step.bar || '0.00';
                 const newMode = step.mode || 'OFF';
                 const newNrm = step.nrm || 0;
@@ -179,10 +222,11 @@ router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req
                 const newDoorOut = step.doorOut || 'Close';
 
                 insertValues.push([
-                  cat, line, step.step, newUnf, newNrm, newWet, newInl, newCon, newExh, newBar, newMode, newDoorIn, newDoorOut
+                   cat, line, step.step, newUnf, newNrm, newWet, newInl, newCon, newExh, newBar, newMode, newDoorIn, newDoorOut,
+                   stepInl1, stepInl2, stepDinl, stepRcon, stepDcon
                 ]);
 
-                // Diff
+                // Key for DB diff check
                 const key = `${cat}_${line}_${step.step}`;
                 const oldR = oldRecipesMap[key];
                 if (!oldR) {
@@ -193,14 +237,88 @@ router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req
                   if (oldR.unf != newUnf) stepChanges.push(`UNF ${oldR.unf}->${newUnf}`);
                   if (oldR.wet != newWet) stepChanges.push(`WET ${oldR.wet}->${newWet}`);
                   if (oldR.bar != newBar) stepChanges.push(`BAR ${oldR.bar}->${newBar}`);
-                  if (oldR.mode != newMode) stepChanges.push(`Mode ${oldR.mode}->${newMode}`);
                   if (oldR.con != newCon) stepChanges.push(`CON ${oldR.con}->${newCon}`);
                   if (oldR.inl != newInl) stepChanges.push(`INL ${oldR.inl}->${newInl}`);
                   if (oldR.exh != newExh) stepChanges.push(`EXH ${oldR.exh}->${newExh}`);
-                  
-                  if (stepChanges.length > 0) {
-                    changes.push(`Recipe ${cat.toUpperCase()} L${line} S${step.step} (${stepChanges.join(', ')})`);
+                  if (stepChanges.length > 0) changes.push(`Recipe ${cat.toUpperCase()} L${line} S${step.step} (${stepChanges.join(', ')})`);
+                }
+
+                // Compile PLC Write Tasks by comparing incoming fields against live PLC values
+                const eq = `recipe_line_${line}_step_${step.step}`;
+                
+                const checkAndQueueWrite = (fieldEq, signal, newVal, fieldName) => {
+                  const mapKey = `${fieldEq}__${signal}`;
+                  let tagId = mappings[mapKey];
+                  // If specific valve cell is not mapped yet, fallback to tag 631 (TES_SETTINGS2) for testing/demo
+                  if (!tagId && signal === 'VALVE') {
+                    tagId = 631;
                   }
+                  if (!tagId) return; // No mapping, skip
+
+                  // Strict filter: If editedKeys was provided by frontend, ONLY queue write if this specific line_step_field was edited by the user!
+                  if (Array.isArray(editedKeys) && editedKeys.length > 0 && fieldName) {
+                    const pendingKey = `${line}_${step.step}_${fieldName}`;
+                    if (!editedKeys.includes(pendingKey)) {
+                      return; // User did NOT touch this field, skip sending write to PLC!
+                    }
+                  }
+
+                  const rawLive = livePlcMap[mapKey];
+                  let shouldWrite = false;
+                  if (rawLive !== undefined) {
+                    if (signal === 'VALVE') {
+                      const liveBool = rawLive === true || rawLive === 'true' || rawLive === 1 || rawLive === '1' || rawLive === 'OPEN';
+                      const newBool = newVal === true || newVal === 'true' || newVal === 1 || newVal === '1' || newVal === 'OPEN';
+                      shouldWrite = liveBool !== newBool;
+                    } else if (signal === 'VALVE_MODE') {
+                      let liveMode = 0;
+                      if (rawLive === 1 || rawLive === '1' || rawLive === 'Below') liveMode = 1;
+                      else if (rawLive === 2 || rawLive === '2' || rawLive === 'Above') liveMode = 2;
+
+                      let newMode = 0;
+                      if (newVal === 1 || newVal === '1' || newVal === 'Below') newMode = 1;
+                      else if (newVal === 2 || newVal === '2' || newVal === 'Above') newMode = 2;
+
+                      shouldWrite = liveMode !== newMode;
+                    } else {
+                      shouldWrite = Number(rawLive) !== Number(newVal);
+                    }
+                  } else {
+                    // If tagId exists or fallback, write since user explicitly edited it
+                    shouldWrite = true;
+                  }
+
+                  if (shouldWrite) {
+                    let plcVal = newVal;
+                    if (signal === 'VALVE') plcVal = (newVal === true || newVal === 1 || String(newVal).toUpperCase() === 'OPEN') ? 1 : 0;
+                    else if (signal === 'VALVE_MODE') plcVal = (newVal === 'Below' || newVal === 1) ? 1 : (newVal === 'Above' || newVal === 2) ? 2 : 0;
+                    else plcVal = Number(newVal);
+                    
+                    writeTasks.push({ tagId, val: plcVal });
+                  }
+                };
+
+                // Only queue writes to PLC for the active category being edited in the frontend UI
+                if (cat === activeCategory) {
+                  // Queue writes ONLY for explicitly edited settings
+                  checkAndQueueWrite(`${eq}_press`, 'SETPOINT', newBar, 'bar');
+                  checkAndQueueWrite(`${eq}_nrm`, 'DURATION', newNrm, 'nrm');
+                  checkAndQueueWrite(`${eq}_unf`, 'DURATION', newUnf, 'unf');
+                  checkAndQueueWrite(`${eq}_wet`, 'DURATION', newWet, 'wet');
+                  checkAndQueueWrite(`${eq}_mode`, 'VALVE_MODE', newMode, 'mode');
+
+                  checkAndQueueWrite(`${eq}_inl1`, 'VALVE', stepInl1, 'inl1');
+                  checkAndQueueWrite(`${eq}_inl2`, 'VALVE', stepInl2, 'inl2');
+                  checkAndQueueWrite(`${eq}_dinl`, 'VALVE', stepDinl, 'dinl');
+                  checkAndQueueWrite(`${eq}_con`, 'VALVE', stepCon, 'con');
+                  checkAndQueueWrite(`${eq}_rcon`, 'VALVE', stepRcon, 'rcon');
+                  checkAndQueueWrite(`${eq}_dcon`, 'VALVE', stepDcon, 'dcon');
+                  checkAndQueueWrite(`${eq}_exh`, 'VALVE', stepExh, 'exh');
+                  
+                  const newDoorInVal = newDoorIn === 'Open' ? 1 : 0;
+                  const newDoorOutVal = newDoorOut === 'Open' ? 1 : 0;
+                  checkAndQueueWrite(`${eq}_doorIn`, 'VALVE', newDoorInVal, 'doorIn');
+                  checkAndQueueWrite(`${eq}_doorOut`, 'VALVE', newDoorOutVal, 'doorOut');
                 }
               });
             }
@@ -208,9 +326,22 @@ router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req
         }
       });
 
+      console.log('[Settings-POST] Write tasks generated:', writeTasks);
+
+      // Execute PLC Writes (graceful fallback if PLC is offline/disconnected)
+      for (const task of writeTasks) {
+        try {
+          console.log(`[Settings-POST] Calling writeTagDirect for tag ${task.tagId} with value ${task.val}`);
+          await writeTagDirect(task.tagId, task.val);
+        } catch (err) {
+          console.warn(`[Settings-POST] writeTagDirect warning for tag ${task.tagId}:`, err.message);
+          plcErrors.push(`Tag ${task.tagId}: ${err.message}`);
+        }
+      }
+
       if (insertValues.length > 0) {
         await connection.query(`
-          INSERT INTO recipe_settings (category, line_number, step_number, unf, nrm, wet, inl, con, exh, bar, mode, door_in, door_out)
+          INSERT INTO recipe_settings (category, line_number, step_number, unf, nrm, wet, inl, con, exh, bar, mode, door_in, door_out, inl1, inl2, dinl, rcon, dcon)
           VALUES ?
           ON DUPLICATE KEY UPDATE
             unf = VALUES(unf),
@@ -222,7 +353,12 @@ router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req
             bar = VALUES(bar),
             mode = VALUES(mode),
             door_in = VALUES(door_in),
-            door_out = VALUES(door_out)
+            door_out = VALUES(door_out),
+            inl1 = VALUES(inl1),
+            inl2 = VALUES(inl2),
+            dinl = VALUES(dinl),
+            rcon = VALUES(rcon),
+            dcon = VALUES(dcon)
         `, [insertValues]);
       }
     }
@@ -247,6 +383,31 @@ router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req
           ON DUPLICATE KEY UPDATE param_value = VALUES(param_value)
         `, [insertParams]);
       }
+
+      // Write scoreLogics TARGET values directly to PLC (same path as recipe writes)
+      if (parameters && parameters.scoreLogics && Array.isArray(parameters.scoreLogics)) {
+        const [scoreTagMappings] = await dbPoolPlc.query(
+          "SELECT equipment, signal_key, tag_id FROM station_tag_mappings WHERE station = 'sterilizer' AND tag_id IS NOT NULL"
+        );
+        const scoreTagMap = {};
+        scoreTagMappings.forEach(row => {
+          scoreTagMap[`${row.equipment}__${row.signal_key}`] = row.tag_id;
+        });
+
+        for (const row of parameters.scoreLogics) {
+          if (row.param === undefined || row.target === undefined) continue;
+          const mapKey = `settings_score_logic_${row.param}_target__TARGET`;
+          const tagId = scoreTagMap[mapKey];
+          if (!tagId) continue;
+          try {
+            console.log(`[Settings-POST] Writing scoreLogic TARGET: ${row.param} = ${row.target} (tag ${tagId})`);
+            await writeTagDirect(tagId, Number(row.target));
+          } catch (err) {
+            console.warn(`[Settings-POST] scoreLogic write warning for ${row.param}:`, err.message);
+            plcErrors.push(`ScoreLogic ${row.param}: ${err.message}`);
+          }
+        }
+      }
     }
 
     await connection.commit();
@@ -262,8 +423,12 @@ router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req
       ).catch((err) => console.error('[SettingLog] Error:', err));
     }
     
-    res.json({ success: true });
+    res.json({ 
+      success: true,
+      plcWarnings: plcErrors.length > 0 ? plcErrors : undefined
+    });
   } catch (err) {
+    console.error('Settings save error:', err);
     await connection.rollback();
     res.status(500).json({ success: false, error: err.message });
   } finally {

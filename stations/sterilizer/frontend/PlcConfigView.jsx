@@ -125,6 +125,9 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
         alert("Session expired. Please logout and login again.");
       } else if (res.status === 403) {
         alert("Access Denied: Developer role required.");
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(`Error saving device: ${errData.error || errData.message || res.statusText}`);
       }
     } catch (err) {
       console.error("Failed to save device:", err);
@@ -286,9 +289,16 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
   };
 
   // ✅ Helper: Render live value with freshness indicator
-  const renderLiveValue = (tagId) => {
-    const liveData = liveValues[tagId];
-    if (!liveData) {
+  const renderLiveValue = (tag) => {
+    const tagId = typeof tag === 'object' ? tag.id : tag;
+    const tagName = typeof tag === 'object' ? tag.tag_name : null;
+    
+    let liveData = liveValues[tagId];
+    if (liveData === undefined && tagName) {
+      liveData = liveValues[tagName];
+    }
+
+    if (liveData === undefined || liveData === null) {
       return (
         <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem" }}>
           NO DATA
@@ -296,8 +306,10 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
       );
     }
 
-    const { value, age_seconds, stale } = liveData;
-    const ageNum = age_seconds || 0;
+    const isObject = typeof liveData === 'object' && liveData !== null;
+    const value = isObject && liveData.value !== undefined ? liveData.value : liveData;
+    const ageNum = isObject && liveData.age_seconds !== undefined ? liveData.age_seconds : 0;
+    const stale = isObject && liveData.stale !== undefined ? liveData.stale : false;
 
     // Determine freshness level
     let freshnessColor, freshnessLabel;
@@ -318,8 +330,15 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
     // Format numeric values to max 2 decimal places
     const displayValue = (val) => {
       if (val === null || val === undefined) return "--";
+      
+      const isBoolType = typeof tag === 'object' && tag !== null && tag.data_type === "BOOL";
+      if (isBoolType || typeof val === 'boolean') {
+        if (val === true || val === "true" || val === 1 || val === "1") return "TRUE";
+        return "FALSE";
+      }
+
       const num = parseFloat(val);
-      if (isNaN(num)) return val; // Return original if not a number
+      if (isNaN(num)) return String(val); // Return stringified original if not a number
       // Rounds to max 2 decimal places, avoids trailing zeros
       return +(Math.round(num + "e+2") + "e-2");
     };
@@ -398,7 +417,16 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
 
   // ✅ Helper: Format PLC address in Siemens S7 standard
   const formatAddress = (tag) => {
-    const { db_number, byte_offset, bit_offset, data_type } = tag;
+    const { db_number, byte_offset, bit_offset, data_type, node_id } = tag;
+    const area = node_id && ['M','I','Q'].includes(node_id.toUpperCase()) ? node_id.toUpperCase() : 'DB';
+    
+    if (area !== 'DB') {
+      if (data_type === "BOOL") return `${area}${byte_offset || 0}.${bit_offset || 0}`;
+      if (data_type === "INT" || data_type === "WORD") return `${area}W${byte_offset || 0}`;
+      if (data_type === "DINT" || data_type === "REAL" || data_type === "DWORD") return `${area}D${byte_offset || 0}`;
+      return `${area}${byte_offset || 0}`;
+    }
+
     if (data_type === "BOOL")
       return `DB${db_number}.DBX${byte_offset}.${bit_offset || 0}`;
     if (data_type === "INT") return `DB${db_number}.DBW${byte_offset}`;
@@ -714,7 +742,7 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
                           {tag.data_type}
                         </span>
                       </td>
-                      <td>{renderLiveValue(tag.id)}</td>
+                      <td>{renderLiveValue(tag)}</td>
                       <td style={{ textAlign: "center" }}>
                         <div
                           style={{
@@ -1145,12 +1173,14 @@ const TagModalContent = ({
     const boolRegex = /^DB(\d+)\.DBX(\d+)(?:[.,](\d+))?$/i;
     const otherRegex = /^DB(\d+)\.DB([WD])(\d+)$/i;
     const miqBoolRegex = /^([MIQ])(\d+)\.(\d+)$/i;
-    const miqOtherRegex = /^([MIQ])([WD])(\d+)$/i;
+    const miqOtherRegex = /^([MIQ])([BWD])(\d+)$/i;
+    const miqSimpleRegex = /^([MIQ])(\d+)$/i;
 
     const boolMatch = val.trim().match(boolRegex);
     const otherMatch = val.trim().match(otherRegex);
     const miqBoolMatch = val.trim().match(miqBoolRegex);
     const miqOtherMatch = val.trim().match(miqOtherRegex);
+    const miqSimpleMatch = val.trim().match(miqSimpleRegex);
 
     if (boolMatch) {
       newUpdates.db_number = boolMatch[1];
@@ -1175,7 +1205,14 @@ const TagModalContent = ({
       newUpdates.db_number = "0";
       newUpdates.node_id = miqOtherMatch[1].toUpperCase();
       newUpdates.byte_offset = miqOtherMatch[3];
-      newUpdates.data_type = miqOtherMatch[2].toUpperCase() === "W" ? "INT" : "REAL";
+      const size = miqOtherMatch[2].toUpperCase();
+      newUpdates.data_type = size === "W" ? "INT" : size === "D" ? "REAL" : "BYTE";
+      newUpdates.bit_offset = "";
+    } else if (miqSimpleMatch) {
+      newUpdates.db_number = "0";
+      newUpdates.node_id = miqSimpleMatch[1].toUpperCase();
+      newUpdates.byte_offset = miqSimpleMatch[2];
+      newUpdates.data_type = "BYTE";
       newUpdates.bit_offset = "";
     }
     setFormData((prev) => ({ ...prev, ...newUpdates }));

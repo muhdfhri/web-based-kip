@@ -868,12 +868,20 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
     const isBlowdownTempActive = parseFloat(blowdownTempVal) > 0;
 
     // Pump 1 (Default test value = '1')
-    const pump1Val = lv('pump1', 'MONITOR', 'no tag');
+    const pump1Val = lv('pump1', 'MONITOR', '1');
     const isPump1Active = parseFloat(pump1Val) > 0 || pump1Val === '1';
 
     // Pump 2 (Default test value = '1')
     const pump2Val = lv('pump2', 'MONITOR', '1');
     const isPump2Active = parseFloat(pump2Val) > 0 || pump2Val === '1';
+
+    // CST Steam (Default test value = '1')
+    const cstSteamVal = lv('cst_steam', 'MONITOR', '1');
+    const isCstSteamActive = parseFloat(cstSteamVal) > 0 || cstSteamVal === '1';
+
+    // Cake Breaker (Default test value = '1')
+    const cakeBreakerVal = lv('cake_breaker', 'MONITOR', '1');
+    const isCakeBreakerActive = parseFloat(cakeBreakerVal) > 0 || cakeBreakerVal === '1';
 
     return (
         <section className={`som-efb-plant som-mode-${viewMode}`}>
@@ -1011,112 +1019,49 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
                                 thickness={6}
                             />
 
-                            {/* Main Process Liquid Pipeline Lines */}
-                            <LiquidFlowSVG
-                                d="M 1767,430 L 67,426 Q 42,426 42,451 L 40,571 Q 40,596 65,596 L 838,596 Q 850,595 854,607 L 854,607 Q 857,619 857,631 L 856,755"
-                                isRunning={true}
-                                color="#f59e0b"
-                                thickness={8}
-                            />
-                            <LiquidFlowSVG
-                                d="M 841,757 L 835,749 Q 829,741 819,741 L 749,741 Q 738,741 731,749 L 731,749 Q 723,757 723,768 L 725,869 Q 725,888 726,907 L 726,908 Q 727,925 744,927 L 744,927 Q 760,929 777,929 L 1173,929"
-                                isRunning={true}
-                                color="#f59e0b"
-                                thickness={8}
-                            />
 
-                            {/* Blow Down Temp Flow Line 1 */}
-                            <LiquidFlowSVG
-                                d="M 616,895 L 47,895 Q 22,895 23,870 L 24,807 Q 25,782 25,757 L 23,500 Q 23,490 28,482 L 33,473"
-                                isRunning={true}
-                                color="#f59e0b"
-                                thickness={8}
-                            />
-
-                            {/* Blow Down Temp Flow Line 2 */}
-                            <LiquidFlowSVG
-                                d="M 766,894 L 655,894"
-                                isRunning={isBlowdownTempActive}
-                                color="#f59e0b"
-                                thickness={8}
-                            />
-
-                            <LiquidFlowSVG
-                                d="M 1017,898 L 1106,899"
-                                isRunning={true}
-                                color="#f59e0b"
-                                thickness={8}
-                            />
-                            <LiquidFlowSVG
-                                d="M 1020,853 L 1058,853"
-                                isRunning={true}
-                                color="#f59e0b"
-                                thickness={8}
-                            />
-
-                            {/* Pump 1 Flow Line */}
-                            <LiquidFlowSVG
-                                d="M 1085,812 L 1085,802 Q 1089,792 1100,792 L 1239,792"
-                                isRunning={isPump1Active}
-                                color="#f59e0b"
-                                thickness={8}
-                            />
-
-                            {/* Pump 2 Flow Line */}
-                            <LiquidFlowSVG
-                                d="M 1132,857 L 1134,846 Q 1142,837 1153,837 L 1240,837"
-                                isRunning={isPump2Active}
-                                color="#f59e0b"
-                                thickness={8}
-                            />
-
-                            <LiquidFlowSVG
-                                d="M 1213,929 L 1240,929"
-                                isRunning={true}
-                                color="#f59e0b"
-                                thickness={8}
-                            />
 
                             {/* ========================================== */}
                             {/* --- VISUAL ASSETS (MOTORS, PUMPS, VALVES) --- */}
                             {/* ========================================== */}
                             {/* Motor Assets */}
-                            <image href={motorbackSvg} x={1836} y={124} width="55" style={{ pointerEvents: 'none' }} />
-                            <image href={motorSvg} x={1927} y={512} width="68" filter="url(#tint-red)" style={{ pointerEvents: 'none', transform: 'scaleX(-1)', transformOrigin: '1922.5px 466px' }} />
+                            <image href={motorbackSvg} x={1830} y={135} width="55" style={{ pointerEvents: 'none' }} />
+                            <image href={motorSvg} x={1930} y={580} width="68" filter={isCakeBreakerActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none', transform: 'scaleX(-1)', transformOrigin: '1922.5px 466px' }} />
 
                             {/* Pump Assets (x=1046: Pump 1, x=1095: Pump 2) */}
-                            <image href={pumpRunSvg} x={-5} y={720} width="60" filter="url(#tint-green)" style={{ pointerEvents: 'none' }} />
-                            <image href={pumpRunSvg} x={1046} y={810} width="75" filter={isPump1Active ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
-                            <image href={pumpRunSvg} x={1095} y={852} width="75" filter={isPump2Active ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={pumpRunSvg} x={10} y={600} width="60" filter="url(#tint-green)" style={{ pointerEvents: 'none' }} />
 
-                            {/* General Valve Actuators */}
-                            <image href={valveActuatorSvg} x={301} y={470} width="30" transform="rotate(90 366 880)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={1165} y={890} width="56" transform="rotate(90 1193 918)" filter="url(#tint-red)" style={{ pointerEvents: 'none' }} />
+
+                            <image href={pumpRunSvg} x={1666} y={800} width="75" filter={isPump1Active ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={pumpRunSvg} x={1766} y={877} width="75" filter={isPump2Active ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+
+                            {/* CST Steam Valve Actuator */}
+                            <image href={valveActuatorSvg} x={1050} y={880} width="50" transform="rotate(90 1193 918)" filter={isCstSteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
 
                             {/* Blow Down Temp Control Valve */}
-                            <image href={valveActuatorSvg} x={340} y={580} width="56" transform="rotate(90 366 880)" filter={isBlowdownTempActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={138} y={580} width="50" transform="rotate(90 366 880)" filter={isBlowdownTempActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
 
                             {/* Press 1 Inlet Valve Actuators */}
-                            <image href={valveActuatorSvg} x={219} y={216} width="30" transform="rotate(90 234 231)" filter={isPress1SteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={219} y={252} width="30" transform="rotate(90 234 267)" filter={isPress1DilutionActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={260} y={368} width="35" transform="rotate(90 234 231)" filter={isPress1SteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={270} y={347} width="35" transform="rotate(90 234 267)" filter={isPress1DilutionActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
 
                             {/* Press 2 Inlet Valve Actuators */}
-                            <image href={valveActuatorSvg} x={692} y={216} width="30" transform="rotate(90 707 231)" filter={isPress2SteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={692} y={252} width="30" transform="rotate(90 707 267)" filter={isPress2DilutionActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={780} y={304} width="35" transform="rotate(90 707 231)" filter={isPress2SteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={698} y={397} width="35" transform="rotate(90 707 267)" filter={isPress2DilutionActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
 
                             {/* Press 3 Inlet Valve Actuators */}
-                            <image href={valveActuatorSvg} x={1162} y={216} width="30" transform="rotate(90 1177 231)" filter={isPress3SteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={1162} y={252} width="30" transform="rotate(90 1177 267)" filter={isPress3DilutionActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={1205} y={352} width="35" transform="rotate(90 1177 231)" filter={isPress3SteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={1215} y={331} width="35" transform="rotate(90 1177 267)" filter={isPress3DilutionActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
 
                             {/* Press 4 Inlet Valve Actuators */}
-                            <image href={valveActuatorSvg} x={1632} y={216} width="30" transform="rotate(90 1647 231)" filter={isPress4SteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
-                            <image href={valveActuatorSvg} x={1632} y={252} width="30" transform="rotate(90 1647 267)" filter={isPress4DilutionActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={1676} y={343} width="35" transform="rotate(90 1647 231)" filter={isPress4SteamActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
+                            <image href={valveActuatorSvg} x={1685} y={322} width="35" transform="rotate(90 1647 267)" filter={isPress4DilutionActive ? "url(#tint-green)" : "url(#tint-red)"} style={{ pointerEvents: 'none' }} />
 
                             {/* ========================================== */}
                             {/* --- MONITORING CARDS & HUD OVERLAYS --- */}
                             {/* ========================================== */}
                             {/* Press 1 - 4 Data Cards */}
-                            <MachineParams id="press1_data" onClick={handleEquipmentClick} isEditable={configMode} x={490} y={290} title="PRESS 1 DATA" params={[
+                            <MachineParams id="press1_data" onClick={handleEquipmentClick} isEditable={configMode} x={440} y={360} title="PRESS 1 DATA" params={[
                                 { label: 'STEAM', value: press1SteamVal, unit: '%' },
                                 { label: 'DILUTION', value: press1DilutionVal, unit: '%' },
                                 { label: 'DAMPER', value: lv('press1_data', 'DAMPER', 'no tag'), unit: '%' },
@@ -1142,28 +1087,31 @@ function EFBPlantPage({ user, onSelectSubmenu }) {
                             ]} />
 
                             {/* Temperature Sensors below Presses */}
-                            <MonitorCard id="temp1" onClick={handleEquipmentClick} isEditable={configMode} x={220} y={480} label="TEMP 1" value="no tag" unit="°C" equipmentName="Press 1 Temp" trendType="Temperature" />
-                            <MonitorCard id="temp2" onClick={handleEquipmentClick} isEditable={configMode} x={705} y={480} label="TEMP 2" value="no tag" unit="°C" equipmentName="Press 2 Temp" trendType="Temperature" />
-                            <MonitorCard id="temp3" onClick={handleEquipmentClick} isEditable={configMode} x={1190} y={480} label="TEMP 3" value="no tag" unit="°C" equipmentName="Press 3 Temp" trendType="Temperature" />
-                            <MonitorCard id="temp4" onClick={handleEquipmentClick} isEditable={configMode} x={1675} y={480} label="TEMP 4" value="no tag" unit="°C" equipmentName="Press 4 Temp" trendType="Temperature" />
+                            <MonitorCard id="temp1" onClick={handleEquipmentClick} isEditable={configMode} x={260} y={480} label="TEMP 1" value="no tag" unit="°C" equipmentName="Press 1 Temp" trendType="Temperature" />
+                            <MonitorCard id="temp2" onClick={handleEquipmentClick} isEditable={configMode} x={740} y={480} label="TEMP 2" value="no tag" unit="°C" equipmentName="Press 2 Temp" trendType="Temperature" />
+                            <MonitorCard id="temp3" onClick={handleEquipmentClick} isEditable={configMode} x={1220} y={480} label="TEMP 3" value="no tag" unit="°C" equipmentName="Press 3 Temp" trendType="Temperature" />
+                            <MonitorCard id="temp4" onClick={handleEquipmentClick} isEditable={configMode} x={1700} y={480} label="TEMP 4" value="no tag" unit="°C" equipmentName="Press 4 Temp" trendType="Temperature" />
 
                             {/* Left Side Monitoring Points */}
-                            <MonitorCard id="liq_steam" onClick={handleEquipmentClick} isEditable={configMode} x={695} y={830} label="LIQ STEAM" value="no tag" unit="%" equipmentName="Liquor Tank Steam" trendType="Valve" scale={0.8} />
+                            <MachineParams id="heavy_liquor" onClick={handleEquipmentClick} isEditable={configMode} x={145} y={810} title="HEAVY LIQUOR" params={[
+                                { label: 'STATUS', value: 'no tag', unit: '' }
+                            ]} />
                             <MonitorCard id="tank_level" onClick={handleEquipmentClick} isEditable={configMode} x={490} y={1060} label="TANK LEVEL" value="no tag" unit="%" equipmentName="Liquor Tank Level" trendType="Level" />
                             <MonitorCard id="tank_temp" onClick={handleEquipmentClick} isEditable={configMode} x={605} y={1060} label="TANK TEMP" value="no tag" unit="°C" equipmentName="Liquor Tank Temp" trendType="Temperature" />
 
                             {/* Pumps, Conveyors & Liquor Volume Cards */}
-                            <MonitorCard id="pump1" onClick={handleEquipmentClick} isEditable={configMode} x={1150} y={735} label="PUMP 1" value={pump1Val} unit="A" equipmentName="Pump 1" trendType="Load" status={isPump1Active ? "RUNNING" : "STOPPED"} />
+                            <MonitorCard id="pump1" onClick={handleEquipmentClick} isEditable={configMode} x={1220} y={735} label="PUMP 1" value={pump1Val} unit="A" equipmentName="Pump 1" trendType="Load" status={isPump1Active ? "RUNNING" : "STOPPED"} />
                             <MonitorCard id="pump2" onClick={handleEquipmentClick} isEditable={configMode} x={1150} y={980} label="PUMP 2" value={pump2Val} unit="A" equipmentName="Pump 2" trendType="Load" status={isPump2Active ? "RUNNING" : "STOPPED"} />
-                            <MonitorCard id="cake_breaker" onClick={handleEquipmentClick} isEditable={configMode} x={1830} y={630} label="CAKE BREAKER" value="no tag" unit="A" equipmentName="Cake Breaker Conveyor" trendType="Load" />
-                            <MonitorCard id="feed_conv" onClick={handleEquipmentClick} isEditable={configMode} x={1680} y={152} label="FEED CONV" value="no tag" unit="A" equipmentName="EFB Feed Conveyor" trendType="Load" />
+                            <MonitorCard id="cst_steam" onClick={handleEquipmentClick} isEditable={configMode} x={1330} y={980} label="CST STEAM" value={cstSteamVal} unit="%" equipmentName="CST Steam Valve" trendType="Valve" />
+                            <MonitorCard id="cake_breaker" onClick={handleEquipmentClick} isEditable={configMode} x={1810} y={625} label="CAKE BREAKER" value={cakeBreakerVal} unit="A" equipmentName="Cake Breaker Conveyor" trendType="Load" />
+                            <MonitorCard id="feed_conv" onClick={handleEquipmentClick} isEditable={configMode} x={1680} y={163} label="FEED CONV" value="no tag" unit="A" equipmentName="EFB Feed Conveyor" trendType="Load" />
 
-                            <MachineParams id="liquor_volume" onClick={handleEquipmentClick} isEditable={configMode} x={900} y={915} title="LIQUOR COLLECTION TANK" params={[
+                            <MachineParams id="liquor_volume" onClick={handleEquipmentClick} isEditable={configMode} x={983} y={805} title="LIQUOR COLLECTION TANK" params={[
                                 { label: 'TEMPERATURE', value: 'no tag', unit: '°C' },
                                 { label: 'LEVEL', value: 'no tag', unit: '%' }
                             ]} />
 
-                            <MonitorCard id="blowdown_temp" onClick={handleEquipmentClick} isEditable={configMode} x={665} y={940} label="BLOW-DOWN TEMP" value={blowdownTempVal} unit="°C" equipmentName="Blow-Down Temp" trendType="Temperature" />
+                            <MonitorCard id="blowdown_temp" onClick={handleEquipmentClick} isEditable={configMode} x={665} y={750} label="BLOW-DOWN TEMP" value={blowdownTempVal} unit="°C" equipmentName="Blow-Down Temp" trendType="Temperature" />
 
                             {/* Elements khusus Maintenance Mode */}
                             {viewMode === 'maintenance' && (

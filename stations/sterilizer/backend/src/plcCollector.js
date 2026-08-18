@@ -34,6 +34,9 @@ const reconnectState = new Map(); // key: deviceId
 const deviceStatusCache = new Map(); // key: deviceId → "CONNECTED"|"DISCONNECTED"
 const deviceHeartbeat = new Map(); // key: deviceId → last heartbeat timestamp
 
+// ── Cycle Catcher State (Perekam Logsheet Dinamis) ──
+const cycleState = new Map(); // key: deviceId → { phase, stepTimeline: [], ... }
+
 // Redis
 let redisPublisher = null;
 let redisSubscriber = null;
@@ -52,8 +55,9 @@ export async function startPlcCollector() {
   // 1. Connect Redis
   await connectRedis();
 
-  // 2. Load thresholds
+  // 2. Load thresholds & init cycle logs table
   await loadThresholds();
+  await initCycleLogsTable();
   setInterval(loadThresholds, 30000);
 
   // 3. Load configuration (devices + tags)
@@ -194,6 +198,17 @@ export async function writeTagDirect(targetId, value) {
     `[plcCollector-${STATION_SLUG}] Direct Write: ${tag.tag_name} → ${val}`,
   );
   await entry.client.writeTag(tag, val);
+
+  const valToSave = tag.data_type === "BOOL" ? (val ? "1" : "0") : String(val);
+  try {
+    await dbPoolPlc.query(
+      "INSERT INTO plc_tag_latest (tag_id, value, updated_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW()",
+      [tag.id, valToSave]
+    );
+  } catch (err) {
+    console.error(`[plcCollector-${STATION_SLUG}] Failed to update plc_tag_latest on writeDirect:`, err.message);
+  }
+
   return { tag_name: tag.tag_name, value: val };
 }
 
@@ -482,6 +497,9 @@ async function pollDevice(clientKey, entry) {
         ])
         .catch(() => {});
     }
+
+    // ⚡ CYCLE CATCHER — Logsheet Automatic Recording
+    await processCycleCatcher(device);
   } catch (e) {
     // Increment reconnect backoff attempts on read/communication failure
     const state = reconnectState.get(clientKey) || {
@@ -570,3 +588,323 @@ function checkThreshold(tagName, value, oldValue = "") {
       .catch(() => {});
   }
 }
+
+// ═══════════════════════════════════════════════════════
+// CYCLE CATCHER: DB TABLE INIT & ENGINE LOGSHEET OTOMATIS
+// ═══════════════════════════════════════════════════════
+async function initCycleLogsTable() {
+  try {
+    await dbPoolPlc.query(`
+      CREATE TABLE IF NOT EXISTS sterilizer_cycle_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        device_id INT NOT NULL,
+        cycle_number INT NOT NULL DEFAULT 1,
+        start_time DATETIME DEFAULT NULL,
+        end_time DATETIME DEFAULT NULL,
+        door_details JSON DEFAULT NULL,
+        step_details JSON DEFAULT NULL,
+        cycle_data JSON DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log(`[plcCollector-${STATION_SLUG}] Checked/Auto-created sterilizer_cycle_logs table`);
+  } catch (err) {
+    console.error(`[plcCollector-${STATION_SLUG}] initCycleLogsTable error:`, err.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// CYCLE CATCHER (LOGSHEET OTOMATIS PRESI PER STERILIZER)
+// ═══════════════════════════════════════════════════════
+async function processCycleCatcher(device) {
+  // Collect all sterilizer unit IDs (e.g., 1, 2, 3...)
+  const unitIds = new Set();
+  if (device && device.id) unitIds.add(device.id);
+
+  // Scan liveDataCache for unit indices in tag names like CurrentStep[1], CurrentStep[2], Door_in[1], etc.
+  for (const key of Object.keys(liveDataCache)) {
+    const match = key.match(/(?:CurrentStep|Door_in|Door_out|step|ValvePercent)\[?(\d+)\]?/i);
+    if (match && match[1]) {
+      unitIds.add(parseInt(match[1]));
+    }
+  }
+
+  for (const uId of unitIds) {
+    await processSingleSterilizerCycle(device, uId);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// HELPER: Operational Shift Start (07:00 AM to 07:00 AM Shift)
+// ═══════════════════════════════════════════════════════
+function getOperationalShiftStart(date = new Date()) {
+  const opDate = new Date(date);
+  if (opDate.getHours() < 7) {
+    opDate.setDate(opDate.getDate() - 1);
+  }
+  opDate.setHours(7, 0, 0, 0);
+  return opDate;
+}
+
+// ═══════════════════════════════════════════════════════
+// ENGINE LOGSHEET OTOMATIS PRESI PER STERILIZER
+// ═══════════════════════════════════════════════════════
+async function processSingleSterilizerCycle(device, dId) {
+  // Broad tag resolution matching site naming conventions
+  const currentStepVal = liveDataCache[`CurrentStep[${dId}]`] 
+    || liveDataCache[`st${dId}_status__ACTUAL_STEP`] 
+    || liveDataCache[`st${dId}_status_ACTUAL_STEP`] 
+    || liveDataCache[`st${dId}_actual_step`] 
+    || liveDataCache[`st${dId}_step`] 
+    || liveDataCache[`STERI_current_step_${dId}`] 
+    || liveDataCache[`step_${dId}`];
+
+  const doorIn = liveDataCache[`Door_in[${dId}]`] 
+    || liveDataCache[`st${dId}_door_in`] 
+    || liveDataCache[`STERI_door_in_${dId}`] 
+    || liveDataCache[`door_in_${dId}`];
+
+  const doorOut = liveDataCache[`Door_out[${dId}]`] 
+    || liveDataCache[`st${dId}_door_out`] 
+    || liveDataCache[`STERI_door_out_${dId}`] 
+    || liveDataCache[`door_out_${dId}`];
+
+  const inletSteam = liveDataCache[`ValvePercent_[${dId}]`]
+    || liveDataCache[`st${dId}_inlet_steam`]
+    || liveDataCache[`STERI_valve_percent_${dId}`]
+    || liveDataCache[`st${dId}_inlet_val`]
+    || liveDataCache[`Inlet_valve[${dId}]`]
+    || 0;
+
+  const exhaust = liveDataCache[`Exhaust[${dId}]`]
+    || liveDataCache[`st${dId}_exhaust`]
+    || liveDataCache[`STERI_exhaust_${dId}`]
+    || liveDataCache[`exhaust_${dId}`];
+
+  const condensate = liveDataCache[`Condensate[${dId}]`]
+    || liveDataCache[`st${dId}_condensate`]
+    || liveDataCache[`STERI_condensate_${dId}`]
+    || liveDataCache[`condensate_${dId}`];
+
+  const pressure = liveDataCache[`CurrentPressure[${dId}]`]
+    || liveDataCache[`ST${dId}_PRESSURE`]
+    || liveDataCache[`st${dId}_pressure`]
+    || liveDataCache[`STERI_pressure_${dId}`]
+    || liveDataCache[`pressure_[${dId}]`]
+    || 0;
+
+  let state = cycleState.get(dId);
+  if (!state) {
+    state = {
+      phase: 'IDLE', // 'IDLE' | 'WAITING_CYCLE_START' | 'CYCLE_RUNNING' | 'WAITING_UNLOAD'
+      inletDoorClosedAt: null,
+      inletDuration: 0,
+      cycleStartTime: null,
+      lastStep: 0,
+      lastStepTime: null,
+      stepTimeline: [],
+      cycleEndTime: null,
+      outletDuration: 0,
+      // PLC door convention: true=CLOSED(sealed), false=OPEN
+      // Initial value = true (assume doors are sealed/closed at startup)
+      lastDoorIn: true,
+      lastDoorOut: true,
+      lastDoorInCloseTime: null,   // Last time inlet door was SEALED (false→true)
+      lastDoorOutCloseTime: null,  // Last time outlet door was SEALED (false→true)
+      lastSavedCycleId: null,
+      lastValidCycleData: null
+    };
+    cycleState.set(dId, state);
+  }
+
+  const now = new Date();
+
+  const stepNum = parseInt(currentStepVal) || 0;
+  const inletSteamVal = parseFloat(inletSteam) || 0;
+  const pressureVal = parseFloat(pressure) || 0;
+
+  const isDoorInOpen = (String(doorIn) === "1" || String(doorIn) === "true" || String(doorIn).toUpperCase() === "OPEN");
+  const isDoorOutOpen = (String(doorOut) === "1" || String(doorOut) === "true" || String(doorOut).toUpperCase() === "OPEN");
+  const isExhaustOpen = (String(exhaust) === "1" || String(exhaust) === "true" || String(exhaust).toUpperCase() === "OPEN");
+  const isCondensateOpen = (String(condensate) === "1" || String(condensate) === "true" || String(condensate).toUpperCase() === "OPEN");
+
+  // 1A. Door Inlet Edge — detect when inlet door SEALS (OPEN→CLOSE = false→true)
+  if (isDoorInOpen && !state.lastDoorIn) {
+    // Door just SEALED (loading complete)
+    state.lastDoorInCloseTime = now; // Always capture — phase-agnostic
+    if (state.phase === 'IDLE') {
+      state.phase = 'WAITING_CYCLE_START';
+      state.inletDoorClosedAt = now;
+      console.log(`[plcCollector-${STATION_SLUG}] 🚪 Sterilizer L${dId} Inlet door SEALED (loading complete). Waiting for cycle start...`);
+    } else {
+      console.log(`[plcCollector-${STATION_SLUG}] 🚪 Sterilizer L${dId} Inlet door SEALED (phase=${state.phase}, captured for next cycle).`);
+    }
+  }
+  state.lastDoorIn = isDoorInOpen;
+
+  // 1B. Door Outlet Edge — detect when outlet door SEALS (OPEN→CLOSE = false→true)
+  if (isDoorOutOpen && !state.lastDoorOut) {
+    // Door just SEALED (unloading complete)
+    state.lastDoorOutCloseTime = now; // Always capture — phase-agnostic
+    if (state.phase === 'WAITING_UNLOAD') {
+      if (state.cycleEndTime) {
+        const outletSeconds = Math.round((now - state.cycleEndTime) / 1000);
+        // Only record outlet if duration is reasonable (< 90 minutes)
+        if (outletSeconds <= 5400) {
+          state.outletDuration = outletSeconds;
+          if (state.lastSavedCycleId) {
+            dbPoolPlc.query(
+              `UPDATE sterilizer_cycle_logs SET door_details = JSON_SET(COALESCE(door_details, '{}'), '$.outlet.duration', ?) WHERE id = ?`,
+              [state.outletDuration, state.lastSavedCycleId]
+            ).catch(err => console.error(`[plcCollector-${STATION_SLUG}] Unloading duration update error:`, err.message));
+          }
+        } else {
+          console.warn(`[plcCollector-${STATION_SLUG}] ⚠️ Sterilizer L${dId} Outlet duration ${outletSeconds}s too long (> 90min), skipping DB update.`);
+        }
+      }
+      console.log(`[plcCollector-${STATION_SLUG}] 🚪 Sterilizer L${dId} Outlet door SEALED. Unloading finished (${state.outletDuration}s). State reset to IDLE.`);
+      state.phase = 'IDLE';
+      state.inletDoorClosedAt = null;
+      state.inletDuration = 0;
+      state.cycleStartTime = null;
+      state.stepTimeline = [];
+      state.lastStep = 0;
+      state.lastStepTime = null;
+      state.cycleEndTime = null;
+      state.outletDuration = 0;
+      state.lastSavedCycleId = null;
+      state.lastValidCycleData = null;
+    }
+  }
+  state.lastDoorOut = isDoorOutOpen;
+
+  // 1C. WAITING_UNLOAD Auto-Timeout (60 minutes)
+  if (state.phase === 'WAITING_UNLOAD' && state.cycleEndTime) {
+    const minutesSinceCycleEnd = (now - state.cycleEndTime) / 60000;
+    if (minutesSinceCycleEnd > 60) {
+      console.warn(`[plcCollector-${STATION_SLUG}] ⏰ Sterilizer L${dId} WAITING_UNLOAD timeout (${Math.round(minutesSinceCycleEnd)}min). Auto-reset to IDLE.`);
+      state.phase = 'IDLE';
+      state.inletDoorClosedAt = null;
+      state.inletDuration = 0;
+      state.cycleStartTime = null;
+      state.stepTimeline = [];
+      state.lastStep = 0;
+      state.lastStepTime = null;
+      state.cycleEndTime = null;
+      state.outletDuration = 0;
+      state.lastSavedCycleId = null;
+      state.lastValidCycleData = null;
+    }
+  }
+
+  // 2. Cycle Start Condition
+  // Triggered when step === 1 AND Inlet Steam valve >= 99%
+  if (state.phase === 'IDLE' || state.phase === 'WAITING_CYCLE_START') {
+    if (stepNum === 1 && inletSteamVal >= 99) {
+      state.phase = 'CYCLE_RUNNING';
+      state.cycleStartTime = now;
+      const inletRef = state.inletDoorClosedAt || state.lastDoorInCloseTime;
+      state.inletDuration = inletRef ? Math.round((now - inletRef) / 1000) : 0;
+      state.stepTimeline = [];
+      state.lastStep = 1;
+      state.lastStepTime = now;
+      state.lastValidCycleData = { ...liveDataCache };
+      console.log(`[plcCollector-${STATION_SLUG}] 🚀 Cycle START detected for Sterilizer L${dId} at ${now.toLocaleTimeString()} (Step 1, Inlet Steam ${inletSteamVal}%, Loading duration ${state.inletDuration}s)`);
+    } else if (state.phase === 'IDLE' && stepNum > 1) {
+      // Mid-cycle resume fallback
+      state.phase = 'CYCLE_RUNNING';
+      state.cycleStartTime = now;
+      state.inletDuration = 0;
+      state.stepTimeline = [];
+      state.lastStep = stepNum;
+      state.lastStepTime = now;
+      state.lastValidCycleData = { ...liveDataCache };
+      console.log(`[plcCollector-${STATION_SLUG}] 🚀 Mid-cycle RESUME detected for Sterilizer L${dId} at ${now.toLocaleTimeString()} (Step ${stepNum})`);
+    }
+  }
+
+  // 3. Step Timeline Tracking
+  if (state.phase === 'CYCLE_RUNNING') {
+    state.lastValidCycleData = { ...liveDataCache };
+
+    if (stepNum !== state.lastStep) {
+      if (state.lastStep > 0 && state.lastStepTime) {
+        state.stepTimeline.push({
+          step: state.lastStep,
+          start_time: state.lastStepTime,
+          end_time: now,
+          duration: Math.round((now - state.lastStepTime) / 1000)
+        });
+      }
+      state.lastStep = stepNum;
+      state.lastStepTime = now;
+    }
+  }
+
+  // 4. Cycle Completion & Save to DB
+  if (state.phase === 'CYCLE_RUNNING') {
+    const hasRealSterilizationSteps = state.stepTimeline.length > 0; 
+    const isExhaustCondensateFinished = (isExhaustOpen && isCondensateOpen && pressureVal <= 0.3 && hasRealSterilizationSteps);
+    const isStepReturnedFinished = (stepNum === 1 && state.lastStep > 1 && pressureVal <= 0.3 && hasRealSterilizationSteps);
+
+    if (isExhaustCondensateFinished || isStepReturnedFinished) {
+      state.phase = 'WAITING_UNLOAD';
+      state.cycleEndTime = now;
+
+      // Push final step duration
+      if (state.lastStep > 0 && state.lastStepTime) {
+        state.stepTimeline.push({
+          step: state.lastStep,
+          start_time: state.lastStepTime,
+          end_time: now,
+          duration: Math.round((now - state.lastStepTime) / 1000)
+        });
+      }
+
+      try {
+        const cycleDataJson = JSON.stringify(state.lastValidCycleData || liveDataCache);
+        const doorDetailsJson = JSON.stringify({
+          inlet: { duration: state.inletDuration },
+          outlet: { duration: 0 }
+        });
+        const stepDetailsJson = JSON.stringify(state.stepTimeline);
+
+        let cycleNumber = 1;
+        const shiftStart = getOperationalShiftStart(now);
+        const [rows] = await dbPoolPlc.query(
+          "SELECT MAX(cycle_number) as maxCycle FROM sterilizer_cycle_logs WHERE device_id = ? AND end_time >= ?",
+          [dId, shiftStart]
+        );
+        if (rows.length > 0 && rows[0].maxCycle) {
+          cycleNumber = rows[0].maxCycle + 1;
+        }
+
+        const [maxIdRows] = await dbPoolPlc.query("SELECT COALESCE(MAX(id), 0) + 1 AS nextId FROM sterilizer_cycle_logs");
+        const nextId = maxIdRows[0].nextId;
+
+        const [insertResult] = await dbPoolPlc.query(
+          `INSERT INTO sterilizer_cycle_logs 
+            (id, device_id, cycle_number, start_time, end_time, door_details, step_details, cycle_data)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            nextId,
+            dId, 
+            cycleNumber, 
+            state.cycleStartTime || now, 
+            now, 
+            doorDetailsJson, 
+            stepDetailsJson, 
+            cycleDataJson
+          ]
+        );
+        
+        state.lastSavedCycleId = insertResult.insertId || nextId;
+
+        console.log(`[plcCollector-${STATION_SLUG}] ✅ Cycle COMPLETE! Sterilizer L${dId} Cycle #${cycleNumber} saved to DB with ID ${nextId}. Waiting for outlet unloading...`);
+      } catch (e) {
+        console.error(`[plcCollector-${STATION_SLUG}] Cycle Save Error:`, e.message);
+      }
+    }
+  }
+}
+

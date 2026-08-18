@@ -19,17 +19,22 @@ const app = express();
 const PORT = process.env.PORT || 3011;
 
 // ── Middleware ──
-const corsOrigins = process.env.CORS_ORIGINS
-  ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
-  : true;
-app.use(cors({ origin: corsOrigins, credentials: true }));
-app.use(express.json());
+app.use(cors({
+  origin: (origin, callback) => callback(null, true),
+  credentials: true,
+}));
 
 app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Private-Network', 'true');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
   console.log(`[Diagnostic] ${req.method} ${req.url}`);
   console.log(`[Diagnostic] Auth Header:`, req.headers.authorization);
   next();
 });
+
+app.use(express.json());
 
 // ── Routes ──
 app.use('/auth', authRoutes);

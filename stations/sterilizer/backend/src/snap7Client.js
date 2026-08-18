@@ -1,3 +1,5 @@
+import net from "net";
+
 /**
  * Snap7 Client Wrapper for Siemens S7 PLC
  * Di-copy dari plc-collector dan disederhanakan (console log instead of winston)
@@ -29,14 +31,59 @@ class Snap7ClientWrapper {
         "node-snap7 not installed. Install: npm install node-snap7";
     } else {
       this.client = new S7ClientClass();
+
+      // Gunakan port 1102 untuk koneksi ke PLC Simulator (p_u16_RemotePort = 2)
+      this.client.SetParam(2, 1102);
+
+      // Set timeout socket agar cepat mendeteksi disconnect fisik
+      this.client.SetParam(3, 1000); // p_i32_PingTimeout = 3
+      this.client.SetParam(4, 1500); // p_i32_SendTimeout = 4
+      this.client.SetParam(5, 1500); // p_i32_RecvTimeout = 5
+
       this.connected = false;
       this.lastError = null;
     }
   }
 
+  /**
+   * Fast TCP socket probe to avoid blocking Winsock ConnectTo 25-second OS timeout
+   */
+  async isPortReachable(ip, port = 1102, timeout = 1000) {
+    return new Promise((resolve) => {
+      const socket = new net.Socket();
+      let status = false;
+
+      socket.setTimeout(timeout);
+      socket.on("connect", () => {
+        status = true;
+        socket.destroy();
+      });
+      socket.on("timeout", () => {
+        socket.destroy();
+      });
+      socket.on("error", () => {
+        socket.destroy();
+      });
+      socket.on("close", () => {
+        resolve(status);
+      });
+
+      socket.connect(port, ip);
+    });
+  }
+
   async connect() {
     if (!this.client) return;
     const { ip_address, rack, slot } = this.deviceConfig;
+
+    // Fast TCP Probe (1.0s timeout): Avoid 25s blocking Winsock ConnectTo delay when endpoint is dead
+    const reachable = await this.isPortReachable(ip_address, 1102, 1000);
+    if (!reachable) {
+      this.connected = false;
+      this.lastError = "PLC TCP Endpoint unreachable (port 1102 timeout)";
+      throw new Error(this.lastError);
+    }
+
     await new Promise((resolve, reject) => {
       this.client.ConnectTo(ip_address, rack, slot, (err) => {
         if (err) {
@@ -65,52 +112,26 @@ class Snap7ClientWrapper {
 
   async readTag(tag) {
     await this.ensureConnected();
-    const { db_number, byte_offset, bit_offset, data_type, node_id } = tag;
-    const areaStr = (node_id && ['M','I','Q','DB'].includes(node_id.toUpperCase())) ? node_id.toUpperCase() : 'DB';
-    const dbNum = areaStr === 'DB' ? db_number : 0;
-
+    const { db_number, byte_offset, bit_offset, data_type } = tag;
     return new Promise((resolve, reject) => {
       const size = DATA_TYPE_SIZE[data_type] || 4;
-      if (areaStr === 'DB') {
-        this.client.DBRead(dbNum, byte_offset, size, (err, res) => {
-          if (err) {
-            const text = this.handleReadError(err);
-            return reject(new Error(text));
-          }
-          if (!res) {
-            this.lastError = "PLC read returned null";
-            return reject(new Error(this.lastError));
-          }
-          try {
-            const value = this.parseBuffer(res, data_type, bit_offset, 0);
-            resolve(value);
-          } catch (e) {
-            reject(e);
-          }
-        });
-      } else {
-        let s7Area = this.client.S7AreaDB;
-        if (areaStr === 'I') s7Area = this.client.S7AreaPE;
-        else if (areaStr === 'Q') s7Area = this.client.S7AreaPA;
-        else if (areaStr === 'M') s7Area = this.client.S7AreaMK;
-
-        this.client.ReadArea(s7Area, 0, byte_offset, size, this.client.S7WLByte, (err, res) => {
-          if (err) {
-            const text = this.handleReadError(err);
-            return reject(new Error(text));
-          }
-          if (!res) {
-            this.lastError = "PLC ReadArea returned null";
-            return reject(new Error(this.lastError));
-          }
-          try {
-            const value = this.parseBuffer(res, data_type, bit_offset, 0);
-            resolve(value);
-          } catch (e) {
-            reject(e);
-          }
-        });
-      }
+      this.client.DBRead(db_number, byte_offset, size, (err, res) => {
+        if (err) {
+          const text = this.handleReadError(err);
+          this.connected = false;
+          return reject(new Error(text));
+        }
+        if (!res) {
+          this.lastError = "PLC read returned null";
+          return reject(new Error(this.lastError));
+        }
+        try {
+          const value = this.parseBuffer(res, data_type, bit_offset, 0);
+          resolve(value);
+        } catch (e) {
+          reject(e);
+        }
+      });
     });
   }
 
@@ -118,8 +139,12 @@ class Snap7ClientWrapper {
     await this.ensureConnected();
     const grouped = {};
     for (const tag of tags) {
-      const area = (tag.node_id && ['M','I','Q','DB'].includes(tag.node_id.toUpperCase())) ? tag.node_id.toUpperCase() : 'DB';
-      const dbNum = area === 'DB' ? tag.db_number : 0;
+      // Use node_id as memory area identifier for SNAP7 if it exists, default to 'DB'
+      const area =
+        tag.node_id && ["M", "I", "Q", "DB"].includes(tag.node_id.toUpperCase())
+          ? tag.node_id.toUpperCase()
+          : "DB";
+      const dbNum = area === "DB" ? tag.db_number : 0;
       const key = `${area}_${dbNum}`;
       if (!grouped[key]) grouped[key] = { area, dbNum, tags: [] };
       grouped[key].tags.push(tag);
@@ -143,23 +168,33 @@ class Snap7ClientWrapper {
 
       try {
         const buffer = await new Promise((resolve, reject) => {
-          if (area === 'DB') {
+          if (area === "DB") {
             this.client.DBRead(dbNum, minOffset, totalBytes, (err, res) => {
               if (err) return reject(new Error(this.handleReadError(err)));
-              if (!res) return reject(new Error("PLC batch DBRead returned null"));
+              if (!res)
+                return reject(new Error("PLC batch DBRead returned null"));
               resolve(res);
             });
           } else {
-            let s7Area = this.client.S7AreaDB;
-            if (area === 'I') s7Area = this.client.S7AreaPE;
-            else if (area === 'Q') s7Area = this.client.S7AreaPA;
-            else if (area === 'M') s7Area = this.client.S7AreaMK;
+            // S7AreaPE = 0x81 (Inputs I), S7AreaPA = 0x82 (Outputs Q), S7AreaMK = 0x83 (Merker M)
+            let s7Area;
+            if (area === "I") s7Area = this.client.S7AreaPE;
+            else if (area === "Q") s7Area = this.client.S7AreaPA;
+            else if (area === "M") s7Area = this.client.S7AreaMK;
 
-            this.client.ReadArea(s7Area, 0, minOffset, totalBytes, this.client.S7WLByte, (err, res) => {
-              if (err) return reject(new Error(this.handleReadError(err)));
-              if (!res) return reject(new Error("PLC batch ReadArea returned null"));
-              resolve(res);
-            });
+            this.client.ReadArea(
+              s7Area,
+              0,
+              minOffset,
+              totalBytes,
+              this.client.S7WLByte,
+              (err, res) => {
+                if (err) return reject(new Error(this.handleReadError(err)));
+                if (!res)
+                  return reject(new Error("PLC batch ReadArea returned null"));
+                resolve(res);
+              },
+            );
           }
         });
 
@@ -183,10 +218,8 @@ class Snap7ClientWrapper {
         console.error(`[snap7Client] Batch read ${area}${dbNum} failed`, {
           error: e.message,
         });
-        if (this.isNetworkError(e.message)) {
-          this.connected = false;
-          throw e;
-        }
+        this.connected = false;
+        throw e;
       }
     }
 
@@ -215,42 +248,60 @@ class Snap7ClientWrapper {
   async writeTag(tag, value) {
     await this.ensureConnected();
     const { db_number, byte_offset, bit_offset, data_type, node_id } = tag;
-    const areaStr = (node_id && ['M','I','Q','DB'].includes(node_id.toUpperCase())) ? node_id.toUpperCase() : 'DB';
-    const dbNum = areaStr === 'DB' ? db_number : 0;
+    const areaStr =
+      node_id && ["M", "I", "Q", "DB"].includes(node_id.toUpperCase())
+        ? node_id.toUpperCase()
+        : "DB";
+    const dbNum = areaStr === "DB" ? db_number : 0;
 
     let s7Area = this.client.S7AreaDB;
-    if (areaStr === 'I') s7Area = this.client.S7AreaPE;
-    else if (areaStr === 'Q') s7Area = this.client.S7AreaPA;
-    else if (areaStr === 'M') s7Area = this.client.S7AreaMK;
+    if (areaStr === "I") s7Area = this.client.S7AreaPE;
+    else if (areaStr === "Q") s7Area = this.client.S7AreaPA;
+    else if (areaStr === "M") s7Area = this.client.S7AreaMK;
 
     const performRead = (amount) => {
       return new Promise((resolve, reject) => {
-        if (areaStr === 'DB') {
+        if (areaStr === "DB") {
           this.client.DBRead(dbNum, byte_offset, amount, (err, res) => {
-             if (err) return reject(err);
-             resolve(res);
+            if (err) return reject(err);
+            resolve(res);
           });
         } else {
-          this.client.ReadArea(s7Area, dbNum, byte_offset, amount, this.client.S7WLByte, (err, res) => {
-             if (err) return reject(err);
-             resolve(res);
-          });
+          this.client.ReadArea(
+            s7Area,
+            dbNum,
+            byte_offset,
+            amount,
+            this.client.S7WLByte,
+            (err, res) => {
+              if (err) return reject(err);
+              resolve(res);
+            },
+          );
         }
       });
     };
 
     const performWrite = (amount, buf) => {
       return new Promise((resolve, reject) => {
-        if (areaStr === 'DB') {
+        if (areaStr === "DB") {
           this.client.DBWrite(dbNum, byte_offset, amount, buf, (err) => {
-             if (err) return reject(err);
-             resolve();
+            if (err) return reject(err);
+            resolve();
           });
         } else {
-          this.client.WriteArea(s7Area, dbNum, byte_offset, amount, this.client.S7WLByte, buf, (err) => {
-             if (err) return reject(err);
-             resolve();
-          });
+          this.client.WriteArea(
+            s7Area,
+            dbNum,
+            byte_offset,
+            amount,
+            this.client.S7WLByte,
+            buf,
+            (err) => {
+              if (err) return reject(err);
+              resolve();
+            },
+          );
         }
       });
     };
@@ -267,11 +318,8 @@ class Snap7ClientWrapper {
 
           let byte = res.readUInt8(0);
           const mask = 1 << bit_offset;
-          if (value) {
-            byte |= mask;
-          } else {
-            byte &= ~mask;
-          }
+          if (value) byte |= mask;
+          else byte &= ~mask;
 
           const buf = Buffer.alloc(1);
           buf.writeUInt8(byte, 0);
