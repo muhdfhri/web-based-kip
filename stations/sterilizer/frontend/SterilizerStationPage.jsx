@@ -9,6 +9,7 @@ import LogsheetView from "./LogsheetView.jsx";
 
 import usePlcStore from "@core/store";
 import SterilizerStationSettingsPage from "./settings/SterilizerStationSettingsPage.jsx";
+import { useWTFlowBuilder, WTFlowPanel } from "./components/WTFlowBuilder.jsx";
 
 const authHeaders = () => {
   const token = localStorage.getItem("kip_token");
@@ -355,6 +356,20 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
   }, [propConfigMode]);
 
 
+
+  const flowBuilder = useWTFlowBuilder();
+
+  // Shortcut Keyboard Flow Builder (Ctrl + Q)
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.ctrlKey && (e.key === "q" || e.key === "Q")) {
+        e.preventDefault();
+        flowBuilder.toggle();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [flowBuilder]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -1177,11 +1192,25 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
               getMappedValue={getMappedValue}
               configMode={configMode}
               tagMap={tagMap}
+              flowBuilder={flowBuilder}
             />
           )}
 
-
         </div>
+      )}
+
+      {flowBuilder && flowBuilder.isActive && (
+        <WTFlowPanel
+          flows={flowBuilder.flows}
+          activeFlowIdx={flowBuilder.activeFlowIdx}
+          isPlacing={flowBuilder.isPlacing}
+          onSelectFlow={flowBuilder.setActiveFlowIdx}
+          onAddNewFlow={flowBuilder.addNewFlow}
+          onDeleteFlow={flowBuilder.deleteFlow}
+          onUpdateFlowSettings={flowBuilder.updateFlowSettings}
+          onFinishPlacing={flowBuilder.finishPlacing}
+          onClose={flowBuilder.toggle}
+        />
       )}
 
       {tagEdit && (

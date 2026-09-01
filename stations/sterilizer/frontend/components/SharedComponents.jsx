@@ -173,6 +173,8 @@ export function TagMonitorCardSVG({
   valueColor = "#0f172a",
   onClick,
   style = {},
+  headerPadding = "4px 8px",
+  bodyPadding = "6px 8px",
 }) {
   const cardWidth = width;
   const cardHeight = 62;
@@ -217,7 +219,7 @@ export function TagMonitorCardSVG({
           <div
             style={{
               background: "#facc15",
-              padding: "4px 8px",
+              padding: headerPadding,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -226,11 +228,14 @@ export function TagMonitorCardSVG({
           >
             <span
               style={{
-                fontSize: "10px",
+                fontSize: "9.5px",
                 fontWeight: 900,
                 color: "#0f172a",
-                letterSpacing: "0.04em",
+                letterSpacing: "0.02em",
                 textTransform: "uppercase",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
               {title}
@@ -238,12 +243,13 @@ export function TagMonitorCardSVG({
             {/* Status Dot */}
             <div
               style={{
-                width: "12px",
-                height: "12px",
+                width: "10px",
+                height: "10px",
                 borderRadius: "50%",
                 backgroundColor: dotColor,
-                border: "2px solid #ffffff",
+                border: "1.5px solid #ffffff",
                 boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+                flexShrink: 0,
               }}
             />
           </div>
@@ -251,13 +257,13 @@ export function TagMonitorCardSVG({
           {/* Body */}
           <div
             style={{
-              padding: "6px 8px",
+              padding: bodyPadding,
               textAlign: "center",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: "4px",
-              minHeight: "32px",
+              minHeight: "26px",
             }}
           >
             {parameterLabel && (
@@ -316,22 +322,22 @@ export function SterilizerStatusPanelSVG({
   doorOut = "OPEN",
   pressure = "0.0",
   temp = "0",
-  width = 240,
+  width = 190,
   scale = 1,
   onClick,
   style = {},
 }) {
-  const cardHeight = 270;
+  const cardHeight = 240;
 
   const Row = ({ label, value, unit, valueColor = "#0f172a" }) => {
     const isNoTag = !value || String(value).trim().toLowerCase() === "no tag" || String(value).trim() === "--";
     const finalColor = isNoTag ? "#94a3b8" : valueColor;
     return (
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #e2e8f0" }}>
-        <span style={{ color: "#475569", fontSize: "12px", fontWeight: 700 }}>{label}</span>
-        <div style={{ textAlign: "right", display: "flex", alignItems: "baseline", gap: "4px" }}>
-          <span style={{ color: finalColor, fontSize: "12px", fontWeight: 900, fontStyle: isNoTag ? "italic" : "normal" }}>{value}</span>
-          {unit && !isNoTag && <span style={{ color: "#475569", fontSize: "11px", fontWeight: 700 }}>{unit}</span>}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 0", borderBottom: "1px solid #f1f5f9" }}>
+        <span style={{ color: "#475569", fontSize: "11px", fontWeight: 700 }}>{label}</span>
+        <div style={{ textAlign: "right", display: "flex", alignItems: "baseline", gap: "3px" }}>
+          <span style={{ color: finalColor, fontSize: "11px", fontWeight: 900, fontStyle: isNoTag ? "italic" : "normal" }}>{value}</span>
+          {unit && !isNoTag && <span style={{ color: "#475569", fontSize: "10px", fontWeight: 700 }}>{unit}</span>}
         </div>
       </div>
     );
@@ -369,12 +375,12 @@ export function SterilizerStatusPanelSVG({
           {/* Header Mewah (Kuning) */}
           <div style={{
             background: "#facc15",
-            padding: "6px 8px",
+            padding: "4px 8px",
             textAlign: "center",
             borderBottom: "1px solid #eab308",
           }}>
             <span style={{
-              fontSize: "12px",
+              fontSize: "11px",
               fontWeight: 900,
               color: "#0f172a",
               letterSpacing: "0.04em",
@@ -385,7 +391,7 @@ export function SterilizerStatusPanelSVG({
           </div>
           
           {/* Body */}
-          <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: "4px" }}>
+          <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: "2px" }}>
             <Row label="STATUS" value={status} valueColor={status === "EMERGENCY" ? "#ef4444" : "#0f172a"} />
             <Row label="RECIPE" value={recipe} />
             <Row label="ACTUAL STEP" value={actualStep} valueColor="#ef4444" />
