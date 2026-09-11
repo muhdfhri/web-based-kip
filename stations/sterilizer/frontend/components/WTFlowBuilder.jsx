@@ -77,6 +77,21 @@ function generateJSX(pins, flowType, color, radius = 25, thickness = 8, flowId =
 }
 
 /* ================================================================
+   Color Presets
+   ================================================================ */
+const COLOR_PRESETS = [
+  { name: "Steam Orange", value: "#f59e0b" },
+  { name: "Water Blue", value: "#38bdf8" },
+  { name: "Dark Blue", value: "#2563eb" },
+  { name: "Condensate Cyan", value: "#06b6d4" },
+  { name: "Green", value: "#22c55e" },
+  { name: "Red", value: "#ef4444" },
+  { name: "Purple", value: "#a855f7" },
+  { name: "Brown", value: "#965608" },
+  { name: "White", value: "#e2e8f0" },
+];
+
+/* ================================================================
    WTFlowBuilder Hook
    ================================================================ */
 export function useWTFlowBuilder() {
@@ -96,7 +111,17 @@ export function useWTFlowBuilder() {
   const addNewFlow = useCallback(() => {
     setFlows((prev) => {
       const newId = `flow_${Date.now()}`;
-      const next = [...prev, { id: newId, points: [], flowType: "water", color: "#f59e0b", thickness: 12, radius: 18 }];
+      const next = [
+        ...prev,
+        {
+          id: newId,
+          points: [],
+          flowType: "water",
+          color: "#f59e0b",
+          thickness: 10,
+          radius: 20,
+        },
+      ];
       setActiveFlowIdx(next.length - 1);
       setIsPlacing(true);
       return next;
@@ -243,14 +268,14 @@ export function WTFlowOverlay({
   };
 
   return (
-    <g>
-      {/* Invisible click area for placing points */}
+    <g className="wt-flow-overlay-root">
+      {/* Invisible click area for placing points covering full sterilizer canvas */}
       {isPlacing && (
         <rect
-          x={-500}
-          y={-500}
-          width={3500}
-          height={2500}
+          x={-600}
+          y={-300}
+          width={3600}
+          height={2000}
           fill="transparent"
           style={{ cursor: "crosshair" }}
           onClick={handleCanvasClick}
@@ -263,8 +288,22 @@ export function WTFlowOverlay({
           return flow.points.map((p, pIdx) => (
             <g key={`f${fIdx}-p${pIdx}`}>
               <circle cx={p.x} cy={p.y} r={6} fill={flow.color} opacity={0.8} />
-              <circle cx={p.x} cy={p.y} r={12} fill="none" stroke={flow.color} strokeWidth={2} opacity={0.4} strokeDasharray="3,3">
-                <animate attributeName="r" values="12;18;12" dur="2s" repeatCount="indefinite" />
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={12}
+                fill="none"
+                stroke={flow.color}
+                strokeWidth={2}
+                opacity={0.4}
+                strokeDasharray="3,3"
+              >
+                <animate
+                  attributeName="r"
+                  values="12;18;12"
+                  dur="2s"
+                  repeatCount="indefinite"
+                />
               </circle>
             </g>
           ));
@@ -274,14 +313,48 @@ export function WTFlowOverlay({
         const isActiveFlow = fIdx === activeFlowIdx;
 
         return (
-          <g key={`flow-${fIdx}`} onClick={(e) => { e.stopPropagation(); onSelectFlow(fIdx); }} style={{ cursor: "pointer" }}>
+          <g
+            key={`flow-${fIdx}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectFlow(fIdx);
+            }}
+            style={{ cursor: "pointer" }}
+          >
             {/* Background glow */}
-            <path d={d} fill="none" stroke={flow.color} strokeWidth={flow.thickness + 10} strokeLinecap="round" opacity={0.1} />
+            <path
+              d={d}
+              fill="none"
+              stroke={flow.color}
+              strokeWidth={flow.thickness + 10}
+              strokeLinecap="round"
+              opacity={0.1}
+            />
             {/* Main pipe */}
-            <path d={d} fill="none" stroke={flow.color} strokeWidth={flow.thickness} strokeLinecap="round" opacity={0.6} />
+            <path
+              d={d}
+              fill="none"
+              stroke={flow.color}
+              strokeWidth={flow.thickness}
+              strokeLinecap="round"
+              opacity={0.6}
+            />
             {/* Animated flow */}
-            <path d={d} fill="none" stroke={flow.color} strokeWidth={2} strokeLinecap="round" strokeDasharray="6 20" opacity={0.9}>
-              <animate attributeName="stroke-dashoffset" values="0;-26" dur="1s" repeatCount="indefinite" />
+            <path
+              d={d}
+              fill="none"
+              stroke={flow.color}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeDasharray="6 20"
+              opacity={0.9}
+            >
+              <animate
+                attributeName="stroke-dashoffset"
+                values="0;-26"
+                dur="1s"
+                repeatCount="indefinite"
+              />
             </path>
 
             {/* Drag handles (only active flow) */}
@@ -297,7 +370,12 @@ export function WTFlowOverlay({
                       y2={flow.points[pIdx + 1].y}
                       stroke="transparent"
                       strokeWidth={20}
-                      style={{ cursor: flow.points.length < MAX_POINTS ? "cell" : "not-allowed" }}
+                      style={{
+                        cursor:
+                          flow.points.length < MAX_POINTS
+                            ? "cell"
+                            : "not-allowed",
+                      }}
                       onPointerDown={(e) => {
                         if (flow.points.length >= MAX_POINTS) return;
                         e.stopPropagation();
@@ -305,9 +383,18 @@ export function WTFlowOverlay({
                         const pt2 = svg.createSVGPoint();
                         pt2.x = e.clientX;
                         pt2.y = e.clientY;
-                        const ctm = e.currentTarget.parentElement.closest("g[transform]")?.getScreenCTM();
-                        const svgP = pt2.matrixTransform((ctm || svg.getScreenCTM()).inverse());
-                        onInsertPoint(fIdx, pIdx + 1, Math.round(svgP.x), Math.round(svgP.y));
+                        const ctm = e.currentTarget.parentElement
+                          .closest("g[transform]")
+                          ?.getScreenCTM();
+                        const svgP = pt2.matrixTransform(
+                          (ctm || svg.getScreenCTM()).inverse(),
+                        );
+                        onInsertPoint(
+                          fIdx,
+                          pIdx + 1,
+                          Math.round(svgP.x),
+                          Math.round(svgP.y),
+                        );
                       }}
                     />
                   )}
@@ -321,14 +408,23 @@ export function WTFlowOverlay({
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       const svg = e.currentTarget.closest("svg");
-                      const gTransform = e.currentTarget.parentElement.closest("g[transform]");
+                      const gTransform = e.currentTarget.parentElement.closest(
+                        "g[transform]",
+                      );
                       const onMove = (me) => {
                         const pt2 = svg.createSVGPoint();
                         pt2.x = me.clientX;
                         pt2.y = me.clientY;
-                        const ctm = gTransform ? gTransform.getScreenCTM() : svg.getScreenCTM();
+                        const ctm = gTransform
+                          ? gTransform.getScreenCTM()
+                          : svg.getScreenCTM();
                         const svgP = pt2.matrixTransform(ctm.inverse());
-                        onPointDrag(fIdx, pIdx, Math.round(svgP.x), Math.round(svgP.y));
+                        onPointDrag(
+                          fIdx,
+                          pIdx,
+                          Math.round(svgP.x),
+                          Math.round(svgP.y),
+                        );
                       };
                       const onUp = () => {
                         window.removeEventListener("pointermove", onMove);
@@ -388,11 +484,29 @@ export function WTFlowPanel({
     if (codeTarget === "all") {
       return flows
         .filter((f) => f.points.length >= 2)
-        .map((f, i) => `{/* Flow ${i + 1} */}\n${generateJSX(f.points, f.flowType, f.color, f.radius, f.thickness, f.id)}`)
+        .map(
+          (f, i) =>
+            `{/* Flow ${i + 1} */}\n${generateJSX(
+              f.points,
+              f.flowType,
+              f.color,
+              f.radius,
+              f.thickness,
+              f.id,
+            )}`,
+        )
         .join("\n\n");
     }
-    if (!activeFlow || activeFlow.points.length < 2) return "// Tambahkan minimal 2 titik";
-    return generateJSX(activeFlow.points, activeFlow.flowType, activeFlow.color, activeFlow.radius, activeFlow.thickness, activeFlow.id);
+    if (!activeFlow || activeFlow.points.length < 2)
+      return "// Tambahkan minimal 2 titik";
+    return generateJSX(
+      activeFlow.points,
+      activeFlow.flowType,
+      activeFlow.color,
+      activeFlow.radius,
+      activeFlow.thickness,
+      activeFlow.id,
+    );
   }, [activeFlow, flows, codeTarget]);
 
   const handleCopy = () => {
@@ -404,12 +518,18 @@ export function WTFlowPanel({
 
   const handlePointerDown = (e) => {
     isDragging.current = true;
-    dragStart.current = { x: e.clientX - panelPos.x, y: e.clientY - panelPos.y };
+    dragStart.current = {
+      x: e.clientX - panelPos.x,
+      y: e.clientY - panelPos.y,
+    };
     e.target.setPointerCapture(e.pointerId);
   };
   const handlePointerMove = (e) => {
     if (!isDragging.current) return;
-    setPanelPos({ x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y });
+    setPanelPos({
+      x: e.clientX - dragStart.current.x,
+      y: e.clientY - dragStart.current.y,
+    });
   };
   const handlePointerUp = (e) => {
     isDragging.current = false;
@@ -417,7 +537,10 @@ export function WTFlowPanel({
   };
 
   return (
-    <div className="wt-flow-panel" style={{ transform: `translate(${panelPos.x}px, ${panelPos.y}px)` }}>
+    <div
+      className="wt-flow-panel"
+      style={{ transform: `translate(${panelPos.x}px, ${panelPos.y}px)` }}
+    >
       {/* Header */}
       <div
         className="wt-flow-panel-header"
@@ -430,10 +553,24 @@ export function WTFlowPanel({
           <span className="wt-flow-panel-title">Sterilizer Flow Builder</span>
         </div>
         <div className="wt-flow-panel-header-actions">
-          <button className="wt-flow-add-btn" onClick={(e) => { e.stopPropagation(); onAddNewFlow(); }}>
+          <button
+            className="wt-flow-add-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddNewFlow();
+            }}
+          >
             + New Flow
           </button>
-          <button className="wt-flow-close-btn" onClick={(e) => { e.stopPropagation(); onClose(); }}>✕</button>
+          <button
+            className="wt-flow-close-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+          >
+            ✕
+          </button>
         </div>
       </div>
 
@@ -441,8 +578,10 @@ export function WTFlowPanel({
       {isPlacing && (
         <div className="wt-flow-placing-banner">
           <span className="wt-flow-placing-icon">⊕</span>
-          <span>Klik pada gambar untuk menambah titik (maks {MAX_POINTS})</span>
-          <button className="wt-flow-done-btn" onClick={onFinishPlacing}>Selesai</button>
+          <span>Klik pada diagram untuk menambah titik (maks {MAX_POINTS})</span>
+          <button className="wt-flow-done-btn" onClick={onFinishPlacing}>
+            Selesai
+          </button>
         </div>
       )}
 
@@ -451,7 +590,9 @@ export function WTFlowPanel({
         {flows.length === 0 ? (
           <div className="wt-flow-empty">
             <div className="wt-flow-empty-icon">🔧</div>
-            <p>Klik <strong>"+ New Flow"</strong> untuk mulai membuat aliran pipa</p>
+            <p>
+              Klik <strong>"+ New Flow"</strong> untuk mulai menggambar jalur pipa
+            </p>
           </div>
         ) : (
           flows.map((flow, i) => (
@@ -461,13 +602,21 @@ export function WTFlowPanel({
               onClick={() => onSelectFlow(i)}
             >
               <div className="wt-flow-item-left">
-                <div className="wt-flow-item-color" style={{ background: flow.color }} />
+                <div
+                  className="wt-flow-item-color"
+                  style={{ background: flow.color }}
+                />
                 <span className="wt-flow-item-name">Flow {i + 1}</span>
-                <span className="wt-flow-item-count">{flow.points.length} pts</span>
+                <span className="wt-flow-item-count">
+                  {flow.points.length} pts
+                </span>
               </div>
               <button
                 className="wt-flow-item-delete"
-                onClick={(e) => { e.stopPropagation(); onDeleteFlow(i); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteFlow(i);
+                }}
                 title="Hapus flow"
               >
                 🗑
@@ -480,12 +629,95 @@ export function WTFlowPanel({
       {/* Active flow settings */}
       {activeFlow && (
         <div className="wt-flow-settings">
-          <div className="wt-flow-settings-title">PENGATURAN FLOW {activeFlowIdx + 1}</div>
+          <div className="wt-flow-settings-title">
+            PENGATURAN FLOW {activeFlowIdx + 1}
+          </div>
+
+          {/* Flow type */}
+          <div className="wt-flow-setting-row">
+            <label>Tipe</label>
+            <div className="wt-flow-type-btns">
+              <button
+                className={`wt-flow-type-btn ${
+                  activeFlow.flowType === "water" ? "active" : ""
+                }`}
+                onClick={() =>
+                  onUpdateFlowSettings(activeFlowIdx, { flowType: "water" })
+                }
+              >
+                💧 Water
+              </button>
+              <button
+                className={`wt-flow-type-btn ${
+                  activeFlow.flowType === "steam" ? "active" : ""
+                }`}
+                onClick={() =>
+                  onUpdateFlowSettings(activeFlowIdx, { flowType: "steam" })
+                }
+              >
+                ♨️ Steam
+              </button>
+            </div>
+          </div>
+
+          {/* Color picker */}
+          <div className="wt-flow-setting-row">
+            <label>Warna</label>
+            <div className="wt-flow-color-grid">
+              {COLOR_PRESETS.map((c) => (
+                <button
+                  key={c.value}
+                  className={`wt-flow-color-swatch ${
+                    activeFlow.color === c.value ? "active" : ""
+                  }`}
+                  style={{ background: c.value }}
+                  title={c.name}
+                  onClick={() =>
+                    onUpdateFlowSettings(activeFlowIdx, { color: c.value })
+                  }
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Thickness */}
+          <div className="wt-flow-setting-row">
+            <label>Ketebalan: {activeFlow.thickness}px</label>
+            <input
+              type="range"
+              min="2"
+              max="24"
+              value={activeFlow.thickness}
+              onChange={(e) =>
+                onUpdateFlowSettings(activeFlowIdx, {
+                  thickness: parseInt(e.target.value),
+                })
+              }
+            />
+          </div>
+
+          {/* Radius / smoothness */}
+          <div className="wt-flow-setting-row">
+            <label>Kelengkungan: {activeFlow.radius}px</label>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={activeFlow.radius}
+              onChange={(e) =>
+                onUpdateFlowSettings(activeFlowIdx, {
+                  radius: parseInt(e.target.value),
+                })
+              }
+            />
+          </div>
 
           {/* Coordinate table */}
           <div className="wt-flow-coord-table">
             <div className="wt-flow-coord-table-header">
-              <span>#</span><span>X</span><span>Y</span>
+              <span>#</span>
+              <span>X</span>
+              <span>Y</span>
             </div>
             {activeFlow.points.map((p, pIdx) => (
               <div key={pIdx} className="wt-flow-coord-row">
@@ -499,13 +731,26 @@ export function WTFlowPanel({
           {/* Generate code */}
           <div className="wt-flow-code-section">
             <div className="wt-flow-code-actions">
-              <button className="wt-flow-gen-btn" onClick={() => setShowCode(!showCode)}>
+              <button
+                className="wt-flow-gen-btn"
+                onClick={() => setShowCode(!showCode)}
+              >
                 {showCode ? "Sembunyikan Kode" : "📋 Generate Code"}
               </button>
               {showCode && (
                 <div className="wt-flow-code-target-btns">
-                  <button className={codeTarget === "single" ? "active" : ""} onClick={() => setCodeTarget("single")}>Aktif</button>
-                  <button className={codeTarget === "all" ? "active" : ""} onClick={() => setCodeTarget("all")}>Semua</button>
+                  <button
+                    className={codeTarget === "single" ? "active" : ""}
+                    onClick={() => setCodeTarget("single")}
+                  >
+                    Aktif
+                  </button>
+                  <button
+                    className={codeTarget === "all" ? "active" : ""}
+                    onClick={() => setCodeTarget("all")}
+                  >
+                    Semua
+                  </button>
                 </div>
               )}
             </div>

@@ -202,7 +202,7 @@ export async function writeTagDirect(targetId, value) {
   const valToSave = tag.data_type === "BOOL" ? (val ? "1" : "0") : String(val);
   try {
     await dbPoolPlc.query(
-      "INSERT INTO plc_tag_latest (tag_id, value, updated_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW()",
+      "INSERT INTO plc_tag_latest (tag_id, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT (tag_id) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP",
       [tag.id, valToSave]
     );
   } catch (err) {
@@ -228,18 +228,18 @@ async function loadThresholds() {
     });
     thresholds = temp;
   } catch (err) {
-    if (err.code === "ER_NO_SUCH_TABLE") {
+    if (err.code === "ER_NO_SUCH_TABLE" || err.code === "42P01") {
       // Auto-create table jika belum ada
       await dbPoolPlc.query(`
         CREATE TABLE IF NOT EXISTS threshold_settings (
-          id INT AUTO_INCREMENT PRIMARY KEY,
+          id SERIAL PRIMARY KEY,
           parameter_key VARCHAR(100) NOT NULL UNIQUE,
-          lower_val DOUBLE DEFAULT 0,
-          warning_val DOUBLE DEFAULT 50,
-          danger_val DOUBLE DEFAULT 80,
+          lower_val DOUBLE PRECISION DEFAULT 0,
+          warning_val DOUBLE PRECISION DEFAULT 50,
+          danger_val DOUBLE PRECISION DEFAULT 80,
           unit VARCHAR(20) DEFAULT NULL,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
       `);
       console.log(
         `[plcCollector-${STATION_SLUG}] Auto-created threshold_settings table`,
@@ -254,7 +254,7 @@ async function loadThresholds() {
 async function refreshConfiguration() {
   try {
     const [devices] = await dbPoolPlc.query(
-      "SELECT * FROM plc_devices WHERE enabled = 1",
+      "SELECT * FROM plc_devices WHERE enabled = true",
     );
     const activeKeys = new Set();
 
@@ -263,7 +263,7 @@ async function refreshConfiguration() {
       activeKeys.add(clientKey);
 
       const [tags] = await dbPoolPlc.query(
-        "SELECT * FROM plc_tags WHERE plc_id = ? AND enabled = 1",
+        "SELECT * FROM plc_tags WHERE plc_id = ? AND enabled = true",
         [device.id],
       );
 
@@ -458,21 +458,25 @@ async function pollDevice(clientKey, entry) {
 
     // ⚡ SIMPAN ke DB station sendiri
     if (changedValues.length > 0) {
-      dbPoolPlc
-        .query("INSERT INTO plc_tag_values (tag_id, value) VALUES ?", [
-          changedValues,
-        ])
-        .catch(() => {});
+      for (const [tagId, val] of changedValues) {
+        dbPoolPlc
+          .query("INSERT INTO plc_tag_values (tag_id, value) VALUES (?, ?)", [
+            tagId,
+            val,
+          ])
+          .catch(() => {});
+      }
     }
 
     if (batchPayload.length > 0) {
-      const latestValues = batchPayload.map((t) => [t.id, String(t.value)]);
-      dbPoolPlc
-        .query(
-          "INSERT INTO plc_tag_latest (tag_id, value) VALUES ? ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = NOW()",
-          [latestValues],
-        )
-        .catch(() => {});
+      for (const t of batchPayload) {
+        dbPoolPlc
+          .query(
+            "INSERT INTO plc_tag_latest (tag_id, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT (tag_id) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP",
+            [t.id, String(t.value)],
+          )
+          .catch(() => {});
+      }
     }
 
     // Update status device — hanya jika berubah
@@ -596,16 +600,16 @@ async function initCycleLogsTable() {
   try {
     await dbPoolPlc.query(`
       CREATE TABLE IF NOT EXISTS sterilizer_cycle_logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         device_id INT NOT NULL,
         cycle_number INT NOT NULL DEFAULT 1,
-        start_time DATETIME DEFAULT NULL,
-        end_time DATETIME DEFAULT NULL,
-        door_details JSON DEFAULT NULL,
-        step_details JSON DEFAULT NULL,
-        cycle_data JSON DEFAULT NULL,
+        start_time TIMESTAMP DEFAULT NULL,
+        end_time TIMESTAMP DEFAULT NULL,
+        door_details JSONB DEFAULT NULL,
+        step_details JSONB DEFAULT NULL,
+        cycle_data JSONB DEFAULT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      )
     `);
     console.log(`[plcCollector-${STATION_SLUG}] Checked/Auto-created sterilizer_cycle_logs table`);
   } catch (err) {

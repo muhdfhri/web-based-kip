@@ -17,6 +17,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
   const [saving, setSaving] = useState(false);
 
   // Form State
+  const [cameraCode, setCameraCode] = useState("");
   const [cameraName, setCameraName] = useState("");
   const [location, setLocation] = useState("");
   const [stationSlugState, setStationSlugState] = useState(stationSlug || "security");
@@ -73,6 +74,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
 
   const resetForm = () => {
     setCurrentCamera(null);
+    setCameraCode("");
     setCameraName("");
     setLocation("");
     setStationSlugState(stationSlug || "security");
@@ -83,6 +85,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
 
   const handleEdit = (cam) => {
     setCurrentCamera(cam);
+    setCameraCode(cam.camera_code || `CAM_${cam.id}`);
     setCameraName(cam.camera_name || "");
     setLocation(cam.location || "");
     setStationSlugState(cam.station_slug || "security");
@@ -102,6 +105,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
     setSaving(true);
     try {
       const payload = {
+        camera_code: cameraCode.trim() || undefined,
         camera_name: cameraName.trim(),
         location: location.trim(),
         station_slug: stationSlugState,
@@ -160,6 +164,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
   const handleToggleActive = async (cam) => {
     try {
       const payload = {
+        camera_code: cam.camera_code || `CAM_${cam.id}`,
         camera_name: cam.camera_name,
         location: cam.location,
         station_slug: cam.station_slug || "security",

@@ -12,11 +12,11 @@ class Config:
     FLASK_ENV = os.getenv("FLASK_ENV", "production")
     SECRET_KEY = os.getenv("SECRET_KEY", "mewah_security_ai_secret_key_2026")
     
-    # 🗄️ Database AI & General
+    # 🗄️ Database AI & General (PostgreSQL)
     DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
-    DB_PORT = int(os.getenv("DB_PORT", 3306))
-    DB_USER = os.getenv("DB_USER", "root")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+    DB_PORT = int(os.getenv("DB_PORT", 5432))
+    DB_USER = os.getenv("DB_USER", "postgres")
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "kip2026")
     DB_NAME_AI = os.getenv("DB_NAME_AI", "mewah_security_ai")
     DB_NAME_GENERAL = os.getenv("DB_NAME_GENERAL", "mewah_security")
     

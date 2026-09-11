@@ -71,27 +71,49 @@ router.put('/:id/status', async (req, res) => {
 
 /**
  * POST /api/security/incidents
- * Submit a new incident report from mobile app
+ * Submit a new incident report from mobile app or checkpoint finding
  */
 router.post('/', async (req, res) => {
-  const { user_id, station_name, incident_category, incident_description, photo_path } = req.body;
-  
-  if (!user_id || !incident_category) {
-    return res.status(400).json({ error: 'user_id and incident_category are required' });
-  }
-  
   try {
+    let guard_id = req.body.user_id || req.body.reported_by || null;
+    let guard_name = req.body.reported_by_name || 'Security Officer';
+
+    // Decode JWT token for guard info if provided in header
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const decoded = jwt.decode(token);
+        if (decoded && (decoded.userId || decoded.id)) {
+          guard_id = guard_id || decoded.userId || decoded.id;
+          guard_name = decoded.username || decoded.name || guard_name;
+        }
+      } catch (_) {}
+    }
+
+    const incCode = `INC-${Date.now()}`;
+    const incident_type = req.body.type || req.body.incident_category || 'Patrol Anomaly Finding';
+    const location = req.body.location || req.body.station_name || 'Main Gate';
+    const description = req.body.description || req.body.incident_description || 'Anomaly reported';
+    const priority = (req.body.priority || 'MEDIUM').toUpperCase();
+    const photo_path = req.body.photoPath || req.body.photo_path || null;
+
     const [result] = await dbPool.query(
-      'INSERT INTO security_incidents (user_id, station_name, incident_category, incident_description, photo_path, reported_at, status) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, "SUBMITTED")',
-      [user_id, station_name || null, incident_category, incident_description || null, photo_path || null]
+      `INSERT INTO security_incidents 
+       (incident_code, incident_type, location, reported_by, reported_by_name, status, priority, description, photo_path, reported_at, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, 'SUBMITTED', ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [incCode, incident_type, location, guard_id || 1, guard_name, priority, description, photo_path]
     );
 
-    const [[newRow]] = await dbPool.query('SELECT * FROM security_incidents WHERE id = ?', [result.insertId]);
+    const insertId = result.insertId || (result.rows && result.rows[0] && result.rows[0].id) || 0;
+    const [rows] = await dbPool.query('SELECT * FROM security_incidents WHERE id = ? OR incident_code = ? LIMIT 1', [insertId, incCode]);
+    const newRow = rows && rows.length > 0 ? rows[0] : null;
+
     if (newRow) {
       broadcastIncidentEvent('incident_created', newRow);
     }
     
-    res.status(201).json({ success: true, incident_id: result.insertId, message: 'Incident reported successfully' });
+    res.status(201).json({ success: true, data: newRow, incident_id: insertId, message: 'Incident reported successfully' });
   } catch (error) {
     console.error('Error reporting incident:', error);
     res.status(500).json({ error: 'Failed to report incident' });

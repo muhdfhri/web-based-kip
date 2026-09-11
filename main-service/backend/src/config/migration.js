@@ -1,29 +1,29 @@
 import { dbPool } from './db.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export async function runMigration() {
   console.log('[Migration] Starting database migration check...');
   const connection = await dbPool.getConnection();
   try {
     // 1. Check & Add 'must_change_password' column to 'users' table
-    const [columns] = await connection.query("SHOW COLUMNS FROM `users` LIKE 'must_change_password'");
+    const [columns] = await connection.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'must_change_password'");
     if (columns.length === 0) {
       console.log('[Migration] Adding column must_change_password to users...');
-      await connection.query("ALTER TABLE `users` ADD COLUMN `must_change_password` TINYINT(1) NOT NULL DEFAULT 1");
+      await connection.query("ALTER TABLE users ADD COLUMN must_change_password SMALLINT NOT NULL DEFAULT 1");
       // For existing users, set to 0 (no force change)
-      await connection.query("UPDATE `users` SET `must_change_password` = 0");
+      await connection.query("UPDATE users SET must_change_password = 0");
       console.log('[Migration] Column must_change_password added successfully.');
     }
 
     // 2. Check & Add 'mill_manager' role to 'roles' table
-    const [roles] = await connection.query("SELECT id FROM `roles` WHERE name = 'mill_manager'");
+    const [roles] = await connection.query("SELECT id FROM roles WHERE name = 'mill_manager'");
     let millManagerRoleId;
     if (roles.length === 0) {
       console.log('[Migration] Adding mill_manager role...');
       const [res] = await connection.query(
-        "INSERT INTO `roles` (name, description) VALUES ('mill_manager', 'Mill Manager with access to user management and permissions')"
+        "INSERT INTO roles (name, description) VALUES ('mill_manager', 'Mill Manager with access to user management and permissions') RETURNING id"
       );
-      millManagerRoleId = res.insertId;
+      millManagerRoleId = res.insertId || (res[0] && res[0].id);
       console.log('[Migration] Role mill_manager added.');
     } else {
       millManagerRoleId = roles[0].id;
@@ -33,12 +33,12 @@ export async function runMigration() {
     console.log('[Migration] Checking/creating user_permissions table...');
     await connection.query(`
       CREATE TABLE IF NOT EXISTS user_permissions (
-        user_id INT UNSIGNED NOT NULL,
+        user_id INT NOT NULL,
         permission_id INT NOT NULL,
         PRIMARY KEY (user_id, permission_id),
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
         FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      );
     `);
 
     // 4. One-time copy from role_permissions to user_permissions if empty
@@ -46,10 +46,11 @@ export async function runMigration() {
     if (existingUserPerms.length === 0) {
       console.log('[Migration] user_permissions table is empty. Copying mappings from role_permissions...');
       await connection.query(`
-        INSERT IGNORE INTO user_permissions (user_id, permission_id)
+        INSERT INTO user_permissions (user_id, permission_id)
         SELECT u.id, rp.permission_id
         FROM users u
         JOIN role_permissions rp ON u.role_id = rp.role_id
+        ON CONFLICT DO NOTHING
       `);
       console.log('[Migration] Copied role permissions to all users in user_permissions.');
     }
@@ -124,6 +125,15 @@ export async function runMigration() {
           slug: `Logsheet:${station}`,
           name: `Logsheet - ${station}`,
           description: `Access to ${station} Logsheet`
+        });
+      });
+
+      // Add Setting Views
+      stations.forEach(station => {
+        newPerms.push({
+          slug: `Setting:${station}`,
+          name: `Setting - ${station}`,
+          description: `Access to ${station} Settings`
         });
       });
 

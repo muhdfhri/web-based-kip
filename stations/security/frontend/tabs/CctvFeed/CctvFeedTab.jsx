@@ -149,27 +149,83 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                                 borderRadius: '0px',
                                 margin: '0px',
                                 boxShadow: 'none',
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid #cbd5e1',
                                 display: 'flex',
                                 flexDirection: 'column',
+                                background: '#ffffff',
+                                overflow: 'hidden',
                             }}
                         >
-                            <div className="som-cctv-feed-overlay" style={{ zIndex: 3 }}>
-                                <span className="cam-name">{camera.camera_name}</span>
-                                <span className="cam-status">LIVE</span>
+                            {/* Card Top Header (Yellow & White Theme) */}
+                            <div className="som-cctv-feed-overlay" style={{
+                                zIndex: 3,
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '6px 10px',
+                                background: '#ffffff',
+                                borderBottom: '1px solid #e2e8f0',
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                                    <span style={{
+                                        fontSize: '9px',
+                                        fontWeight: '900',
+                                        color: '#a16207',
+                                        background: '#fefce8',
+                                        border: '1px solid #fef08a',
+                                        padding: '1px 5px',
+                                        borderRadius: '4px',
+                                        fontFamily: 'JetBrains Mono, monospace'
+                                    }}>
+                                        {camera.camera_code || `CAM_${camera.id}`}
+                                    </span>
+                                    <span className="cam-name" style={{
+                                        fontSize: '11px',
+                                        fontWeight: '800',
+                                        color: '#0f172a',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                    }}>
+                                        {camera.camera_name}
+                                    </span>
+                                </div>
+                                <span className="cam-status" style={{
+                                    fontSize: '9px',
+                                    fontWeight: '900',
+                                    color: camera.is_active === 0 ? '#dc2626' : '#16a34a',
+                                    background: camera.is_active === 0 ? '#fef2f2' : '#f0fdf4',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    border: camera.is_active === 0 ? '1px solid #fecaca' : '1px solid #bbf7d0'
+                                }}>
+                                    {camera.is_active === 0 ? 'OFFLINE' : 'LIVE'}
+                                </span>
                             </div>
+
+                            {/* Camera Display Box (16:9 Aspect Ratio) */}
                             <div
                                 className="som-cctv-display"
                                 style={{
                                     position: 'relative',
                                     overflow: 'hidden',
-                                    flex: 1,
+                                    width: '100%',
                                     aspectRatio: '16/9',
+                                    background: '#f8fafc',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
                                 }}
                             >
                                 <img
                                     src={getAiStreamUrl(camera)}
                                     alt={camera.camera_name}
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        if (e.target.nextSibling) {
+                                            e.target.nextSibling.style.display = 'flex';
+                                        }
+                                    }}
                                     style={{
                                         width: '100%',
                                         height: '100%',
@@ -179,11 +235,35 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                                         left: 0,
                                     }}
                                 />
+
+                                {/* Standby Light Container Fallback */}
+                                <div style={{
+                                    display: 'none',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px',
+                                    color: '#64748b',
+                                    padding: '10px',
+                                    textAlign: 'center',
+                                    width: '100%',
+                                    height: '100%',
+                                    background: '#f1f5f9',
+                                }}>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M12 18.75H4.5a2.25 2.25 0 01-2.25-2.25V7.5A2.25 2.25 0 014.5 5.25h7.5A2.25 2.25 0 0114.25 7.5v9a2.25 2.25 0 01-2.25 2.25z" />
+                                    </svg>
+                                    <span style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', letterSpacing: '0.05em' }}>
+                                        RTSP STREAM STANDBY
+                                    </span>
+                                </div>
                             </div>
+
+                            {/* Location Footer Bar */}
                             <div
                                 style={{
                                     display: 'flex',
-                                    justify: 'space-between',
+                                    justifyContent: 'space-between',
                                     alignItems: 'center',
                                     padding: gridSize !== null && gridSize >= 6 ? '4px 8px' : '8px 12px',
                                     background: '#ffffff',
@@ -194,7 +274,7 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                                 <span
                                     style={{
                                         fontSize: gridSize !== null && gridSize >= 6 ? '9px' : '10px',
-                                        color: '#64748b',
+                                        color: '#475569',
                                         fontWeight: 'bold',
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
@@ -211,7 +291,7 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                                         background: 'transparent',
                                         border: 'none',
                                         cursor: 'pointer',
-                                        color: '#64748b',
+                                        color: '#ca8a04',
                                         padding: '4px',
                                         display: 'flex',
                                         alignItems: 'center',

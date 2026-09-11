@@ -161,7 +161,7 @@ router.get('/sessions/active', async (req, res) => {
   try {
     // Cari sesi patroli yang aktif untuk guard_id ini
     const [sessions] = await dbPool.query(
-      'SELECT * FROM security_patrol_sessions WHERE guard_id = ? AND status = "active" ORDER BY id DESC LIMIT 1',
+      "SELECT * FROM security_patrol_sessions WHERE guard_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1",
       [guard_id]
     );
 
@@ -214,7 +214,7 @@ const getCheckpointsHandler = async (req, res) => {
       SELECT c.*, s.guard_name, s.guard_id 
       FROM security_session_checkpoints c
       JOIN security_patrol_sessions s ON c.session_id = s.id
-      WHERE c.status = "verified" AND (s.status = "active" OR c.verified_at >= ?)
+      WHERE c.status = 'verified' AND (s.status = 'active' OR c.verified_at >= ?)
       ORDER BY c.verified_at DESC 
       LIMIT 200
     `, [startTimeStr]);
@@ -244,13 +244,12 @@ router.post('/sessions/start', async (req, res) => {
   }
   
   try {
-    // Automatically fetch guard_name & fullName from mewah_auth if not provided
     let full_name = 'Security Officer';
     try {
-      const [userRows] = await dbPool.query('SELECT username, fullName FROM mewah_auth.users WHERE id = ?', [user_id]);
+      const [userRows] = await dbPool.query('SELECT name, fullName FROM security_guards_status WHERE user_id = ?', [user_id]);
       if (userRows.length > 0) {
-        guard_name = userRows[0].username;
-        full_name = userRows[0].fullName || userRows[0].username;
+        guard_name = userRows[0].name || guard_name;
+        full_name = userRows[0].fullName || guard_name;
       } else {
         if (!guard_name) guard_name = `Guard-${user_id}`;
         full_name = guard_name;
@@ -262,15 +261,16 @@ router.post('/sessions/start', async (req, res) => {
 
     // Auto-close any previous active session for this guard to maintain clean single-session lifecycle
     await dbPool.query(
-      'UPDATE security_patrol_sessions SET status = "completed", completed_at = CURRENT_TIMESTAMP WHERE guard_id = ? AND status = "active"',
+      "UPDATE security_patrol_sessions SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE guard_id = ? AND status = 'active'",
       [user_id]
     );
 
     const session_code = `PTR-${Date.now()}`;
     const [result] = await dbPool.query(
-      'INSERT INTO security_patrol_sessions (session_code, guard_id, guard_name, shift, status) VALUES (?, ?, ?, ?, "active")',
+      "INSERT INTO security_patrol_sessions (session_code, guard_id, guard_name, shift, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
       [session_code, user_id, guard_name, shift]
     );
+
     
     // Clear Kalman filter cache for this session if any
     sessionKalmanMap.delete(result.insertId);
@@ -282,19 +282,19 @@ router.post('/sessions/start', async (req, res) => {
             const initLngNum = parseFloat(initial_lng);
             
             await dbPool.query(
-              'INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) VALUES (?, ?, ?, "active", ?, ?, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE status="active", latitude=VALUES(latitude), longitude=VALUES(longitude), last_update=CURRENT_TIMESTAMP',
+              "INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP) ON CONFLICT (user_id) DO UPDATE SET status='active', latitude=EXCLUDED.latitude, longitude=EXCLUDED.longitude, last_update=CURRENT_TIMESTAMP",
               [user_id, guard_name, full_name, initLatNum, initLngNum]
             );
 
             // Simpan sebagai titik PERTAMA di tracks untuk sesi baru ini
             await dbPool.query(
-              'INSERT INTO security_patrol_tracks (session_id, latitude, longitude) VALUES (?, ?, ?)',
+              'INSERT INTO security_patrol_tracks (session_id, latitude, longitude, recorded_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
               [result.insertId, initLatNum, initLngNum]
             );
         } else {
             // Jika belum ada koordinat saat tekan start: RESET lat & lng ke NULL agar tidak memakai lokasi sesi lama!
             await dbPool.query(
-              'INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) VALUES (?, ?, ?, "active", NULL, NULL, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE status="active", latitude=NULL, longitude=NULL, last_update=CURRENT_TIMESTAMP',
+              "INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) VALUES (?, ?, ?, 'active', NULL, NULL, CURRENT_TIMESTAMP) ON CONFLICT (user_id) DO UPDATE SET status='active', latitude=NULL, longitude=NULL, last_update=CURRENT_TIMESTAMP",
               [user_id, guard_name, full_name]
             );
         }
@@ -329,7 +329,7 @@ router.post('/sessions/end', async (req, res) => {
   try {
     if (!session_id && guard_id) {
       const [activeSess] = await dbPool.query(
-        'SELECT id FROM security_patrol_sessions WHERE guard_id = ? AND status = "active" ORDER BY id DESC LIMIT 1',
+        "SELECT id FROM security_patrol_sessions WHERE guard_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1",
         [guard_id]
       );
       if (activeSess.length > 0) {
@@ -343,7 +343,7 @@ router.post('/sessions/end', async (req, res) => {
 
     // 1. Set status sesi menjadi completed
     await dbPool.query(
-      'UPDATE security_patrol_sessions SET status = "completed", completed_at = CURRENT_TIMESTAMP WHERE id = ?',
+      "UPDATE security_patrol_sessions SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?",
       [session_id]
     );
 
@@ -352,7 +352,7 @@ router.post('/sessions/end', async (req, res) => {
     if (sess.length > 0) {
       const gId = sess[0].guard_id;
       await dbPool.query(
-        'UPDATE security_guards_status SET status = "standby", latitude = NULL, longitude = NULL, last_update = CURRENT_TIMESTAMP WHERE user_id = ?',
+        "UPDATE security_guards_status SET status = 'standby', latitude = NULL, longitude = NULL, last_update = CURRENT_TIMESTAMP WHERE user_id = ?",
         [gId]
       );
     }
@@ -378,9 +378,10 @@ router.post('/checkpoints', async (req, res) => {
       try {
           // Lenient decode to avoid 'expired token' blocking the checkpoint submission
           const decoded = jwt.decode(token);
-          if (decoded && decoded.userId) {
-              guard_id = decoded.userId;
+          if (decoded && (decoded.userId || decoded.id || decoded.sub)) {
+              guard_id = decoded.userId || decoded.id || decoded.sub;
           }
+
       } catch (e) {
           // Ignore decode errors
       }
@@ -393,7 +394,7 @@ router.post('/checkpoints', async (req, res) => {
           // AUTO-CORRECT: Ignore mobile app's session_id if they send the wrong one.
           // We force find the latest active session for this authenticated guard.
           const [activeSessions] = await dbPool.query(
-              'SELECT id FROM security_patrol_sessions WHERE guard_id = ? AND status = "active" ORDER BY id DESC LIMIT 1', 
+              "SELECT id FROM security_patrol_sessions WHERE guard_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1", 
               [guard_id]
           );
           
@@ -411,30 +412,6 @@ router.post('/checkpoints', async (req, res) => {
   const checkpoint_code = req.body.checkpoint_code || null;
   const gps_accuracy = req.body.gps_accuracy || null;
   
-  // SNAPPING FEATURE DISABLED: The master coordinates in security_stations are inaccurate, 
-  // causing checkpoints to jump away from the actual GPS track. We will just trust the mobile app's GPS.
-  /*
-  try {
-      const [stationData] = await dbPool.query(
-          'SELECT latitude, longitude FROM security_stations WHERE (checkpoint_code = ? OR label = ?) AND latitude IS NOT NULL AND longitude IS NOT NULL LIMIT 1', 
-          [checkpoint_code, station_name]
-      );
-      if (stationData.length > 0) {
-          const snapLat = parseFloat(stationData[0].latitude);
-          const snapLng = parseFloat(stationData[0].longitude);
-          if (!isNaN(snapLat) && !isNaN(snapLng)) {
-              latitude = snapLat;
-              longitude = snapLng;
-              console.log(`[DEBUG] SNAPPED Checkpoint ${station_name} to master coordinates: ${latitude}, ${longitude}`);
-          }
-      } else {
-          console.log(`[DEBUG] No master station found for snapping: code=${checkpoint_code}, name=${station_name}`);
-      }
-  } catch (err) {
-      console.error('[DEBUG] Snapping failed:', err);
-  }
-  */
-  
   const station_name = req.body.station_name || req.body.notes;
   const verification_photo = req.body.photo_path || req.body.verification_photo;
   const verification_notes = req.body.notes || req.body.verification_notes;
@@ -448,18 +425,20 @@ router.post('/checkpoints', async (req, res) => {
   
   try {
     const [result] = await dbPool.query(
-      'INSERT INTO security_session_checkpoints (session_id, checkpoint_code, station_name, status, verified_at, verification_photo, verification_notes, latitude, longitude, gps_accuracy) VALUES (?, ?, ?, "verified", CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)',
+      "INSERT INTO security_session_checkpoints (session_id, checkpoint_code, station_name, status, verified_at, verification_photo, verification_notes, latitude, longitude, gps_accuracy) VALUES (?, ?, ?, 'verified', CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)",
       [session_id, checkpoint_code, station_name, verification_photo || null, verification_notes || null, latitude, longitude, gps_accuracy]
     );
 
     // 🚀 AUTOMATIC ANOMALY INCIDENT ROUTING: If notes exist (finding recorded during patrol checkpoint),
     // automatically generate an Incident Report for Operator Validation & Maintenance Ticketing!
+    let guard_name = 'Security Officer';
     if (verification_notes && verification_notes.trim().length > 0 && !verification_notes.trim().startsWith('Checkpoint:')) {
       try {
-        let guard_name = 'Security Officer';
         if (guard_id) {
-          const [uRows] = await dbPool.query('SELECT username FROM mewah_auth.users WHERE id = ?', [guard_id]);
-          if (uRows.length > 0) guard_name = uRows[0].username;
+          try {
+            const [uRows] = await dbPool.query('SELECT name, fullName FROM security_guards_status WHERE user_id = ?', [guard_id]);
+            if (uRows.length > 0 && uRows[0].name) guard_name = uRows[0].name;
+          } catch (_) {}
         }
 
         const incCode = `INC-${Date.now()}`;
@@ -483,8 +462,8 @@ router.post('/checkpoints', async (req, res) => {
         // 2. Save incident ticket to database using the resolved slug and selected priority
         await dbPool.query(
           `INSERT INTO security_incidents 
-           (incident_code, incident_type, location, reported_by, reported_by_name, status, priority, description, photo_path, created_at) 
-           VALUES (?, 'Patrol Anomaly Finding', ?, ?, ?, 'SUBMITTED', ?, ?, ?, CURRENT_TIMESTAMP)`,
+           (incident_code, incident_type, location, reported_by, reported_by_name, status, priority, description, photo_path, reported_at, created_at, updated_at) 
+           VALUES (?, 'Patrol Anomaly Finding', ?, ?, ?, 'SUBMITTED', ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
           [incCode, station_slug, guard_id || 1, guard_name, reqPriority, verification_notes.trim(), verification_photo || null]
         );
         console.log(`[INCIDENT ROUTER] Auto-created incident ticket ${incCode} [Priority: ${reqPriority}] for station slug: ${station_slug}`);
@@ -530,25 +509,11 @@ router.post('/checkpoints', async (req, res) => {
           equipment: 'Patrol Anomaly'
         });
 
-        // 4. Retrieve and log FCM tokens for Operator notification routing
+        // 4. FCM tokens dispatch (optional)
         try {
-          const displayStation = regRows.length > 0 ? regRows[0].title : station_name;
-          const [operatorRows] = await dbPool.query(
-            `SELECT DISTINCT ut.token, u.username
-             FROM mewah_auth.user_permissions up
-             JOIN mewah_auth.permissions p ON up.permission_id = p.id
-             JOIN mewah_auth.users u ON up.user_id = u.id
-             JOIN mewah_auth.user_fcm_tokens ut ON u.id = ut.user_id
-             WHERE p.slug LIKE ?`,
-            [`%:${displayStation}%`]
-          );
-          if (operatorRows.length > 0) {
-            for (const row of operatorRows) {
-              console.log(`[FCM DISPATCH] Sending push notification to operator ${row.username} at token: ${row.token}`);
-            }
-          }
+          console.log(`[INCIDENT ROUTER] Incident ticket ${incCode} registered successfully`);
         } catch (fcmErr) {
-          console.error('[INCIDENT ROUTER] Error logging FCM tokens:', fcmErr);
+          console.error('[INCIDENT ROUTER] FCM dispatch error:', fcmErr);
         }
 
       } catch (incErr) {
@@ -561,16 +526,18 @@ router.post('/checkpoints', async (req, res) => {
         let guard_name = 'security1';
         let full_name = 'Security Officer';
         if (guard_id) {
-          const [uRows] = await dbPool.query('SELECT username, fullName FROM mewah_auth.users WHERE id = ?', [guard_id]);
-          if (uRows.length > 0) {
-            guard_name = uRows[0].username;
-            full_name = uRows[0].fullName || uRows[0].username;
-          }
+          try {
+            const [uRows] = await dbPool.query('SELECT name, fullName FROM security_guards_status WHERE user_id = ?', [guard_id]);
+            if (uRows.length > 0) {
+              guard_name = uRows[0].name || guard_name;
+              full_name = uRows[0].fullName || uRows[0].name || full_name;
+            }
+          } catch (_) {}
         }
         await dbPool.query(`
           INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) 
-          VALUES (?, ?, ?, "active", ?, ?, CURRENT_TIMESTAMP)
-          ON DUPLICATE KEY UPDATE status="active", latitude=VALUES(latitude), longitude=VALUES(longitude), last_update=CURRENT_TIMESTAMP
+          VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT (user_id) DO UPDATE SET status='active', latitude=EXCLUDED.latitude, longitude=EXCLUDED.longitude, last_update=CURRENT_TIMESTAMP
         `, [guard_id, guard_name, full_name, latitude, longitude]);
     } catch (e) {
         console.error('Error updating guard status location:', e);
@@ -690,7 +657,7 @@ router.post('/location', async (req, res) => {
 
     if (shouldSaveToTrack) {
       await dbPool.query(
-        'INSERT INTO security_patrol_tracks (session_id, latitude, longitude) VALUES (?, ?, ?)',
+        'INSERT INTO security_patrol_tracks (session_id, latitude, longitude, recorded_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
         [session_id, lat, lng]
       );
     }
@@ -702,17 +669,17 @@ router.post('/location', async (req, res) => {
        const guard_id = sessions[0].guard_id;
        const guard_name = sessions[0].guard_name || 'Security Officer';
        let full_name = guard_name;
-       try {
-           const [userRows] = await dbPool.query('SELECT fullName FROM mewah_auth.users WHERE id = ?', [guard_id]);
-           if (userRows.length > 0 && userRows[0].fullName) {
-               full_name = userRows[0].fullName;
-           }
-       } catch (_) {}
+        try {
+            const [userRows] = await dbPool.query('SELECT fullName, name FROM security_guards_status WHERE user_id = ?', [guard_id]);
+            if (userRows.length > 0 && (userRows[0].fullName || userRows[0].name)) {
+                full_name = userRows[0].fullName || userRows[0].name;
+            }
+        } catch (_) {}
        
        await dbPool.query(`
           INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) 
-          VALUES (?, ?, ?, "active", ?, ?, CURRENT_TIMESTAMP)
-          ON DUPLICATE KEY UPDATE status="active", latitude=VALUES(latitude), longitude=VALUES(longitude), last_update=CURRENT_TIMESTAMP
+          VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT (user_id) DO UPDATE SET status='active', latitude=EXCLUDED.latitude, longitude=EXCLUDED.longitude, last_update=CURRENT_TIMESTAMP
         `, [guard_id, guard_name, full_name, lat, lng]);
     }
 
@@ -743,32 +710,33 @@ router.get('/tracks', async (req, res) => {
   }
 });
 
-/**
- * GET /api/security/patrol/replay/:sessionId
- * Fetch complete patrol data for a specific session (for replay animation)
- */
-router.get('/replay/:sessionId', async (req, res) => {
+const getReplayHandler = async (req, res) => {
   const { sessionId } = req.params;
   try {
-    // Get session info
+    const parsedId = parseInt(sessionId, 10);
+    const queryId = !isNaN(parsedId) ? parsedId : sessionId;
+
+    // Get session info (support integer id OR string session_code)
     const [sessions] = await dbPool.query(
-      'SELECT id, guard_name, status, started_at, completed_at FROM security_patrol_sessions WHERE id = ?',
-      [sessionId]
+      'SELECT id, guard_name, status, started_at, completed_at FROM security_patrol_sessions WHERE id = ? OR session_code = ? ORDER BY id DESC LIMIT 1',
+      [queryId, String(sessionId)]
     );
     if (sessions.length === 0) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
+    const realSessionId = sessions[0].id;
+
     // Get all GPS tracks for this session
     const [tracks] = await dbPool.query(
       'SELECT latitude, longitude, recorded_at FROM security_patrol_tracks WHERE session_id = ? ORDER BY recorded_at ASC',
-      [sessionId]
+      [realSessionId]
     );
 
     // Get all checkpoints for this session
     const [checkpoints] = await dbPool.query(
       'SELECT station_name, latitude, longitude, verified_at, verification_photo FROM security_session_checkpoints WHERE session_id = ? ORDER BY verified_at ASC',
-      [sessionId]
+      [realSessionId]
     );
 
     res.json({
@@ -780,7 +748,10 @@ router.get('/replay/:sessionId', async (req, res) => {
     console.error('Error fetching replay data:', error);
     res.status(500).json({ error: 'Failed to fetch replay data' });
   }
-});
+};
+
+router.get('/replay/:sessionId', getReplayHandler);
+router.get('/sessions/:sessionId/replay', getReplayHandler);
 
 /**
  * GET /api/security/patrol/history
@@ -792,7 +763,7 @@ router.get('/history', async (req, res) => {
       SELECT 
         s.id, s.guard_name, s.status, s.started_at, s.completed_at,
         (SELECT COUNT(*) FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_count,
-        (SELECT GROUP_CONCAT(DISTINCT c.station_name SEPARATOR ', ') FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_names,
+        (SELECT STRING_AGG(DISTINCT c.station_name, ', ') FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_names,
         (SELECT COUNT(*) FROM security_patrol_tracks t WHERE t.session_id = s.id) as track_count
       FROM security_patrol_sessions s
       WHERE s.started_at >= ?
@@ -878,5 +849,241 @@ router.get('/debug-gps', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Helper to broadcast WebSocket events via maintenance-service (Port 3200)
+async function broadcastPatrolEvent(event, data) {
+  try {
+    const http = await import('http');
+    const postData = JSON.stringify({ event, data });
+    const req = http.request('http://localhost:3200/api/maintenance/notify-ticket', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData)
+      }
+    });
+    req.on('error', (err) => console.error('[PATROL WS] Broadcast error:', err.message));
+    req.write(postData);
+    req.end();
+  } catch (err) {
+    console.error('[PATROL WS] Broadcast exception:', err);
+  }
+}
+
+/**
+ * POST /api/security/patrol/sync-offline-batch (or /sync-offline-batch)
+ * Receive queued offline items (checkpoints, incidents, tracks) from mobile app and process in DB
+ */
+const syncOfflineBatchHandler = async (req, res) => {
+  const { sessions = [], checkpoints = [], incidents = [], tracks = [] } = req.body;
+  const synced_ids = [];
+
+  try {
+    // Cache for session check / auto-creation to avoid redundant DB queries per item
+    const verifiedSessions = new Set();
+
+    // 0. Process explicit Patrol Sessions (START_SESSION & END_SESSION)
+    for (const item of sessions) {
+      try {
+        const { local_id, action, session_id, user_id, guard_id, guard_name, shift, recorded_at } = item;
+        const effectiveSessionId = parseInt(session_id, 10) || session_id;
+        const gId = guard_id || user_id || 1;
+        const gName = guard_name || 'Security Officer';
+        const eventTime = recorded_at || new Date().toISOString();
+
+        if (action === 'START_SESSION' || !action) {
+          if (effectiveSessionId) {
+            const [existing] = await dbPool.query("SELECT id FROM security_patrol_sessions WHERE id = ?", [effectiveSessionId]);
+            if (!existing || existing.length === 0) {
+              const sCode = `PTR-${effectiveSessionId}`;
+              await dbPool.query(
+                "INSERT INTO security_patrol_sessions (id, session_code, guard_id, guard_name, shift, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)",
+                [effectiveSessionId, sCode, gId, gName, shift || 'Shift A', eventTime, eventTime, eventTime]
+              );
+              console.log(`[SYNC BATCH] Processed START_SESSION: ${effectiveSessionId}`);
+              broadcastPatrolEvent('patrol_session_started', {
+                id: effectiveSessionId,
+                session_code: sCode,
+                guard_name: gName,
+                started_at: eventTime,
+                status: 'active'
+              });
+            }
+            verifiedSessions.add(effectiveSessionId);
+          }
+        } else if (action === 'END_SESSION') {
+          if (effectiveSessionId) {
+            await dbPool.query(
+              "UPDATE security_patrol_sessions SET status = 'completed', completed_at = ?, updated_at = ? WHERE id = ? OR session_code LIKE ?",
+              [eventTime, eventTime, effectiveSessionId, `%${effectiveSessionId}%`]
+            );
+            console.log(`[SYNC BATCH] Processed END_SESSION: ${effectiveSessionId}`);
+            broadcastPatrolEvent('patrol_session_ended', {
+              id: effectiveSessionId,
+              status: 'completed',
+              completed_at: eventTime
+            });
+          }
+        }
+        if (local_id) synced_ids.push(local_id);
+      } catch (err) {
+        console.error('[SYNC BATCH] Session error:', err);
+      }
+    }
+
+    // 1. Process Checkpoints
+    for (const item of checkpoints) {
+      try {
+        const { local_id, session_id, session_code, checkpoint_code, station_name, notes, verification_photo, latitude, longitude, verified_at, gps_accuracy, guard_id, guard_name } = item;
+        
+        if (session_id && station_name && latitude && longitude) {
+          const effectiveSessionId = parseInt(session_id, 10) || session_id;
+          
+          // Auto-verify and create patrol session if started offline and not exists in DB
+          if (!verifiedSessions.has(effectiveSessionId)) {
+            const [sessRows] = await dbPool.query(
+              "SELECT id FROM security_patrol_sessions WHERE id = ?",
+              [effectiveSessionId]
+            );
+
+            if (!sessRows || sessRows.length === 0) {
+              const sCode = session_code || `OFFLINE-PTR-${effectiveSessionId}`;
+              const gId = guard_id || 1;
+              const gName = guard_name || 'Security Officer';
+              const startTime = verified_at || new Date().toISOString();
+
+              await dbPool.query(
+                "INSERT INTO security_patrol_sessions (id, session_code, guard_id, guard_name, shift, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'Shift A', 'active', ?, ?, ?)",
+                [effectiveSessionId, sCode, gId, gName, startTime, startTime, startTime]
+              );
+              console.log(`[SYNC BATCH] Auto-created offline patrol session: ${effectiveSessionId} (${sCode})`);
+              
+              broadcastPatrolEvent('patrol_session_started', {
+                id: effectiveSessionId,
+                session_code: sCode,
+                guard_name: gName,
+                started_at: startTime,
+                status: 'active'
+              });
+            }
+            verifiedSessions.add(effectiveSessionId);
+          }
+
+          const verifiedTime = verified_at || new Date().toISOString();
+          const [insRes] = await dbPool.query(
+            "INSERT INTO security_session_checkpoints (session_id, checkpoint_code, station_name, status, verified_at, verification_photo, verification_notes, latitude, longitude, gps_accuracy) VALUES (?, ?, ?, 'verified', ?, ?, ?, ?, ?, ?)",
+            [effectiveSessionId, checkpoint_code || null, station_name, verifiedTime, verification_photo || null, notes || null, latitude, longitude, gps_accuracy || null]
+          );
+
+          const insertedCheckpoint = {
+            id: insRes.insertId,
+            session_id: effectiveSessionId,
+            station_name,
+            status: 'verified',
+            verified_at: verifiedTime,
+            verification_photo: verification_photo || null,
+            verification_notes: notes || null,
+            latitude,
+            longitude,
+            gps_accuracy: gps_accuracy || null
+          };
+
+          // Live Broadcast to Web Command Center
+          broadcastPatrolEvent('patrol_checkpoint_recorded', insertedCheckpoint);
+
+          // If notes exist, auto-create incident ticket
+          if (notes && notes.trim().length > 0 && !notes.trim().startsWith('Checkpoint:')) {
+            const incCode = `INC-${Date.now()}`;
+            let station_slug = station_name.toLowerCase().replace(/\s+/g, '-');
+            const incPriority = (item.priority || 'MEDIUM').toUpperCase();
+            const incGuardId = guard_id || 1;
+            const incGuardName = guard_name || 'Security Officer';
+
+            const [incRes] = await dbPool.query(
+              `INSERT INTO security_incidents 
+               (incident_code, incident_type, location, reported_by, reported_by_name, status, priority, description, photo_path, reported_at, created_at, updated_at) 
+               VALUES (?, 'Patrol Anomaly Finding', ?, ?, ?, 'SUBMITTED', ?, ?, ?, ?, ?, ?)`,
+              [incCode, station_slug, incGuardId, incGuardName, incPriority, notes.trim(), verification_photo || null, verifiedTime, verifiedTime, verifiedTime]
+            );
+
+            broadcastPatrolEvent('incident_created', {
+              id: incRes.insertId,
+              incident_code: incCode,
+              incident_type: 'Patrol Anomaly Finding',
+              location: station_slug,
+              description: notes.trim(),
+              status: 'SUBMITTED',
+              priority: incPriority,
+              photo_path: verification_photo || null,
+              reported_at: verifiedTime
+            });
+          }
+        }
+        if (local_id) synced_ids.push(local_id);
+      } catch (err) {
+        console.error('[SYNC BATCH] Checkpoint error:', err);
+      }
+    }
+
+    // 2. Process Incidents
+    for (const item of incidents) {
+      try {
+        const { local_id, title, category, description, photo_path, location, reported_by, reported_by_name, priority, reported_at } = item;
+        const incCode = `INC-${Date.now()}`;
+        const reportedTime = reported_at || new Date().toISOString();
+        const station_slug = (location || title || 'general').toLowerCase().replace(/\s+/g, '-');
+
+        const [incRes] = await dbPool.query(
+          `INSERT INTO security_incidents 
+           (incident_code, incident_type, location, reported_by, reported_by_name, status, priority, description, photo_path, reported_at, created_at, updated_at) 
+           VALUES (?, ?, ?, ?, ?, 'SUBMITTED', ?, ?, ?, ?, ?, ?)`,
+          [incCode, category || 'Patrol Anomaly Finding', station_slug, reported_by || 1, reported_by_name || 'Security Officer', (priority || 'MEDIUM').toUpperCase(), description || title || '', photo_path || null, reportedTime, reportedTime, reportedTime]
+        );
+
+        broadcastPatrolEvent('incident_created', {
+          id: incRes.insertId,
+          incident_code: incCode,
+          incident_type: category || 'Patrol Anomaly Finding',
+          location: station_slug,
+          description: description || title || '',
+          status: 'SUBMITTED',
+          reported_at: reportedTime
+        });
+
+        if (local_id) synced_ids.push(local_id);
+      } catch (err) {
+        console.error('[SYNC BATCH] Incident error:', err);
+      }
+    }
+
+    // 3. Process Tracks
+    for (const item of tracks) {
+      try {
+        const { local_id, session_id, latitude, longitude, recorded_at } = item;
+        if (session_id && latitude && longitude) {
+          const recTime = recorded_at || new Date().toISOString();
+          await dbPool.query(
+            'INSERT INTO security_patrol_tracks (session_id, latitude, longitude, recorded_at) VALUES (?, ?, ?, ?)',
+            [session_id, latitude, longitude, recTime]
+          );
+        }
+        if (local_id) synced_ids.push(local_id);
+      } catch (err) {
+        console.error('[SYNC BATCH] Track error:', err);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Offline batch data synced successfully',
+      synced_ids: [...new Set(synced_ids)]
+    });
+  } catch (error) {
+    console.error('Error processing sync-offline-batch:', error);
+    res.status(500).json({ error: 'Failed to process offline batch sync' });
+  }
+};
+
+router.post('/sync-offline-batch', syncOfflineBatchHandler);
 
 export default router;

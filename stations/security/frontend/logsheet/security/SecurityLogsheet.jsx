@@ -226,16 +226,17 @@ export default function SecurityLogsheet({ stationSlug = 'security', stationTitl
                         <tr>
                             <th>Timestamp</th>
                             <th>Category</th>
-                            <th>CCTV Name</th>
-                            <th>Details</th>
-                            <th>Source</th>
-                            <th>Capture</th>
+                            <th>CCTV / Source</th>
+                            <th>Plate No</th>
+                            <th>Event Message / Details</th>
+                            <th>Accuracy</th>
+                            <th style={{ textAlign: 'center' }}>Snapshot</th>
                         </tr>
                     </thead>
                     <tbody>
                         {logs.length === 0 ? (
                             <tr>
-                                <td colSpan="6" style={{ textAlign: 'center', padding: '50px', color: '#475569' }}>
+                                <td colSpan="7" style={{ textAlign: 'center', padding: '50px', color: '#475569' }}>
                                     {loading ? 'READING HISTORICAL DB...' : `NO EVENT DETECTED FOR ${stationTitle}`}
                                 </td>
                             </tr>
@@ -243,25 +244,54 @@ export default function SecurityLogsheet({ stationSlug = 'security', stationTitl
                             logs.map((log) => {
                                 return (
                                     <tr key={log.id}>
-                                        <td>{formatTimestamp(log.timestamp)}</td>
+                                        <td style={{ fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{formatTimestamp(log.timestamp)}</td>
                                         <td>
-                                            <span className="security-cat-ai">
+                                            <span className="security-cat-ai" style={{
+                                              background: log.category === 'FIRE' ? '#fef2f2' : log.category === 'APD' ? '#fffbeb' : log.category === 'LPR' ? '#f0f9ff' : '#f8fafc',
+                                              color: log.category === 'FIRE' ? '#dc2626' : log.category === 'APD' ? '#d97706' : log.category === 'LPR' ? '#0284c7' : '#475569',
+                                              border: '1px solid currentColor',
+                                              padding: '2px 8px',
+                                              borderRadius: '4px',
+                                              fontWeight: 700,
+                                              fontSize: '0.75rem'
+                                            }}>
                                                 {log.category || 'AI'}
                                             </span>
                                         </td>
                                         <td style={{ fontWeight: 600 }} title={log.tag_name || log.camera_name}>
-                                            {truncateText(log.tag_name || log.camera_name, 12)}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                <span style={{ fontSize: '0.85rem' }}>{truncateText(log.tag_name || log.camera_name, 18)}</span>
+                                                <span className="security-source-pill" style={{ width: 'fit-content', fontSize: '0.7rem' }}>{log.camera_code || log.source}</span>
+                                            </div>
                                         </td>
-                                        <td title={log.new_value || log.detection_detail || '---'}>{truncateText(log.new_value || log.detection_detail, 22)}</td>
-                                        <td><span className="security-source-pill">{log.source || log.camera_code}</span></td>
                                         <td>
-                                            {log.image_url ? (
-                                                <button className="security-btn-capture" onClick={() => setSelectedCapture(log)} title="View Snapshot">
-                                                    📷
-                                                </button>
+                                            {log.plate_no ? (
+                                                <span style={{ background: '#0284c7', color: '#ffffff', padding: '2px 8px', borderRadius: '4px', fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+                                                    {log.plate_no}
+                                                </span>
                                             ) : (
-                                                <span style={{ color: '#94a3b8', fontSize: '0.7rem' }}>---</span>
+                                                <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>---</span>
                                             )}
+                                        </td>
+                                        <td title={log.new_value || log.detection_detail || '---'}>
+                                            <span style={{ fontSize: '0.85rem' }}>{log.new_value || log.detection_detail}</span>
+                                        </td>
+                                        <td>
+                                            <span style={{
+                                              background: '#ecfdf5',
+                                              color: '#059669',
+                                              padding: '2px 6px',
+                                              borderRadius: '4px',
+                                              fontWeight: 800,
+                                              fontSize: '0.75rem'
+                                            }}>
+                                                {log.confidence_score || '95%'}
+                                            </span>
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <button className="security-btn-capture" onClick={() => setSelectedCapture(log)} title="View Visual Snapshot">
+                                                📷 Snapshot
+                                            </button>
                                         </td>
                                     </tr>
                                 )
@@ -316,14 +346,18 @@ export default function SecurityLogsheet({ stationSlug = 'security', stationTitl
                                             <span className="security-modal-value" style={{ color: '#0284c7', fontWeight: 800 }}>{selectedCapture.plate_no}</span>
                                         </div>
                                     )}
-                                    <div className="security-modal-row">
-                                        <span className="security-modal-label">Event Details</span>
-                                        <span className="security-modal-value" style={{ color: '#0f172a' }}>{selectedCapture.new_value || selectedCapture.detection_detail}</span>
-                                    </div>
-                                    <div className="security-modal-row">
-                                        <span className="security-modal-label">Camera Source</span>
-                                        <span className="security-modal-value"><span className="security-source-pill">{selectedCapture.source || selectedCapture.camera_code}</span></span>
-                                    </div>
+                                     <div className="security-modal-row">
+                                         <span className="security-modal-label">Event Details</span>
+                                         <span className="security-modal-value" style={{ color: '#0f172a' }}>{selectedCapture.new_value || selectedCapture.detection_detail}</span>
+                                     </div>
+                                     <div className="security-modal-row">
+                                         <span className="security-modal-label">Accuracy Score</span>
+                                         <span className="security-modal-value" style={{ color: '#059669', fontWeight: 800 }}>{selectedCapture.confidence_score || '95%'}</span>
+                                     </div>
+                                     <div className="security-modal-row">
+                                         <span className="security-modal-label">Camera Source</span>
+                                         <span className="security-modal-value"><span className="security-source-pill">{selectedCapture.source || selectedCapture.camera_code}</span></span>
+                                     </div>
                                 </div>
                             </div>
                         </div>

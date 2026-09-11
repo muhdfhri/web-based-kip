@@ -9,30 +9,30 @@ const router = Router();
 async function initDb() {
   try {
     await dbPool.query(`
-      CREATE TABLE IF NOT EXISTS \`recipe_settings\` (
-        \`category\` VARCHAR(50) NOT NULL,
-        \`line_number\` INT NOT NULL,
-        \`step_number\` INT NOT NULL,
-        \`unf\` INT DEFAULT 0,
-        \`nrm\` INT DEFAULT 0,
-        \`wet\` INT DEFAULT 0,
-        \`inl\` TINYINT(1) DEFAULT 0,
-        \`con\` TINYINT(1) DEFAULT 0,
-        \`exh\` TINYINT(1) DEFAULT 0,
-        \`bar\` VARCHAR(20) DEFAULT '0.00',
-        \`mode\` VARCHAR(20) DEFAULT 'OFF',
-        \`door_in\` VARCHAR(20) DEFAULT 'Close',
-        \`door_out\` VARCHAR(20) DEFAULT 'Close',
-        PRIMARY KEY (\`category\`, \`line_number\`, \`step_number\`)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      CREATE TABLE IF NOT EXISTS recipe_settings (
+        category VARCHAR(50) NOT NULL,
+        line_number INT NOT NULL,
+        step_number INT NOT NULL,
+        unf INT DEFAULT 0,
+        nrm INT DEFAULT 0,
+        wet INT DEFAULT 0,
+        inl SMALLINT DEFAULT 0,
+        con SMALLINT DEFAULT 0,
+        exh SMALLINT DEFAULT 0,
+        bar VARCHAR(20) DEFAULT '0.00',
+        mode VARCHAR(20) DEFAULT 'OFF',
+        door_in VARCHAR(20) DEFAULT 'Close',
+        door_out VARCHAR(20) DEFAULT 'Close',
+        PRIMARY KEY (category, line_number, step_number)
+      );
     `);
 
     await dbPool.query(`
-      CREATE TABLE IF NOT EXISTS \`station_parameters\` (
-        \`param_key\` VARCHAR(100) PRIMARY KEY,
-        \`param_value\` TEXT NOT NULL,
-        \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+      CREATE TABLE IF NOT EXISTS station_parameters (
+        param_key VARCHAR(100) PRIMARY KEY,
+        param_value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
     console.log('[station-settings] Database tables recipe_settings and station_parameters checked/created.');
   } catch (err) {
@@ -59,9 +59,9 @@ router.post('/thresholds', authorize(['developer', 'admin']), async (req, res) =
   try {
     await dbPool.query(
       `INSERT INTO threshold_settings (parameter_key, lower_val, warning_val, danger_val, unit)
-       VALUES (?,?,?,?,?)
-       ON DUPLICATE KEY UPDATE lower_val=?, warning_val=?, danger_val=?, unit=?`,
-      [parameter_key, lower_val, warning_val, danger_val, unit, lower_val, warning_val, danger_val, unit]
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT (parameter_key) DO UPDATE SET lower_val = EXCLUDED.lower_val, warning_val = EXCLUDED.warning_val, danger_val = EXCLUDED.danger_val, unit = EXCLUDED.unit`,
+      [parameter_key, lower_val, warning_val, danger_val, unit]
     );
     
     // Log activity
@@ -340,26 +340,28 @@ router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req
       }
 
       if (insertValues.length > 0) {
-        await connection.query(`
-          INSERT INTO recipe_settings (category, line_number, step_number, unf, nrm, wet, inl, con, exh, bar, mode, door_in, door_out, inl1, inl2, dinl, rcon, dcon)
-          VALUES ?
-          ON DUPLICATE KEY UPDATE
-            unf = VALUES(unf),
-            nrm = VALUES(nrm),
-            wet = VALUES(wet),
-            inl = VALUES(inl),
-            con = VALUES(con),
-            exh = VALUES(exh),
-            bar = VALUES(bar),
-            mode = VALUES(mode),
-            door_in = VALUES(door_in),
-            door_out = VALUES(door_out),
-            inl1 = VALUES(inl1),
-            inl2 = VALUES(inl2),
-            dinl = VALUES(dinl),
-            rcon = VALUES(rcon),
-            dcon = VALUES(dcon)
-        `, [insertValues]);
+        for (const row of insertValues) {
+          await connection.query(`
+            INSERT INTO recipe_settings (category, line_number, step_number, unf, nrm, wet, inl, con, exh, bar, mode, door_in, door_out, inl1, inl2, dinl, rcon, dcon)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (category, line_number, step_number) DO UPDATE SET
+              unf = EXCLUDED.unf,
+              nrm = EXCLUDED.nrm,
+              wet = EXCLUDED.wet,
+              inl = EXCLUDED.inl,
+              con = EXCLUDED.con,
+              exh = EXCLUDED.exh,
+              bar = EXCLUDED.bar,
+              mode = EXCLUDED.mode,
+              door_in = EXCLUDED.door_in,
+              door_out = EXCLUDED.door_out,
+              inl1 = EXCLUDED.inl1,
+              inl2 = EXCLUDED.inl2,
+              dinl = EXCLUDED.dinl,
+              rcon = EXCLUDED.rcon,
+              dcon = EXCLUDED.dcon
+          `, row);
+        }
       }
     }
 
@@ -377,11 +379,13 @@ router.post('/recipes-and-params', authorize(['developer', 'admin']), async (req
       });
 
       if (insertParams.length > 0) {
-        await connection.query(`
-          INSERT INTO station_parameters (param_key, param_value)
-          VALUES ?
-          ON DUPLICATE KEY UPDATE param_value = VALUES(param_value)
-        `, [insertParams]);
+        for (const [key, val] of insertParams) {
+          await connection.query(`
+            INSERT INTO station_parameters (param_key, param_value, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT (param_key) DO UPDATE SET param_value = EXCLUDED.param_value, updated_at = CURRENT_TIMESTAMP
+          `, [key, val]);
+        }
       }
 
       // Write scoreLogics TARGET values directly to PLC (same path as recipe writes)

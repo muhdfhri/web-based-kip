@@ -1,31 +1,45 @@
-import pymysql
-from pymysql.cursors import DictCursor
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    psycopg2 = None
+    RealDictCursor = None
+
 from config.settings import Config
 
 def get_db_ai_connection():
     """
-    // ISI DISINI UNTUK LOGIC KONEKSI DB KHUSUS AI (mewah_security_ai)
+    Koneksi DB khusus AI (mewah_security_ai) di PostgreSQL
     """
-    return pymysql.connect(
+    if not psycopg2:
+        raise RuntimeError("psycopg2 is not installed. Please run 'pip install psycopg2-binary'")
+    
+    conn = psycopg2.connect(
         host=Config.DB_HOST,
-        port=Config.DB_PORT,
+        port=int(Config.DB_PORT),
         user=Config.DB_USER,
         password=Config.DB_PASSWORD,
-        database=Config.DB_NAME_AI,
-        cursorclass=DictCursor,
-        autocommit=True
+        dbname=Config.DB_NAME_AI,
+        cursor_factory=RealDictCursor
     )
+    conn.autocommit = True
+    return conn
 
 def get_db_general_connection():
     """
-    // ISI DISINI UNTUK LOGIC READ-ONLY KONEKSI DB SCADA UMUM (mewah_security)
+    Koneksi DB SCADA Umum (mewah_security) di PostgreSQL
     """
-    return pymysql.connect(
+    if not psycopg2:
+        raise RuntimeError("psycopg2 is not installed. Please run 'pip install psycopg2-binary'")
+
+    conn = psycopg2.connect(
         host=Config.DB_HOST,
-        port=Config.DB_PORT,
+        port=int(Config.DB_PORT),
         user=Config.DB_USER,
         password=Config.DB_PASSWORD,
-        database=Config.DB_NAME_GENERAL,
-        cursorclass=DictCursor,
-        autocommit=True
+        dbname=Config.DB_NAME_GENERAL,
+        cursor_factory=RealDictCursor
     )
+    conn.autocommit = True
+    return conn
+

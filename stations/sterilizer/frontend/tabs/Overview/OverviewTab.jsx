@@ -20,10 +20,11 @@ import sterilizerLineImageUrl from "../../assets/sterilizer-line.webp";
 import bpvImageUrl from "../../assets/bpv.webp";
 import valveActuatorSvg from "../../assets/item/valve_actuator.svg";
 import valvePositionerSvg from "../../assets/item/valve_positioner.svg";
-// import topOpenSvg from "../../assets/item/top-open.svg";
-// import topCloseSvg from "../../assets/item/top-close.svg";
-// import botOpenSvg from "../../assets/item/bot-open.svg";
-// import botCloseSvg from "../../assets/item/bot-close.svg";
+import valvePneumaticActuatorSvg from "../../assets/item/valve_pneumatic_actuator.svg";
+import topOpenPng from "../../assets/TOP_OPEN-removebg-up.png";
+import topClosePng from "../../assets/TOP_CLOSE-removebg-up.png";
+import botOpenPng from "../../assets/BOT_OPEN-removebg-up.png";
+import botClosePng from "../../assets/BOT_CLOSE-removebg-up.png";
 
 import {
   IpomasMonitorCardSVG,
@@ -78,35 +79,107 @@ const MANUAL_VALVES = [
   { id: "valve_d_cond_st4", x: 2147, y: 800, size: 80, rotation: 0 },
 ];
 
-const TOP_DOORS = [];
-/*
-const TOP_DOORS = [
-  { id: "top_open_1", src: topOpenSvg, x: -135, y: -17, size: 173, rotation: 0 },
-  { id: "top_open_2", src: topOpenSvg, x: 510, y: -17, size: 173, rotation: 0 },
-  { id: "top_open_3", src: topOpenSvg, x: 1193, y: -17, size: 173, rotation: 0 },
-  { id: "top_open_4", src: topOpenSvg, x: 1860, y: -17, size: 173, rotation: 0 },
-
-  { id: "top_close_1", src: topCloseSvg, x: -112, y: 15, size: 150, rotation: 0 },
-  { id: "top_close_2", src: topCloseSvg, x: 528, y: 15, size: 150, rotation: 0 },
-  { id: "top_close_3", src: topCloseSvg, x: 1210, y: 15, size: 150, rotation: 0 },
-  { id: "top_close_4", src: topCloseSvg, x: 1880, y: 15, size: 150, rotation: 0 },
+const TOP_DOORS_CONFIG = [
+  // --- STERILIZER 1 (ST1) INLET DOOR ---
+  {
+    n: 1,
+    openX: -135,
+    openY: -17,
+    openW: 173,
+    openH: 173,
+    closeX: -100,
+    closeY: 15,
+    closeW: 164,
+    closeH: 188,
+  },
+  // --- STERILIZER 2 (ST2) INLET DOOR ---
+  {
+    n: 2,
+    openX: 510,
+    openY: -17,
+    openW: 173,
+    openH: 173,
+    closeX: 560,
+    closeY: 15,
+    closeW: 164,
+    closeH: 188,
+  },
+  // --- STERILIZER 3 (ST3) INLET DOOR ---
+  {
+    n: 3,
+    openX: 1193,
+    openY: -17,
+    openW: 173,
+    openH: 173,
+    closeX: 1225,
+    closeY: 15,
+    closeW: 164,
+    closeH: 188,
+  },
+  // --- STERILIZER 4 (ST4) INLET DOOR ---
+  {
+    n: 4,
+    openX: 1860,
+    openY: -17,
+    openW: 173,
+    openH: 173,
+    closeX: 1885,
+    closeY: 15,
+    closeW: 164,
+    closeH: 188,
+  },
 ];
-*/
 
-const BOT_DOORS = [];
-/*
-const BOT_DOORS = [
-  { id: "bot_open_1", src: botOpenSvg, x: 122, y: 580, size: 190, rotation: 0 },
-  { id: "bot_open_2", src: botOpenSvg, x: 768, y: 589, size: 190, rotation: 0 },
-  { id: "bot_open_3", src: botOpenSvg, x: 1444, y: 582, size: 190, rotation: 0 },
-  { id: "bot_open_4", src: botOpenSvg, x: 2115, y: 589, size: 190, rotation: 0 },
-
-  { id: "bot_close_1", src: botCloseSvg, x: 127, y: 609, size: 150, rotation: 0 },
-  { id: "bot_close_2", src: botCloseSvg, x: 767, y: 609, size: 150, rotation: 0 },
-  { id: "bot_close_3", src: botCloseSvg, x: 1447, y: 609, size: 150, rotation: 0 },
-  { id: "bot_close_4", src: botCloseSvg, x: 2115, y: 609, size: 150, rotation: 0 },
+const BOT_DOORS_CONFIG = [
+  // --- STERILIZER 1 (ST1) OUTLET DOOR ---
+  {
+    n: 1,
+    openX: 122,
+    openY: 580,
+    openW: 190,
+    openH: 190,
+    closeX: 127,
+    closeY: 609,
+    closeW: 150,
+    closeH: 150,
+  },
+  // --- STERILIZER 2 (ST2) OUTLET DOOR ---
+  {
+    n: 2,
+    openX: 768,
+    openY: 589,
+    openW: 190,
+    openH: 190,
+    closeX: 767,
+    closeY: 609,
+    closeW: 150,
+    closeH: 150,
+  },
+  // --- STERILIZER 3 (ST3) OUTLET DOOR ---
+  {
+    n: 3,
+    openX: 1444,
+    openY: 582,
+    openW: 190,
+    openH: 190,
+    closeX: 1447,
+    closeY: 609,
+    closeW: 150,
+    closeH: 150,
+  },
+  // --- STERILIZER 4 (ST4) OUTLET DOOR ---
+  {
+    n: 4,
+    openX: 2115,
+    openY: 589,
+    openW: 190,
+    openH: 190,
+    closeX: 2115,
+    closeY: 609,
+    closeW: 150,
+    closeH: 150,
+  },
 ];
-*/
 
 // Overview Tag Monitor Cards (Grouped by Station)
 const TAG_MONITOR_CARDS = [
@@ -115,70 +188,70 @@ const TAG_MONITOR_CARDS = [
   { id: "boiler_pressure", x: -430, y: 140, title: "BOILER PRESSURE", defaultVal: "no tag", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
 
   // --- STERILIZER 1 (ST1) ---
-  { id: "card_exhaust_steam_st1", x: 190, y: 170, title: "EXHAUST STEAM ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam_1_st1", x: -185, y: 50, title: "INLET STEAM 1 ST1", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_2_st1", x: -240, y: 210, title: "INLET STEAM 2 ST1", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_3_st1", x: -240, y: 430, title: "INLET STEAM 3 ST1", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_4_st1", x: -240, y: 550, title: "INLET STEAM 4 ST1", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_flashing_st1", x: -400, y: 690, title: "FLASHING ST1", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_exhaust_steam_st1", x: 190, y: 170, title: "EXHAUST STEAM ST1", defaultVal: "0", unit: "%", status: "red", width: 150 },
+  { id: "card_inlet_steam_1_st1", x: -185, y: 50, title: "INLET STEAM 1 ST1", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_2_st1", x: -240, y: 210, title: "INLET STEAM 2 ST1", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_3_st1", x: -240, y: 430, title: "INLET STEAM 3 ST1", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_4_st1", x: -240, y: 550, title: "INLET STEAM 4 ST1", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_flashing_st1", x: -400, y: 690, title: "FLASHING ST1", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_door_st1", x: -20, y: 235, title: "INLET DOOR ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "card_outlet_door_st1", x: -80, y: 780, title: "OUTLET DOOR ST1", defaultVal: TEST_OUTLET_DOOR_ST1, unit: "", status: "grey", width: 150 },
   { id: "overview_pressure_1", x: -20, y: 340, title: "PRESSURE 1", defaultVal: "0.0", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "overview_temp_1", x: -20, y: 700, title: "TEMPERATURE 1", defaultVal: "0.0", unit: "°C", status: "grey", width: 150, valueColor: "#ef4444" },
-  { id: "d_cond_st1", x: -440, y: 975, title: "D. COND ST1", defaultVal: "OPEN", unit: "", status: "grey", width: 150, scale: 1 },
-  { id: "card_relief_condensate_st1", x: -440, y: 1055, title: "RELIEF CONDENSATE VALVE ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_condensate_1_st1", x: -440, y: 1120, title: "CONDENSATE ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "d_cond_st1", x: -440, y: 975, title: "D. COND ST1", defaultVal: "0", unit: "%", status: "red", width: 150, scale: 1 },
+  { id: "card_relief_condensate_st1", x: -440, y: 1055, title: "RELIEF CONDENSATE VALVE ST1", defaultVal: "0", unit: "%", status: "red", width: 150 },
+  { id: "card_condensate_1_st1", x: -440, y: 1120, title: "CONDENSATE ST1", defaultVal: "0", unit: "%", status: "red", width: 150 },
 
   // --- STERILIZER 2 (ST2) ---
-  { id: "card_exhaust_steam_st2", x: 850, y: 170, title: "EXHAUST STEAM ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam_1_st2", x: 500, y: 50, title: "INLET STEAM 1 ST2", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_2_st2", x: 420, y: 210, title: "INLET STEAM 2 ST2", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_3_st2", x: 420, y: 430, title: "INLET STEAM 3 ST2", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_4_st2", x: 420, y: 550, title: "INLET STEAM 4 ST2", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_flashing_st2", x: 260, y: 690, title: "FLASHING ST2", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_exhaust_steam_st2", x: 850, y: 170, title: "EXHAUST STEAM ST2", defaultVal: "0", unit: "%", status: "red", width: 150 },
+  { id: "card_inlet_steam_1_st2", x: 500, y: 50, title: "INLET STEAM 1 ST2", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_2_st2", x: 420, y: 210, title: "INLET STEAM 2 ST2", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_3_st2", x: 420, y: 430, title: "INLET STEAM 3 ST2", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_4_st2", x: 420, y: 550, title: "INLET STEAM 4 ST2", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_flashing_st2", x: 260, y: 690, title: "FLASHING ST2", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_door_st2", x: 645, y: 235, title: "INLET DOOR ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "card_outlet_door_st2", x: 582, y: 780, title: "OUTLET DOOR ST2", defaultVal: TEST_OUTLET_DOOR_ST2, unit: "", status: "grey", width: 150 },
   { id: "overview_pressure_2", x: 645, y: 340, title: "PRESSURE 2", defaultVal: "0.0", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "overview_temp_2", x: 645, y: 700, title: "TEMPERATURE 2", defaultVal: "0.0", unit: "°C", status: "grey", width: 150, valueColor: "#ef4444" },
-  { id: "d_cond_st2", x: 220, y: 975, title: "D. COND ST2", defaultVal: "CLOSE", unit: "", status: "grey", width: 150, scale: 1 },
-  { id: "card_relief_condensate_st2", x: 220, y: 1050, title: "RELIEF CONDENSATE VALVE ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_condensate_1_st2", x: 220, y: 1120, title: "CONDENSATE ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "d_cond_st2", x: 220, y: 975, title: "D. COND ST2", defaultVal: "0", unit: "%", status: "red", width: 150, scale: 1 },
+  { id: "card_relief_condensate_st2", x: 220, y: 1050, title: "RELIEF CONDENSATE VALVE ST2", defaultVal: "0", unit: "%", status: "red", width: 150 },
+  { id: "card_condensate_1_st2", x: 220, y: 1120, title: "CONDENSATE ST2", defaultVal: "0", unit: "%", status: "red", width: 150 },
 
   // --- STERILIZER 3 (ST3) ---
-  { id: "card_exhaust_steam_st3", x: 1515, y: 170, title: "EXHAUST STEAM ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam_1_st3", x: 1170, y: 50, title: "INLET STEAM 1 ST3", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_2_st3", x: 1085, y: 210, title: "INLET STEAM 2 ST3", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_3_st3", x: 1085, y: 430, title: "INLET STEAM 3 ST3", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_4_st3", x: 1085, y: 550, title: "INLET STEAM 4 ST3", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_flashing_st3", x: 925, y: 690, title: "FLASHING ST3", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_exhaust_steam_st3", x: 1515, y: 170, title: "EXHAUST STEAM ST3", defaultVal: "0", unit: "%", status: "red", width: 150 },
+  { id: "card_inlet_steam_1_st3", x: 1170, y: 50, title: "INLET STEAM 1 ST3", defaultVal: "CLOSE", unit: "", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_2_st3", x: 1085, y: 210, title: "INLET STEAM 2 ST3", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_3_st3", x: 1085, y: 430, title: "INLET STEAM 3 ST3", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_4_st3", x: 1085, y: 550, title: "INLET STEAM 4 ST3", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_flashing_st3", x: 925, y: 690, title: "FLASHING ST3", defaultVal: "CLOSE", unit: "", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_door_st3", x: 1310, y: 235, title: "INLET DOOR ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "card_outlet_door_st3", x: 1245, y: 780, title: "OUTLET DOOR ST3", defaultVal: TEST_OUTLET_DOOR_ST3, unit: "", status: "grey", width: 150 },
   { id: "overview_pressure_3", x: 1310, y: 340, title: "PRESSURE 3", defaultVal: "0.0", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "overview_temp_3", x: 1310, y: 700, title: "TEMPERATURE 3", defaultVal: "0.0", unit: "°C", status: "grey", width: 150, valueColor: "#ef4444" },
-  { id: "d_cond_st3", x: 885, y: 975, title: "D. COND ST3", defaultVal: "OPEN", unit: "", status: "grey", width: 150, scale: 1 },
-  { id: "card_relief_condensate_st3", x: 885, y: 1050, title: "RELIEF CONDENSATE VALVE ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_condensate_1_st3", x: 885, y: 1120, title: "CONDENSATE ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "d_cond_st3", x: 885, y: 975, title: "D. COND ST3", defaultVal: "0", unit: "%", status: "red", width: 150, scale: 1 },
+  { id: "card_relief_condensate_st3", x: 885, y: 1050, title: "RELIEF CONDENSATE VALVE ST3", defaultVal: "0", unit: "%", status: "red", width: 150 },
+  { id: "card_condensate_1_st3", x: 885, y: 1120, title: "CONDENSATE ST3", defaultVal: "0", unit: "%", status: "red", width: 150 },
 
   // --- STERILIZER 4 (ST4) ---
-  { id: "card_exhaust_steam_st4", x: 2175, y: 170, title: "EXHAUST STEAM ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_inlet_steam_1_st4", x: 1830, y: 50, title: "INLET STEAM 1 ST4", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_2_st4", x: 1745, y: 210, title: "INLET STEAM 2 ST4", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_3_st4", x: 1745, y: 430, title: "INLET STEAM 3 ST4", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_4_st4", x: 1745, y: 550, title: "INLET STEAM 4 ST4", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_flashing_st4", x: 1585, y: 690, title: "FLASHING ST4", defaultVal: "no tag", unit: "", status: "grey", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_exhaust_steam_st4", x: 2175, y: 170, title: "EXHAUST STEAM ST4", defaultVal: "20", unit: "%", status: "green", width: 150 },
+  { id: "card_inlet_steam_1_st4", x: 1830, y: 50, title: "INLET STEAM 1 ST4", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_2_st4", x: 1745, y: 210, title: "INLET STEAM 2 ST4", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_3_st4", x: 1745, y: 430, title: "INLET STEAM 3 ST4", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_4_st4", x: 1745, y: 550, title: "INLET STEAM 4 ST4", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_flashing_st4", x: 1585, y: 690, title: "FLASHING ST4", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_door_st4", x: 1970, y: 235, title: "INLET DOOR ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "card_outlet_door_st4", x: 1905, y: 780, title: "OUTLET DOOR ST4", defaultVal: TEST_OUTLET_DOOR_ST4, unit: "", status: "grey", width: 150 },
   { id: "overview_pressure_4", x: 1970, y: 340, title: "PRESSURE 4", defaultVal: "0.0", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "overview_temp_4", x: 1965, y: 700, title: "TEMPERATURE 4", defaultVal: "0.0", unit: "°C", status: "grey", width: 150, valueColor: "#ef4444" },
-  { id: "d_cond_st4", x: 1545, y: 975, title: "D. COND ST4", defaultVal: "OPEN", unit: "", status: "grey", width: 150, scale: 1 },
-  { id: "card_relief_condensate_st4", x: 1545, y: 1050, title: "RELIEF CONDENSATE VALVE ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_condensate_1_st4", x: 1545, y: 1120, title: "CONDENSATE ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
+  { id: "d_cond_st4", x: 1545, y: 975, title: "D. COND ST4", defaultVal: "20", unit: "%", status: "green", width: 150, scale: 1 },
+  { id: "card_relief_condensate_st4", x: 1545, y: 1050, title: "RELIEF CONDENSATE VALVE ST4", defaultVal: "20", unit: "%", status: "green", width: 150 },
+  { id: "card_condensate_1_st4", x: 1545, y: 1120, title: "CONDENSATE ST4", defaultVal: "20", unit: "%", status: "green", width: 150 },
 ];
 
 // Overview Equipment Icons (Grouped by Station)
 const OVERVIEW_EQUIPMENT_ICONS = [
   // --- STERILIZER 1 (ST1) ICONS ---
-  { id: "overview_inlet_steam_1_st1_icon", cardId: "card_inlet_steam_1_st1", x: -298, y: 40, icon: valvePositionerSvg, size: 90, rotation: 0 },
+  { id: "overview_inlet_steam_1_st1_icon", cardId: "card_inlet_steam_1_st1", x: -312, y: 40, icon: valvePneumaticActuatorSvg, size: 55, rotation: 180 },
   { id: "overview_inlet_steam_2_st1_icon", cardId: "card_inlet_steam_2_st1", x: -245, y: 130, icon: valvePositionerSvg, size: 90, rotation: 270 },
   { id: "overview_inlet_steam_3_st1_icon", cardId: "card_inlet_steam_3_st1", x: -245, y: 350, icon: valvePositionerSvg, size: 90, rotation: 270 },
   { id: "overview_inlet_steam_4_st1_icon", cardId: "card_inlet_steam_4_st1", x: -245, y: 612, icon: valvePositionerSvg, size: 90, rotation: 270 },
@@ -189,7 +262,7 @@ const OVERVIEW_EQUIPMENT_ICONS = [
   { id: "overview_exhaust_steam_st1_icon", cardId: "card_exhaust_steam_st1", x: 180, y: 88, icon: valvePositionerSvg, size: 90, rotation: 270 },
 
   // --- STERILIZER 2 (ST2) ICONS ---
-  { id: "overview_inlet_steam_1_st2_icon", cardId: "card_inlet_steam_1_st2", x: 363, y: 40, icon: valvePositionerSvg, size: 90, rotation: 0 },
+  { id: "overview_inlet_steam_1_st2_icon", cardId: "card_inlet_steam_1_st2", x: 350, y: 40, icon: valvePneumaticActuatorSvg, size: 55, rotation: 180 },
   { id: "overview_inlet_steam_2_st2_icon", cardId: "card_inlet_steam_2_st2", x: 415, y: 128, icon: valvePositionerSvg, size: 90, rotation: 270 },
   { id: "overview_inlet_steam_3_st2_icon", cardId: "card_inlet_steam_3_st2", x: 415, y: 349, icon: valvePositionerSvg, size: 90, rotation: 270 },
   { id: "overview_inlet_steam_4_st2_icon", cardId: "card_inlet_steam_4_st2", x: 415, y: 610, icon: valvePositionerSvg, size: 90, rotation: 270 },
@@ -200,7 +273,7 @@ const OVERVIEW_EQUIPMENT_ICONS = [
   { id: "overview_exhaust_steam_st2_icon", cardId: "card_exhaust_steam_st2", x: 840, y: 86, icon: valvePositionerSvg, size: 90, rotation: 270 },
 
   // --- STERILIZER 3 (ST3) ICONS ---
-  { id: "overview_inlet_steam_1_st3_icon", cardId: "card_inlet_steam_1_st3", x: 1027, y: 40, icon: valvePositionerSvg, size: 90, rotation: 0 },
+  { id: "overview_inlet_steam_1_st3_icon", cardId: "card_inlet_steam_1_st3", x: 1015, y: 40, icon: valvePneumaticActuatorSvg, size: 55, rotation: 180 },
   { id: "overview_inlet_steam_2_st3_icon", cardId: "card_inlet_steam_2_st3", x: 1080, y: 128, icon: valvePositionerSvg, size: 90, rotation: 270 },
   { id: "overview_inlet_steam_3_st3_icon", cardId: "card_inlet_steam_3_st3", x: 1080, y: 349, icon: valvePositionerSvg, size: 90, rotation: 270 },
   { id: "overview_inlet_steam_4_st3_icon", cardId: "card_inlet_steam_4_st3", x: 1080, y: 610, icon: valvePositionerSvg, size: 90, rotation: 270 },
@@ -211,7 +284,7 @@ const OVERVIEW_EQUIPMENT_ICONS = [
   { id: "overview_exhaust_steam_st3_icon", cardId: "card_exhaust_steam_st3", x: 1505, y: 86, icon: valvePositionerSvg, size: 90, rotation: 270 },
 
   // --- STERILIZER 4 (ST4) ICONS ---
-  { id: "overview_inlet_steam_1_st4_icon", cardId: "card_inlet_steam_1_st4", x: 1689, y: 40, icon: valvePositionerSvg, size: 90, rotation: 0 },
+  { id: "overview_inlet_steam_1_st4_icon", cardId: "card_inlet_steam_1_st4", x: 1677, y: 40, icon: valvePneumaticActuatorSvg, size: 55, rotation: 180 },
   { id: "overview_inlet_steam_2_st4_icon", cardId: "card_inlet_steam_2_st4", x: 1740, y: 127, icon: valvePositionerSvg, size: 90, rotation: 270 },
   { id: "overview_inlet_steam_3_st4_icon", cardId: "card_inlet_steam_3_st4", x: 1740, y: 348, icon: valvePositionerSvg, size: 90, rotation: 270 },
   { id: "overview_inlet_steam_4_st4_icon", cardId: "card_inlet_steam_4_st4", x: 1740, y: 608, icon: valvePositionerSvg, size: 90, rotation: 270 },
@@ -259,6 +332,36 @@ const formatValveStatus = (rawVal) => {
     return num > 0 ? "OPEN" : "CLOSE";
   }
   return "CLOSE";
+};
+
+const resolveSterilizerValves = (stNum, getMappedValue) => {
+  const getVal = (id) => {
+    const card = TAG_MONITOR_CARDS.find((c) => c.id === id);
+    const def = card ? (card.defaultVal || "0") : "0";
+    const v = getMappedValue ? getMappedValue(id, "MONITOR", def) : def;
+    if (!v || String(v).trim().toLowerCase() === "no tag" || String(v).trim() === "--") {
+      return def;
+    }
+    return String(v);
+  };
+  const isOpen = (id) => {
+    const v = getVal(id);
+    const num = parseFloat(v);
+    const str = v.trim().toLowerCase();
+    return !isNaN(num) ? num > 0 : (str === "open" || str === "true" || str === "1");
+  };
+  const inlet1 = isOpen(`card_inlet_steam_1_st${stNum}`);
+  return {
+    isInlet1Open: inlet1,
+    isInlet2Open: isOpen(`card_inlet_steam_2_st${stNum}`) && inlet1,
+    isInlet3Open: isOpen(`card_inlet_steam_3_st${stNum}`) && inlet1,
+    isInlet4Open: isOpen(`card_inlet_steam_4_st${stNum}`) && inlet1,
+    isFlashOpen: isOpen(`card_flashing_st${stNum}`) && inlet1,
+    isExhaustOpen: isOpen(`card_exhaust_steam_st${stNum}`),
+    isDCondOpen: isOpen(`d_cond_st${stNum}`),
+    isCond1Open: isOpen(`card_condensate_1_st${stNum}`),
+    isReliefOpen: isOpen(`card_relief_condensate_st${stNum}`),
+  };
 };
 
 // ==========================================
@@ -1009,138 +1112,90 @@ const ValveModernCardSVG = ({
   y,
   scale = 1,
   title = "",
-  command = "CLOSE",
   position = "0.0",
   onClick,
+  style = {},
 }) => {
-  const isOpen = command === "OPEN";
+  const isNoTag = !position || String(position).toLowerCase() === "no tag";
+  const isOffline = String(position) === "--";
+  const numPos = isNoTag || isOffline ? 0 : Math.min(100, Math.max(0, parseFloat(position) || 0));
+  const displayPos = isNoTag ? "No Tag" : isOffline ? "--" : `${numPos.toFixed(1)}%`;
+
+  const statusLabel = isNoTag ? "No Tag" : isOffline ? "Offline" : numPos === 0 ? "CLOSED" : numPos === 100 ? "FULLY OPEN" : `${numPos.toFixed(0)}% OPEN`;
+  const badgeBg = isNoTag || isOffline ? "#f1f5f9" : numPos > 0 ? "#f0fdf4" : "#fef2f2";
+  const badgeColor = isNoTag || isOffline ? "#64748b" : numPos > 0 ? "#16a34a" : "#ef4444";
+
   return (
     <g
-      transform={`translate(${x}, ${y}) scale(${scale}) translate(-100, -65)`}
+      transform={`translate(${x}, ${y}) scale(${scale}) translate(-95, -55)`}
       onClick={onClick}
       style={{ cursor: "pointer" }}
     >
-      <foreignObject width="200" height="130" style={{ overflow: "visible" }}>
+      <foreignObject width="190" height="115" style={{ overflow: "visible" }}>
         <div
           style={{
             background: "#ffffff",
-            border: "1px solid #e2e8f0",
+            border: "1px solid #cbd5e1",
             borderRadius: "12px",
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
-            padding: "12px",
+            boxShadow: "0 4px 12px rgba(15, 23, 42, 0.08)",
+            padding: "10px 12px",
             fontFamily: "'Inter', sans-serif",
             display: "flex",
             flexDirection: "column",
-            gap: "8px",
+            gap: "6px",
+            userSelect: "none",
+            ...style,
           }}
         >
           <div
             style={{
               textAlign: "center",
-              fontSize: "12px",
+              fontSize: "11px",
               fontWeight: "950",
               color: "#0f172a",
               borderBottom: "2px solid #ffdb3b",
-              paddingBottom: "6px",
+              paddingBottom: "4px",
               textTransform: "uppercase",
-              letterSpacing: "1px",
+              letterSpacing: "0.5px",
             }}
           >
             {title}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "2px" }}>
+            <span style={{ fontSize: "9px", fontWeight: "800", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              POSITION
+            </span>
+            <span style={{ fontSize: "9px", fontWeight: "900", background: badgeBg, color: badgeColor, padding: "2px 6px", borderRadius: "4px", border: `1px solid ${badgeColor}33` }}>
+              {statusLabel}
+            </span>
+          </div>
+
+          <div style={{ position: "relative", width: "100%", height: "24px", background: "#f1f5f9", borderRadius: "6px", overflow: "hidden", border: "1px solid #cbd5e1" }}>
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                borderBottom: "1px solid #f1f5f9",
-                paddingBottom: "4px",
+                width: `${numPos}%`,
+                height: "100%",
+                background: numPos > 0 ? "linear-gradient(90deg, #ffdb3b, #d4ac0d)" : "transparent",
+                transition: "width 0.4s ease",
               }}
-            >
-              <span
-                style={{
-                  fontSize: "10px",
-                  color: "#64748b",
-                  fontWeight: "800",
-                }}
-              >
-                COMMAND
-              </span>
-              <div
-                style={{
-                  padding: "2px 10px",
-                  borderRadius: "4px",
-                  background: isOpen ? "#f1fdf3" : "#fef2f2",
-                  border: `1px solid ${isOpen ? "#1FE921" : "#EF4444"}`,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "11px",
-                    color: isOpen ? "#1FE921" : "#EF4444",
-                    fontWeight: "900",
-                  }}
-                >
-                  {command}
-                </span>
-              </div>
-            </div>
+            />
             <div
               style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                marginTop: "5px",
+                justifyContent: "center",
+                fontSize: "11px",
+                fontWeight: "950",
+                color: isNoTag ? "#94a3b8" : "#0f172a",
               }}
             >
-              <span
-                style={{
-                  fontSize: "10px",
-                  color: "#64748b",
-                  fontWeight: "800",
-                  marginBottom: "2px",
-                }}
-              >
-                POSITION
-              </span>
-              <div
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "24px",
-                  background: "#f1f5f9",
-                  borderRadius: "6px",
-                  overflow: "hidden",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${position}%`,
-                    height: "100%",
-                    background: `linear-gradient(90deg, #ffdb3b, #d4ac0d)`,
-                    transition: "width 0.5s ease",
-                  }}
-                />
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "11px",
-                    fontWeight: "950",
-                    color: "#0f172a",
-                  }}
-                >
-                  {position}%
-                </div>
-              </div>
+              {displayPos}
             </div>
           </div>
         </div>
@@ -1878,259 +1933,402 @@ function LineEquipmentBlocks({
 }) {
   const n = line;
 
-  // Exhaust Steam Status
-  const rawExhaustVal = getMappedValue ? getMappedValue(`card_exhaust_steam_st${n}`, "MONITOR", "0") : "0";
-  const exhaustTagVal = String(rawExhaustVal);
-  const exhaustNumVal = parseFloat(exhaustTagVal);
-  const isExhaustOpen = !isNaN(exhaustNumVal) ? exhaustNumVal > 0 : (exhaustTagVal === "OPEN" || exhaustTagVal === "true" || exhaustTagVal === "1");
-
-  // Inlet Steam 1 Status
-  const rawInlet1Val = getMappedValue ? getMappedValue(`card_inlet_steam_1_st${n}`, "MONITOR", "0") : "0";
-  const inlet1TagVal = String(rawInlet1Val);
-  const inlet1NumVal = parseFloat(inlet1TagVal);
-  const isInlet1Open = !isNaN(inlet1NumVal) && inlet1NumVal > 0;
-
-  // Inlet Steam 2 Status
-  const rawInlet2Val = getMappedValue ? getMappedValue(`card_inlet_steam_2_st${n}`, "MONITOR", "0") : "0";
-  const inlet2TagVal = String(rawInlet2Val);
-  const inlet2NumVal = parseFloat(inlet2TagVal);
-  const isInlet2Open = !isNaN(inlet2NumVal) ? inlet2NumVal > 0 : (inlet2TagVal === "OPEN" || inlet2TagVal === "true" || inlet2TagVal === "1");
-
-  // Flashing Status
-  const rawFlashingVal = getMappedValue ? getMappedValue(`card_flashing_st${n}`, "MONITOR", "0") : "0";
-  const flashingTagVal = String(rawFlashingVal);
-  const flashingNumVal = parseFloat(flashingTagVal);
-  const isFlashingOpen = !isNaN(flashingNumVal) ? flashingNumVal > 0 : (flashingTagVal === "OPEN" || flashingTagVal === "true" || flashingTagVal === "1");
-
-  // D.Condensate Status
-  const rawDCondVal = getMappedValue ? getMappedValue(`d_cond_st${n}`, "MONITOR", "0") : "0";
-  const dCondTagVal = String(rawDCondVal);
-  const dCondNumVal = parseFloat(dCondTagVal);
-  const isDCondOpen = !isNaN(dCondNumVal) ? dCondNumVal > 0 : (dCondTagVal === "OPEN" || dCondTagVal === "true" || dCondTagVal === "1");
-
-  // Condensate 1 Status
-  const rawCond1Val = getMappedValue ? getMappedValue(`card_condensate_1_st${n}`, "MONITOR", "0") : "0";
-  const cond1TagVal = String(rawCond1Val);
-  const cond1NumVal = parseFloat(cond1TagVal);
-  const isCond1Open = !isNaN(cond1NumVal) ? cond1NumVal > 0 : (cond1TagVal === "OPEN" || cond1TagVal === "true" || cond1TagVal === "1");
-
-  // Condensate 2 Status
-  const rawCond2Val = getMappedValue ? getMappedValue(`card_condensate_2_st${n}`, "MONITOR", "0") : "0";
-  const cond2TagVal = String(rawCond2Val);
-  const cond2NumVal = parseFloat(cond2TagVal);
-  const isCond2Open = !isNaN(cond2NumVal) ? cond2NumVal > 0 : (cond2TagVal === "OPEN" || cond2TagVal === "true" || cond2TagVal === "1");
+  // Interlock Master Inlet Steam 1: Jika Inlet Steam 1 = 0 / CLOSE, valve cabang (Inlet 2, 3, 4 & Flashing) menjadi MERAH / nonaktif
+  const rawInlet1 = getMappedValue ? getMappedValue(`card_inlet_steam_1_st${n}`, "MONITOR", n === 3 ? "CLOSE" : "OPEN") : (n === 3 ? "CLOSE" : "OPEN");
+  const strInlet1 = (!rawInlet1 || String(rawInlet1).trim().toLowerCase() === "no tag" || String(rawInlet1).trim() === "--") ? (n === 3 ? "CLOSE" : "OPEN") : String(rawInlet1);
+  const numInlet1 = parseFloat(strInlet1);
+  const isInlet1Open = !isNaN(numInlet1) ? numInlet1 > 0 : (strInlet1.trim().toLowerCase() === "open" || strInlet1 === "true" || strInlet1 === "1");
 
   return (
     <g id={`line${n}_equipment_blocks`}>
-      {/* EXHAUST STEAM */}
-      <g id={`block_exhaust_steam_st${n}`}>
-        <EquipmentIconSVG
-          key={`valve_exhaust_steam_st${n}`}
-          x={145}
-          y={50}
-          icon={valveActuatorSvg}
-          size={90}
-          rotation={270}
-          isRunning={isExhaustOpen}
-        />
-        <TagMonitorCardSVG
-          x={40}
-          y={20}
-          title={`EXHAUST STEAM ST${n}`}
-          value={exhaustTagVal}
-          unit=""
-          status={isExhaustOpen ? "green" : "red"}
-          width={150}
-          onClick={() => handleEquipmentClick && handleEquipmentClick(`card_exhaust_steam_st${n}`)}
-          style={getDeveloperStyle(`card_exhaust_steam_st${n}`)}
-        />
-      </g>
+      {/* 1. EXHAUST STEAM (VALVE POSITIONER + CARD) */}
+      {(() => {
+        const rawTagVal = getMappedValue ? getMappedValue(`card_exhaust_steam_st${n}`, "MONITOR", "0") : "0";
+        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 ? "20" : "0") : String(rawTagVal);
+        const numericVal = parseFloat(tagVal);
+        const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
+        return (
+          <g id={`block_exhaust_steam_st${n}`}>
+            <EquipmentIconSVG
+              key={`valve_exhaust_steam_st${n}`}
+              x={938}
+              y={100}
+              icon={valvePositionerSvg}
+              size={75}
+              rotation={270}
+              isRunning={isOpen}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_exhaust_steam_st${n}`)}
+              style={getDeveloperStyle(`card_exhaust_steam_st${n}`)}
+            />
+            <TagMonitorCardSVG
+              x={1020}
+              y={80}
+              title={`EXHAUST STEAM ST${n}`}
+              value={tagVal}
+              unit="%"
+              status={isOpen ? "green" : "red"}
+              width={140}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_exhaust_steam_st${n}`)}
+              style={getDeveloperStyle(`card_exhaust_steam_st${n}`)}
+            />
+          </g>
+        );
+      })()}
 
-      {/* INLET STEAM 1 */}
-      <g id={`block_inlet_steam_1_st${n}`}>
-        <EquipmentIconSVG
-          key={`valve_inlet_steam_1_st${n}`}
-          x={125}
-          y={275}
-          icon={valvePositionerSvg}
-          size={100}
-          rotation={270}
-          isRunning={isInlet1Open}
-        />
-        <TagMonitorCardSVG
-          x={140}
-          y={200}
-          title={`INLET STEAM 1 ST${n}`}
-          value={inlet1TagVal}
-          unit=""
-          status={isInlet1Open ? "green" : "red"}
-          width={150}
-          onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_steam_1_st${n}`)}
-          style={getDeveloperStyle(`card_inlet_steam_1_st${n}`)}
-        />
-      </g>
+      {/* 2. INLET STEAM 1 (VALVE PNEUMATIC ACTUATOR + CARD) */}
+      {(() => {
+        const rawTagVal = getMappedValue ? getMappedValue(`card_inlet_steam_1_st${n}`, "MONITOR", n === 3 ? "CLOSE" : "OPEN") : (n === 3 ? "CLOSE" : "OPEN");
+        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 3 ? "CLOSE" : "OPEN") : String(rawTagVal);
+        const numericVal = parseFloat(tagVal);
+        const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
+        return (
+          <g id={`block_inlet_steam_1_st${n}`}>
+            <EquipmentIconSVG
+              key={`valve_inlet_steam_1_st${n}`}
+              x={468}
+              y={78}
+              icon={valvePneumaticActuatorSvg}
+              size={50}
+              rotation={180}
+              isRunning={isOpen}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_steam_1_st${n}`)}
+              style={getDeveloperStyle(`card_inlet_steam_1_st${n}`)}
+            />
+            <TagMonitorCardSVG
+              x={555}
+              y={70}
+              title={`INLET STEAM 1 ST${n}`}
+              value={tagVal}
+              unit=""
+              status={isOpen ? "green" : "red"}
+              width={130}
+              headerPadding="2px 4px"
+              bodyPadding="3px 4px"
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_steam_1_st${n}`)}
+              style={getDeveloperStyle(`card_inlet_steam_1_st${n}`)}
+            />
+          </g>
+        );
+      })()}
 
-      {/* INLET STEAM 2 */}
-      <g id={`block_inlet_steam_2_st${n}`}>
-        <EquipmentIconSVG
-          key={`valve_inlet_steam_2_st${n}`}
-          x={125}
-          y={488}
-          icon={valvePositionerSvg}
-          size={100}
-          rotation={270}
-          isRunning={isInlet2Open}
-        />
-        <TagMonitorCardSVG
-          x={140}
-          y={415}
-          title={`INLET STEAM 2 ST${n}`}
-          value={inlet2TagVal}
-          unit=""
-          status={isInlet2Open ? "green" : "red"}
-          width={150}
-          onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_steam_2_st${n}`)}
-          style={getDeveloperStyle(`card_inlet_steam_2_st${n}`)}
-        />
-      </g>
+      {/* 3. INLET STEAM 2 (VALVE POSITIONER + CARD) */}
+      {(() => {
+        const rawTagVal = getMappedValue ? getMappedValue(`card_inlet_steam_2_st${n}`, "MONITOR", "0") : "0";
+        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 || n === 2 ? "20" : "0") : String(rawTagVal);
+        const numericVal = parseFloat(tagVal);
+        const rawOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
+        const isOpen = rawOpen && isInlet1Open;
+        return (
+          <g id={`block_inlet_steam_2_st${n}`}>
+            <EquipmentIconSVG
+              key={`valve_inlet_steam_2_st${n}`}
+              x={530}
+              y={143}
+              icon={valvePositionerSvg}
+              size={75}
+              rotation={270}
+              isRunning={isOpen}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_steam_2_st${n}`)}
+              style={getDeveloperStyle(`card_inlet_steam_2_st${n}`)}
+            />
+            <TagMonitorCardSVG
+              x={545}
+              y={212}
+              title={`INLET STEAM 2 ST${n}`}
+              value={tagVal}
+              unit="%"
+              status={isOpen ? "green" : "red"}
+              width={130}
+              headerPadding="2px 4px"
+              bodyPadding="3px 4px"
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_steam_2_st${n}`)}
+              style={getDeveloperStyle(`card_inlet_steam_2_st${n}`)}
+            />
+          </g>
+        );
+      })()}
 
-      {/* FLASHING */}
-      <g id={`block_flashing_st${n}`}>
-        <EquipmentIconSVG
-          key={`valve_flashing_st${n}`}
-          x={125}
-          y={675}
-          icon={valveActuatorSvg}
-          size={100}
-          rotation={270}
-          isRunning={isFlashingOpen}
-        />
-        <TagMonitorCardSVG
-          x={140}
-          y={610}
-          title={`FLASHING ST${n}`}
-          value={flashingTagVal}
-          unit=""
-          status={isFlashingOpen ? "green" : "red"}
-          width={150}
-          onClick={() => handleEquipmentClick && handleEquipmentClick(`card_flashing_st${n}`)}
-          style={getDeveloperStyle(`card_flashing_st${n}`)}
-        />
-      </g>
+      {/* 4. INLET STEAM 3 (VALVE POSITIONER + CARD) */}
+      {(() => {
+        const rawTagVal = getMappedValue ? getMappedValue(`card_inlet_steam_3_st${n}`, "MONITOR", "0") : "0";
+        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 || n === 2 ? "20" : "0") : String(rawTagVal);
+        const numericVal = parseFloat(tagVal);
+        const rawOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
+        const isOpen = rawOpen && isInlet1Open;
+        return (
+          <g id={`block_inlet_steam_3_st${n}`}>
+            <EquipmentIconSVG
+              key={`valve_inlet_steam_3_st${n}`}
+              x={530}
+              y={360}
+              icon={valvePositionerSvg}
+              size={75}
+              rotation={270}
+              isRunning={isOpen}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_steam_3_st${n}`)}
+              style={getDeveloperStyle(`card_inlet_steam_3_st${n}`)}
+            />
+            <TagMonitorCardSVG
+              x={545}
+              y={430}
+              title={`INLET STEAM 3 ST${n}`}
+              value={tagVal}
+              unit="%"
+              status={isOpen ? "green" : "red"}
+              width={130}
+              headerPadding="2px 4px"
+              bodyPadding="3px 4px"
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_steam_3_st${n}`)}
+              style={getDeveloperStyle(`card_inlet_steam_3_st${n}`)}
+            />
+          </g>
+        );
+      })()}
 
-      {/* OUTLET */}
+      {/* 5. INLET STEAM 4 (VALVE POSITIONER + CARD) */}
+      {(() => {
+        const rawTagVal = getMappedValue ? getMappedValue(`card_inlet_steam_4_st${n}`, "MONITOR", "0") : "0";
+        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 || n === 2 ? "20" : "0") : String(rawTagVal);
+        const numericVal = parseFloat(tagVal);
+        const rawOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
+        const isOpen = rawOpen && isInlet1Open;
+        return (
+          <g id={`block_inlet_steam_4_st${n}`}>
+            <EquipmentIconSVG
+              key={`valve_inlet_steam_4_st${n}`}
+              x={530}
+              y={624}
+              icon={valvePositionerSvg}
+              size={75}
+              rotation={270}
+              isRunning={isOpen}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_steam_4_st${n}`)}
+              style={getDeveloperStyle(`card_inlet_steam_4_st${n}`)}
+            />
+            <TagMonitorCardSVG
+              x={545}
+              y={568}
+              title={`INLET STEAM 4 ST${n}`}
+              value={tagVal}
+              unit="%"
+              status={isOpen ? "green" : "red"}
+              width={130}
+              headerPadding="2px 4px"
+              bodyPadding="3px 4px"
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_steam_4_st${n}`)}
+              style={getDeveloperStyle(`card_inlet_steam_4_st${n}`)}
+            />
+          </g>
+        );
+      })()}
+
+      {/* 6. FLASHING (VALVE POSITIONER + CARD) */}
+      {(() => {
+        const rawTagVal = getMappedValue ? getMappedValue(`card_flashing_st${n}`, "MONITOR", "0") : "0";
+        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? "OPEN" : String(rawTagVal);
+        const numericVal = parseFloat(tagVal);
+        const rawOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
+        const isOpen = rawOpen && isInlet1Open;
+        return (
+          <g id={`block_flashing_st${n}`}>
+            <EquipmentIconSVG
+              key={`valve_flashing_st${n}`}
+              x={510}
+              y={706}
+              icon={valvePositionerSvg}
+              size={60}
+              rotation={270}
+              isRunning={isOpen}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_flashing_st${n}`)}
+              style={getDeveloperStyle(`card_flashing_st${n}`)}
+            />
+            <TagMonitorCardSVG
+              x={455}
+              y={765}
+              title={`FLASHING ST${n}`}
+              value={tagVal}
+              unit=""
+              status={isOpen ? "green" : "red"}
+              width={130}
+              headerPadding="2px 4px"
+              bodyPadding="3px 4px"
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_flashing_st${n}`)}
+              style={getDeveloperStyle(`card_flashing_st${n}`)}
+            />
+          </g>
+        );
+      })()}
+
+      {/* 7. D. CONDENSATE (VALVE POSITIONER + CARD) */}
+      {(() => {
+        const rawTagVal = getMappedValue ? getMappedValue(`d_cond_st${n}`, "MONITOR", "0") : "0";
+        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 ? "20" : "0") : String(rawTagVal);
+        const numericVal = parseFloat(tagVal);
+        const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
+        return (
+          <g id={`block_d_cond_st${n}`}>
+            <EquipmentIconSVG
+              key={`valve_d_cond_st${n}`}
+              x={475}
+              y={957}
+              icon={valvePositionerSvg}
+              size={75}
+              rotation={270}
+              isRunning={isOpen}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`d_cond_st${n}`)}
+              style={getDeveloperStyle(`d_cond_st${n}`)}
+            />
+            <TagMonitorCardSVG
+              x={360}
+              y={957}
+              title={`D. COND ST${n}`}
+              value={tagVal}
+              unit="%"
+              status={isOpen ? "green" : "red"}
+              width={130}
+              scale={1}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`d_cond_st${n}`)}
+              style={getDeveloperStyle(`d_cond_st${n}`)}
+            />
+          </g>
+        );
+      })()}
+
+      {/* 8. RELIEF CONDENSATE (VALVE POSITIONER + CARD) */}
+      {(() => {
+        const rawTagVal = getMappedValue ? getMappedValue(`card_relief_condensate_st${n}`, "MONITOR", "0") : "0";
+        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 ? "20" : "0") : String(rawTagVal);
+        const numericVal = parseFloat(tagVal);
+        const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
+        return (
+          <g id={`block_relief_condensate_st${n}`}>
+            <EquipmentIconSVG
+              key={`valve_relief_condensate_st${n}`}
+              x={475}
+              y={1035}
+              icon={valvePositionerSvg}
+              size={75}
+              rotation={270}
+              isRunning={isOpen}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_relief_condensate_st${n}`)}
+              style={getDeveloperStyle(`card_relief_condensate_st${n}`)}
+            />
+            <TagMonitorCardSVG
+              x={360}
+              y={1030}
+              title={`RELIEF COND ST${n}`}
+              value={tagVal}
+              unit="%"
+              status={isOpen ? "green" : "red"}
+              width={130}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_relief_condensate_st${n}`)}
+              style={getDeveloperStyle(`card_relief_condensate_st${n}`)}
+            />
+          </g>
+        );
+      })()}
+
+      {/* 9. CONDENSATE 1 (VALVE POSITIONER + CARD) */}
+      {(() => {
+        const rawTagVal = getMappedValue ? getMappedValue(`card_condensate_1_st${n}`, "MONITOR", "0") : "0";
+        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 ? "20" : "0") : String(rawTagVal);
+        const numericVal = parseFloat(tagVal);
+        const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
+        return (
+          <g id={`block_condensate_1_st${n}`}>
+            <EquipmentIconSVG
+              key={`valve_condensate_1_st${n}`}
+              x={475}
+              y={1117}
+              icon={valvePositionerSvg}
+              size={75}
+              rotation={270}
+              isRunning={isOpen}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_condensate_1_st${n}`)}
+              style={getDeveloperStyle(`card_condensate_1_st${n}`)}
+            />
+            <TagMonitorCardSVG
+              x={360}
+              y={1108}
+              title={`CONDENSATE ST${n}`}
+              value={tagVal}
+              unit="%"
+              status={isOpen ? "green" : "red"}
+              width={130}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_condensate_1_st${n}`)}
+              style={getDeveloperStyle(`card_condensate_1_st${n}`)}
+            />
+          </g>
+        );
+      })()}
+
+      {/* 10. DOORS */}
       <TagMonitorCardSVG
-        x={n === 1 ? 740 : 710}
-        y={695}
-        title={`OUTLET ST${n}`}
-        value={getMappedValue ? String(getMappedValue(`card_outlet_st${n}`, "MONITOR", "no tag")) : "no tag"}
+        x={980}
+        y={192}
+        title={`INLET DOOR ST${n}`}
+        value={formatDoorStatus(getMappedValue ? getMappedValue(`card_inlet_door_st${n}`, "MONITOR", "no tag") : "no tag")}
         unit=""
         status="grey"
         width={150}
-        onClick={() => handleEquipmentClick && handleEquipmentClick(`card_outlet_st${n}`)}
-        style={getDeveloperStyle(`card_outlet_st${n}`)}
+        onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_door_st${n}`)}
+        style={getDeveloperStyle(`card_inlet_door_st${n}`)}
+      />
+      <TagMonitorCardSVG
+        x={980}
+        y={690}
+        title={`OUTLET DOOR ST${n}`}
+        value={formatDoorStatus(getMappedValue ? getMappedValue(`card_outlet_door_st${n}`, "MONITOR", "OPEN") : "OPEN")}
+        unit=""
+        status="grey"
+        width={150}
+        onClick={() => handleEquipmentClick && handleEquipmentClick(`card_outlet_door_st${n}`)}
+        style={getDeveloperStyle(`card_outlet_door_st${n}`)}
       />
 
-      {/* D.CONDENSATE */}
-      <g id={`block_d_cond_st${n}`}>
-        <EquipmentIconSVG
-          key={`valve_d_cond_st${n}`}
-          x={550}
-          y={800}
-          icon={valveActuatorSvg}
-          size={90}
-          rotation={0}
-          isRunning={isDCondOpen}
-        />
-        <TagMonitorCardSVG
-          x={700}
-          y={800}
-          title={`D.CONDE DOOR ST${n}`}
-          value={dCondTagVal}
-          unit=""
-          status={isDCondOpen ? "green" : "red"}
-          width={150}
-          onClick={() => handleEquipmentClick && handleEquipmentClick(`d_cond_st${n}_line`)}
-          style={getDeveloperStyle(`d_cond_st${n}_line`)}
-        />
-      </g>
-
-      {/* CONDENSATE 1 */}
-      <g id={`block_condensate_1_st${n}`}>
-        {n !== 4 && (
-          <EquipmentIconSVG
-            key={`valve_condensate_1_st${n}`}
-            x={620}
-            y={914}
-            icon={valveActuatorSvg}
-            size={90}
-            rotation={270}
-            isRunning={isCond1Open}
-          />
-        )}
-        <TagMonitorCardSVG
-          x={725}
-          y={900}
-          title={n === 1 || n === 2 || n === 3 ? `RELIEF CONDENSATE 1 ST${n}` : `RELIEF CONDENSATE 1 ST4`}
-          value={cond1TagVal}
-          unit=""
-          status={isCond1Open ? "green" : "red"}
-          width={150}
-          onClick={() => handleEquipmentClick && handleEquipmentClick(`card_condensate_1_st${n}`)}
-          style={getDeveloperStyle(`card_condensate_1_st${n}`)}
-        />
-      </g>
-
-      {/* CONDENSATE 2 */}
-      <g id={`block_condensate_2_st${n}`}>
-        {n !== 4 && (
-          <EquipmentIconSVG
-            key={`valve_condensate_2_st${n}`}
-            x={620}
-            y={1005}
-            icon={valveActuatorSvg}
-            size={90}
-            rotation={270}
-            isRunning={isCond2Open}
-          />
-        )}
-        <TagMonitorCardSVG
-          x={725}
-          y={995}
-          title={`CONDENSATE 2 ST${n}`}
-          value={cond2TagVal}
-          unit=""
-          status={isCond2Open ? "green" : "red"}
-          width={150}
-          onClick={() => handleEquipmentClick && handleEquipmentClick(`card_condensate_2_st${n}`)}
-          style={getDeveloperStyle(`card_condensate_2_st${n}`)}
-        />
-      </g>
-
-      {/* PRESSURE & TEMPERATURE CARDS */}
+      {/* 11. PRESSURE & TEMPERATURE CARDS */}
       <TagMonitorCardSVG
-        x={380}
-        y={380}
-        title={`PRESSURE ST${n}`}
-        value={getMappedValue ? String(getMappedValue(`overview_pressure_${n}`, "MONITOR", "No Tag")) : "No Tag"}
+        x={980}
+        y={267}
+        title={`PRESSURE ${n}`}
+        value={getMappedValue ? String(getMappedValue(`overview_pressure_${n}`, "MONITOR", "0.0")) : "0.0"}
         unit="Bar"
         status="grey"
         width={150}
         valueColor="#ef4444"
-        onClick={() => handleEquipmentClick && handleEquipmentClick(`st${n}_pressure_card`)}
-        style={getDeveloperStyle(`st${n}_pressure_card`)}
+        onClick={() => handleEquipmentClick && handleEquipmentClick(`overview_pressure_${n}`)}
+        style={getDeveloperStyle(`overview_pressure_${n}`)}
       />
       <TagMonitorCardSVG
-        x={380}
-        y={520}
-        title={`TEMPERATURE ST${n}`}
-        value={getMappedValue ? String(getMappedValue(`overview_temp_${n}`, "MONITOR", "No Tag")) : "No Tag"}
+        x={980}
+        y={578}
+        title={`TEMPERATURE ${n}`}
+        value={getMappedValue ? String(getMappedValue(`overview_temp_${n}`, "MONITOR", "0.0")) : "0.0"}
         unit="°C"
         status="grey"
         width={150}
         valueColor="#ef4444"
-        onClick={() => handleEquipmentClick && handleEquipmentClick(`st${n}_temp_card`)}
-        style={getDeveloperStyle(`st${n}_temp_card`)}
+        onClick={() => handleEquipmentClick && handleEquipmentClick(`overview_temp_${n}`)}
+        style={getDeveloperStyle(`overview_temp_${n}`)}
+      />
+
+      {/* 12. STERILIZER STATUS PANEL */}
+      <SterilizerStatusPanelSVG
+        key={`st${n}_status_panel_line`}
+        x={980}
+        y={360}
+        title={`STERILIZER ${n}`}
+        status={getMappedValue ? String(getMappedValue(`st${n}_status`, "STATUS", "EMERGENCY")) : "EMERGENCY"}
+        recipe={getMappedValue ? String(getMappedValue(`st${n}_recipe`, "STATUS", "NORMAL")) : "NORMAL"}
+        actualStep={getMappedValue ? String(getMappedValue(`st${n}_status`, "STEP", "No Tag")) : "No Tag"}
+        totalTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "TOTAL_TIME", "No Tag")) : "No Tag"}
+        doorIn={formatDoorStatus(getMappedValue ? getMappedValue(`st${n}_status`, "DOOR_IN", "No Tag") : "No Tag")}
+        doorOut={formatDoorStatus(getMappedValue ? getMappedValue(`st${n}_status`, "DOOR_OUT", "No Tag") : "No Tag")}
+        pressure={getMappedValue ? String(getMappedValue(`st${n}_status`, "PRESSURE", "No Tag")) : "No Tag"}
+        temp={getMappedValue ? String(getMappedValue(`st${n}_status`, "TEMP", "No Tag")) : "No Tag"}
+        scale={0.78}
+        onClick={() => handleEquipmentClick && handleEquipmentClick(`st${n}_status`)}
+        style={getDeveloperStyle(`st${n}_status`)}
       />
 
       {/* VALVE MODULATE SETTINGS */}
@@ -2587,12 +2785,84 @@ export default function OverviewTab({
 
             {/* LAYER 1: BACKGROUND */}
             {activeTab === "overview" ? (
-              <image
-                href={sterilizerStationImageUrl}
-                width="2650"
-                x="-355"
-                y="-40"
-              />
+              <>
+                <image
+                  href={sterilizerStationImageUrl}
+                  width="2650"
+                  x="-355"
+                  y="-40"
+                />
+
+                {/* DYNAMIC TOP DOORS (INLET DOORS FOR ST1..ST4) */}
+                <g className="som-top-doors">
+                  {[1, 2, 3, 4].map((n) => {
+                    const doorConfig = TOP_DOORS_CONFIG[n - 1];
+                    const cardId = `card_inlet_door_st${n}`;
+                    const rawVal = getMappedValue ? getMappedValue(cardId, "MONITOR", "CLOSE") : "CLOSE";
+                    const doorStatus = formatDoorStatus(rawVal);
+                    const isOpen = doorStatus === "OPEN";
+
+                    const imageSrc = isOpen ? topOpenPng : topClosePng;
+                    const x = isOpen ? doorConfig.openX : doorConfig.closeX;
+                    const y = isOpen ? doorConfig.openY : doorConfig.closeY;
+                    const w = isOpen ? doorConfig.openW : doorConfig.closeW;
+                    const h = isOpen ? doorConfig.openH : doorConfig.closeH;
+
+                    return (
+                      <image
+                        key={`top_door_st${n}`}
+                        href={imageSrc}
+                        x={x}
+                        y={y}
+                        width={w}
+                        height={h}
+                        preserveAspectRatio="none"
+                        style={{
+                          cursor: configMode ? "pointer" : "default",
+                          filter: configMode ? getDeveloperStyle ? getDeveloperStyle(cardId)?.filter : undefined : undefined,
+                          transition: "all 0.3s ease",
+                        }}
+                        onClick={() => configMode && handleEquipmentClick && handleEquipmentClick(cardId)}
+                      />
+                    );
+                  })}
+                </g>
+
+                {/* DYNAMIC BOTTOM DOORS (OUTLET DOORS FOR ST1..ST4) */}
+                <g className="som-bot-doors">
+                  {[1, 2, 3, 4].map((n) => {
+                    const doorConfig = BOT_DOORS_CONFIG[n - 1];
+                    const cardId = `card_outlet_door_st${n}`;
+                    const rawVal = getMappedValue ? getMappedValue(cardId, "MONITOR", "CLOSE") : "CLOSE";
+                    const doorStatus = formatDoorStatus(rawVal);
+                    const isOpen = doorStatus === "OPEN";
+
+                    const imageSrc = isOpen ? botOpenPng : botClosePng;
+                    const x = isOpen ? doorConfig.openX : doorConfig.closeX;
+                    const y = isOpen ? doorConfig.openY : doorConfig.closeY;
+                    const w = isOpen ? doorConfig.openW : doorConfig.closeW;
+                    const h = isOpen ? doorConfig.openH : doorConfig.closeH;
+
+                    return (
+                      <image
+                        key={`bot_door_st${n}`}
+                        href={imageSrc}
+                        x={x}
+                        y={y}
+                        width={w}
+                        height={h}
+                        preserveAspectRatio="none"
+                        style={{
+                          cursor: configMode ? "pointer" : "default",
+                          filter: configMode ? getDeveloperStyle ? getDeveloperStyle(cardId)?.filter : undefined : undefined,
+                          transition: "all 0.3s ease",
+                        }}
+                        onClick={() => configMode && handleEquipmentClick && handleEquipmentClick(cardId)}
+                      />
+                    );
+                  })}
+                </g>
+              </>
             ) : (
               <image
                 href={sterilizerLineImageUrl}
@@ -2603,46 +2873,1011 @@ export default function OverviewTab({
               />
             )}
 
-            {/* LAYER 2: PROCESS FLOWS (PIPES & FLOW ANIMATIONS) — dikomentarkan */}
+            {/* LAYER 2: PROCESS FLOWS (PIPES & FLOW ANIMATIONS) */}
             <g className="som-steam-flows">
-              {/*
-              {activeTab === "overview" && (() => {
-                const valveVal = getSmartValveValue("valve_inlet_steam_1_st1", "0");
-                const isOpen = formatValveStatus(valveVal) === "OPEN";
+              {activeTab === "overview" && (
+                <>
+                  {/* ========================================================================= */}
+                  {/* [START] 0. MAIN STEAM HEADER PIPE (GLOBAL OVERVIEW PRESSURIZED HEADER)    */}
+                  {/* ========================================================================= */}
+                  <LiquidSteamFlowSVG
+                    d="M -348,-26 L 2285,-26"
+                    active={true}
+                    mode="standby"
+                    color="#38bdf8"
+                    thickness={10}
+                  />
+                  {/* [STOP] 0. MAIN STEAM HEADER PIPE ======================================== */}
 
-                return (
-                  <g id="overview_inlet_steam_1_st1">
-                    {!isOpen && (
-                      <LiquidSteamFlowSVG
-                        d="M -360,218 L -351,218 Q -343,218 -343,226 L -342,278 Q -342,303 -317,300 L -298,296"
-                        active={true}
-                        mode="standby"
-                        color="#38bdf8"
-                        thickness={8}
-                      />
-                    )}
-                    {isOpen && (
-                      <>
-                        <LiquidSteamFlowSVG
-                          d="M -360,218 L -351,218 Q -343,218 -343,226 L -342,278 Q -342,303 -317,300 L -298,296"
-                          active={true}
-                          mode="flowing"
-                          color="#38bdf8"
-                          thickness={8}
-                        />
-                        <LiquidSteamFlowSVG
-                          d="M -247,296 L 118,296"
-                          active={true}
-                          mode="flowing"
-                          color="#38bdf8"
-                          thickness={8}
-                        />
-                      </>
-                    )}
+                  {/* ========================================================================= */}
+                  {/* [START] 1. STERILIZER 1 (ST1 / TABUNG 1) PROCESS FLOWS                    */}
+                  {/* ========================================================================= */}
+                  <g id="overview_flows_st1">
+                    {(() => {
+                      const {
+                        isInlet1Open,
+                        isInlet2Open,
+                        isInlet3Open,
+                        isInlet4Open,
+                        isFlashOpen,
+                        isExhaustOpen,
+                        isDCondOpen,
+                        isCond1Open,
+                        isReliefOpen,
+                      } = resolveSterilizerValves(1, getMappedValue);
+
+                      return (
+                        <>
+                          {/* INLET STEAM 1 ST1 */}
+                          <g id="overview_flow_inlet_steam_1_st1">
+                            {/* 1. Header ke Valve (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M -323,-15 L -323,23"
+                              active={true}
+                              mode={isInlet1Open ? "flowing" : "standby"}
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+                            {/* 2. Valve tembus ke pipa bawah (Hanya jalan saat valve hijau / isOpen > 0) */}
+                            {isInlet1Open && (
+                              <LiquidSteamFlowSVG
+                                d="M -325,65 L -324,708"
+                                active={true}
+                                mode="flowing"
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* INLET STEAM 2 ST1 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_2_st1">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M -315,154 L -269,154"
+                                active={true}
+                                mode={isInlet2Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber */}
+                              {isInlet2Open && (
+                                <LiquidSteamFlowSVG
+                                  d="M -223,155 L -156,155 Q -136,155 -136,175 L -137,195"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                              )}
+                            </g>
+                          )}
+
+                          {/* INLET STEAM 3 ST1 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_3_st1">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M -310,375 L -267,375"
+                                active={true}
+                                mode={isInlet3Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber */}
+                              {isInlet3Open && (
+                                <>
+                                  <LiquidSteamFlowSVG
+                                    d="M -219,375 L -179,375"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                  <LiquidSteamFlowSVG
+                                    d="M -177,378 L -152,381 Q -132,384 -112,385 L -84,385 Q -64,386 -44,386 L 8,387 Q 28,387 48,386 L 63,386 Q 83,385 103,383 L 110,382 Q 125,381 139,377 L 153,372"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                </>
+                              )}
+                            </g>
+                          )}
+
+                          {/* INLET STEAM 4 ST1 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_4_st1">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M -311,635 L -267,636"
+                                active={true}
+                                mode={isInlet4Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber */}
+                              {isInlet4Open && (
+                                <>
+                                  <LiquidSteamFlowSVG
+                                    d="M -224,636 L -184,636"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                  <LiquidSteamFlowSVG
+                                    d="M -184,637 L -170,640 Q -157,642 -143,643 L -138,644 Q -119,645 -100,647 L -95,647 Q -75,649 -55,648 L -31,648 Q -11,647 9,647 L 29,647 Q 49,647 69,646 L 93,646 Q 110,645 127,641 L 143,637"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                </>
+                              )}
+                            </g>
+                          )}
+
+                          {/* FLASHING ST1 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_flashing_st1">
+                              {/* Pipa Percabangan ke Valve Flashing */}
+                              <LiquidSteamFlowSVG
+                                d="M -312,713 L -284,712"
+                                active={true}
+                                mode={isFlashOpen ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus ke pipa bawah */}
+                              {isFlashOpen && (
+                                <LiquidSteamFlowSVG
+                                  d="M -251,712 L -235,713 Q -220,713 -219,728 L -218,754"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                              )}
+                            </g>
+                          )}
+
+                          {/* EXHAUST STEAM ST1 */}
+                          <g id="overview_flow_exhaust_steam_st1">
+                            {/* 1. Pipa dari Tabung ke Valve Exhaust (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 94,196 L 96,133 Q 96,113 116,112 L 157,111"
+                              active={true}
+                              mode={isExhaustOpen ? "flowing" : "standby"}
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Menuju Header Exhaust (Hanya jalan saat valve buka / isExhaustOpen > 0) */}
+                            {isExhaustOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 204,112 L 225,112"
+                                active={true}
+                                mode="flowing"
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* D. CONDENSATE ST1 */}
+                          <g id="overview_flow_d_cond_st1">
+                            {/* 1. Pipa dari Tabung ke Valve D.Cond (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M -221,897 L -221,949 Q -221,969 -241,969 L -291,968"
+                              active={true}
+                              mode={isDCondOpen ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve D.Cond (Hanya jalan saat valve buka / isDCondOpen > 0) */}
+                            {isDCondOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M -330,968 L -356,968"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* CONDENSATE 1 ST1 */}
+                          <g id="overview_flow_condensate_1_st1">
+                            {/* 1. Pipa dari Tabung Bawah ke Valve Condensate (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M -16,1050 L -17,1106 Q -17,1126 -37,1126 L -292,1126"
+                              active={true}
+                              mode={isCond1Open ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Condensate (Hanya jalan saat valve buka / isCond1Open > 0) */}
+                            {isCond1Open && (
+                              <LiquidSteamFlowSVG
+                                d="M -332,1127 L -356,1127"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* RELIEF CONDENSATE ST1 */}
+                          <g id="overview_flow_relief_condensate_st1">
+                            {/* 1. Percabangan Pipa Menuju Valve Relief Condensate (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M -218,1115 L -218,1068 Q -218,1048 -238,1048 L -286,1048"
+                              active={true}
+                              mode={isReliefOpen ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Relief Condensate (Hanya jalan saat valve buka / isReliefOpen > 0) */}
+                            {isReliefOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M -325,1047 L -355,1047"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+                        </>
+                      );
+                    })()}
                   </g>
-                );
-              })()}
-              */}
+                  {/* [STOP] 1. STERILIZER 1 (ST1 / TABUNG 1) PROCESS FLOWS ==================== */}
+
+                  {/* ========================================================================= */}
+                  {/* [START] 2. STERILIZER 2 (ST2 / TABUNG 2) PROCESS FLOWS                    */}
+                  {/* ========================================================================= */}
+                  <g id="overview_flows_st2">
+                    {(() => {
+                      const {
+                        isInlet1Open,
+                        isInlet2Open,
+                        isInlet3Open,
+                        isInlet4Open,
+                        isFlashOpen,
+                        isExhaustOpen,
+                        isDCondOpen,
+                        isCond1Open,
+                        isReliefOpen,
+                      } = resolveSterilizerValves(2, getMappedValue);
+
+                      return (
+                        <>
+                          {/* INLET STEAM 1 ST2 */}
+                          <g id="overview_flow_inlet_steam_1_st2">
+                            {/* 1. Header ke Valve (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 337,-17 L 337,23"
+                              active={true}
+                              mode={isInlet1Open ? "flowing" : "standby"}
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+                            {/* 2. Valve tembus ke pipa bawah vertikal (Hanya jalan saat valve hijau / isInlet1Open > 0) */}
+                            {isInlet1Open && (
+                              <LiquidSteamFlowSVG
+                                d="M 336,66 L 337,704"
+                                active={true}
+                                mode="flowing"
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* INLET STEAM 2 ST2 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_2_st2">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M 347,153 L 396,153"
+                                active={true}
+                                mode={isInlet2Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber Tabung 2 */}
+                              {isInlet2Open && (
+                                <LiquidSteamFlowSVG
+                                  d="M 441,151 L 505,153 Q 525,153 525,173 L 524,196"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                              )}
+                            </g>
+                          )}
+
+                          {/* INLET STEAM 3 ST2 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_3_st2">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M 355,373 L 401,374"
+                                active={true}
+                                mode={isInlet3Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber Tabung 2 */}
+                              {isInlet3Open && (
+                                <>
+                                  <LiquidSteamFlowSVG
+                                    d="M 437,373 L 481,373"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                  <LiquidSteamFlowSVG
+                                    d="M 482,375 L 495,378 Q 507,381 520,382 L 524,383 Q 541,384 558,384 L 567,384 Q 587,384 607,384 L 624,384 Q 644,384 664,384 L 694,384 Q 714,384 734,383 L 751,383 Q 769,382 787,379 L 805,375"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                </>
+                              )}
+                            </g>
+                          )}
+
+                          {/* INLET STEAM 4 ST2 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_4_st2">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M 352,635 L 390,635"
+                                active={true}
+                                mode={isInlet4Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber Tabung 2 */}
+                              {isInlet4Open && (
+                                <>
+                                  <LiquidSteamFlowSVG
+                                    d="M 441,635 L 478,634"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                  <LiquidSteamFlowSVG
+                                    d="M 483,636 L 500,641 Q 517,645 535,645 L 546,645 Q 566,645 586,646 L 594,646 Q 614,647 634,647 L 643,647 Q 663,647 683,647 L 696,648 Q 716,648 736,646 L 738,645 Q 758,643 778,640 L 802,636"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                </>
+                              )}
+                            </g>
+                          )}
+
+                          {/* FLASHING ST2 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_flashing_st2">
+                              {/* Pipa Percabangan ke Valve Flashing */}
+                              <LiquidSteamFlowSVG
+                                d="M 344,710 L 377,710"
+                                active={true}
+                                mode={isFlashOpen ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus ke pipa bawah */}
+                              {isFlashOpen && (
+                                <LiquidSteamFlowSVG
+                                  d="M 405,711 L 424,712 Q 442,712 442,731 L 442,759"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                              )}
+                            </g>
+                          )}
+
+                          {/* EXHAUST STEAM ST2 */}
+                          <g id="overview_flow_exhaust_steam_st2">
+                            {/* 1. Pipa dari Tabung ke Valve Exhaust (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 757,195 L 757,132 Q 757,112 777,111 L 822,110"
+                              active={true}
+                              mode={isExhaustOpen ? "flowing" : "standby"}
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Menuju Header Exhaust (Hanya jalan saat valve buka / isExhaustOpen > 0) */}
+                            {isExhaustOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 864,110 L 893,110"
+                                active={true}
+                                mode="flowing"
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* D. CONDENSATE ST2 */}
+                          <g id="overview_flow_d_cond_st2">
+                            {/* 1. Pipa dari Tabung ke Valve D.Cond (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 440,898 L 438,949 Q 437,969 417,968 L 368,967"
+                              active={true}
+                              mode={isDCondOpen ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve D.Cond (Hanya jalan saat valve buka / isDCondOpen > 0) */}
+                            {isDCondOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 330,967 L 293,967"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* CONDENSATE 1 ST2 */}
+                          <g id="overview_flow_condensate_1_st2">
+                            {/* 1. Pipa dari Tabung ke Valve Condensate (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 646,1046 L 644,1106 Q 644,1126 624,1126 L 368,1126"
+                              active={true}
+                              mode={isCond1Open ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Condensate (Hanya jalan saat valve buka / isCond1Open > 0) */}
+                            {isCond1Open && (
+                              <LiquidSteamFlowSVG
+                                d="M 329,1127 L 297,1127"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* RELIEF CONDENSATE ST2 */}
+                          <g id="overview_flow_relief_condensate_st2">
+                            {/* 1. Percabangan Pipa Menuju Valve Relief Condensate (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 444,1116 L 444,1065 Q 444,1045 424,1045 L 372,1046"
+                              active={true}
+                              mode={isReliefOpen ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Relief Condensate (Hanya jalan saat valve buka / isReliefOpen > 0) */}
+                            {isReliefOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 333,1045 L 292,1046"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+                        </>
+                      );
+                    })()}
+                  </g>
+                  {/* [STOP] 2. STERILIZER 2 (ST2 / TABUNG 2) PROCESS FLOWS ==================== */}
+
+                  {/* ========================================================================= */}
+                  {/* [START] 3. STERILIZER 3 (ST3 / TABUNG 3) PROCESS FLOWS                    */}
+                  {/* ========================================================================= */}
+                  <g id="overview_flows_st3">
+                    {(() => {
+                      const {
+                        isInlet1Open,
+                        isInlet2Open,
+                        isInlet3Open,
+                        isInlet4Open,
+                        isFlashOpen,
+                        isExhaustOpen,
+                        isDCondOpen,
+                        isCond1Open,
+                        isReliefOpen,
+                      } = resolveSterilizerValves(3, getMappedValue);
+
+                      return (
+                        <>
+                          {/* INLET STEAM 1 ST3 */}
+                          <g id="overview_flow_inlet_steam_1_st3">
+                            {/* 1. Header ke Valve (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 1001,-21 L 1001,25"
+                              active={true}
+                              mode={isInlet1Open ? "flowing" : "standby"}
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+                            {/* 2. Valve tembus ke pipa bawah (Hanya jalan saat valve hijau / isOpen > 0) */}
+                            {isInlet1Open && (
+                              <LiquidSteamFlowSVG
+                                d="M 1002,61 L 1001,710"
+                                active={true}
+                                mode="flowing"
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* INLET STEAM 2 ST3 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_2_st3">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M 1014,153 L 1062,153"
+                                active={true}
+                                mode={isInlet2Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber */}
+                              {isInlet2Open && (
+                                <LiquidSteamFlowSVG
+                                  d="M 1103,153 L 1168,151 Q 1188,151 1188,171 L 1187,196"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                              )}
+                            </g>
+                          )}
+
+                          {/* INLET STEAM 3 ST3 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_3_st3">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M 1014,373 L 1060,374"
+                                active={true}
+                                mode={isInlet3Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber */}
+                              {isInlet3Open && (
+                                <>
+                                  <LiquidSteamFlowSVG
+                                    d="M 1104,373 L 1146,374"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                  <LiquidSteamFlowSVG
+                                    d="M 1142,374 L 1158,378 Q 1174,381 1190,383 L 1194,383 Q 1213,385 1233,385 L 1302,384 Q 1322,384 1342,385 L 1365,385 Q 1385,386 1405,383 L 1469,375"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                </>
+                              )}
+                            </g>
+                          )}
+
+                          {/* INLET STEAM 4 ST3 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_4_st3">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M 1009,634 L 1057,634"
+                                active={true}
+                                mode={isInlet4Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber */}
+                              {isInlet4Open && (
+                                <>
+                                  <LiquidSteamFlowSVG
+                                    d="M 1100,633 L 1144,633"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                  <LiquidSteamFlowSVG
+                                    d="M 1146,635 L 1162,640 Q 1177,644 1193,645 L 1209,645 Q 1229,646 1249,646 L 1275,647 Q 1295,647 1315,647 L 1347,646 Q 1367,646 1387,646 L 1412,645 Q 1426,645 1440,644 L 1441,644 Q 1453,643 1464,638 L 1474,633"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                </>
+                              )}
+                            </g>
+                          )}
+
+                          {/* FLASHING ST3 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_flashing_st3">
+                              {/* Pipa Percabangan ke Valve Flashing */}
+                              <LiquidSteamFlowSVG
+                                d="M 1005,709 L 1041,711"
+                                active={true}
+                                mode={isFlashOpen ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus ke pipa bawah */}
+                              {isFlashOpen && (
+                                <LiquidSteamFlowSVG
+                                  d="M 1073,711 L 1089,712 Q 1105,712 1106,728 L 1107,755"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                              )}
+                            </g>
+                          )}
+                          {/* EXHAUST STEAM ST3 */}
+                          <g id="overview_flow_exhaust_steam_st3">
+                            {/* 1. Pipa dari Tabung ke Valve Exhaust (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 1420,197 L 1418,132 Q 1418,112 1438,111 L 1483,110"
+                              active={true}
+                              mode={isExhaustOpen ? "flowing" : "standby"}
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Menuju Header Exhaust (Hanya jalan saat valve buka / isExhaustOpen > 0) */}
+                            {isExhaustOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 1523,110 L 1575,109"
+                                active={true}
+                                mode="flowing"
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+                          {/* CONDENSATE 1 ST3 */}
+                          <g id="overview_flow_condensate_1_st3">
+                            {/* 1. Pipa dari Tabung ke Valve Condensate (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 1310,1047 L 1309,1107 Q 1309,1127 1289,1127 L 1039,1127"
+                              active={true}
+                              mode={isCond1Open ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Condensate (Hanya jalan saat valve buka / isCond1Open > 0) */}
+                            {isCond1Open && (
+                              <LiquidSteamFlowSVG
+                                d="M 994,1126 L 947,1126"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* RELIEF CONDENSATE ST3 */}
+                          <g id="overview_flow_relief_condensate_st3">
+                            {/* 1. Percabangan Pipa Menuju Valve Relief Condensate (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 1108,1109 L 1109,1066 Q 1109,1046 1089,1046 L 1038,1046"
+                              active={true}
+                              mode={isReliefOpen ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Relief Condensate (Hanya jalan saat valve buka / isReliefOpen > 0) */}
+                            {isReliefOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 991,1047 L 954,1047"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+                          {/* D. CONDENSATE ST3 */}
+                          <g id="overview_flow_d_cond_st3">
+                            {/* 1. Pipa dari Tabung ke Valve D.Cond (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 1104,889 L 1106,947 Q 1107,967 1087,968 L 1034,969"
+                              active={true}
+                              mode={isDCondOpen ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve D.Cond (Hanya jalan saat valve buka / isDCondOpen > 0) */}
+                            {isDCondOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 994,968 L 949,968"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+                        </>
+                      );
+                    })()}
+                  </g>
+                  {/* [STOP] 3. STERILIZER 3 (ST3 / TABUNG 3) PROCESS FLOWS ==================== */}
+
+                  {/* ========================================================================= */}
+                  {/* [START] 4. STERILIZER 4 (ST4 / TABUNG 4) PROCESS FLOWS                    */}
+                  {/* ========================================================================= */}
+                  <g id="overview_flows_st4">
+                    {(() => {
+                      const {
+                        isInlet1Open,
+                        isInlet2Open,
+                        isInlet3Open,
+                        isInlet4Open,
+                        isFlashOpen,
+                        isExhaustOpen,
+                        isDCondOpen,
+                        isCond1Open,
+                        isReliefOpen,
+                      } = resolveSterilizerValves(4, getMappedValue);
+
+                      return (
+                        <>
+                          {/* INLET STEAM 1 ST4 */}
+                          <g id="overview_flow_inlet_steam_1_st4">
+                            {/* 1. Header ke Valve (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 1662,-23 L 1662,19"
+                              active={true}
+                              mode={isInlet1Open ? "flowing" : "standby"}
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+                            {/* 2. Valve tembus ke pipa bawah (Hanya jalan saat valve hijau / isOpen > 0) */}
+                            {isInlet1Open && (
+                              <LiquidSteamFlowSVG
+                                d="M 1662,61 L 1665,704"
+                                active={true}
+                                mode="flowing"
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* INLET STEAM 2 ST4 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_2_st4">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M 1677,152 L 1715,152"
+                                active={true}
+                                mode={isInlet2Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber */}
+                              {isInlet2Open && (
+                                <LiquidSteamFlowSVG
+                                  d="M 1767,152 L 1829,152 Q 1849,152 1850,172 L 1851,195"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                              )}
+                            </g>
+                          )}
+
+                          {/* INLET STEAM 3 ST4 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_3_st4">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M 1673,373 L 1718,373"
+                                active={true}
+                                mode={isInlet3Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber */}
+                              {isInlet3Open && (
+                                <>
+                                  <LiquidSteamFlowSVG
+                                    d="M 1761,372 L 1810,373"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                  <LiquidSteamFlowSVG
+                                    d="M 1807,372 L 1826,376 Q 1844,380 1863,381 L 1885,381 Q 1905,382 1925,383 L 1953,383 Q 1973,384 1993,383 L 2014,383 Q 2034,382 2054,382 L 2060,382 Q 2080,382 2100,379 L 2131,373"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                </>
+                              )}
+                            </g>
+                          )}
+
+                          {/* INLET STEAM 4 ST4 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_inlet_steam_4_st4">
+                              {/* Pipa Percabangan ke Valve */}
+                              <LiquidSteamFlowSVG
+                                d="M 1669,632 L 1716,633"
+                                active={true}
+                                mode={isInlet4Open ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus masuk ke Chamber */}
+                              {isInlet4Open && (
+                                <>
+                                  <LiquidSteamFlowSVG
+                                    d="M 1765,633 L 1809,633"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                  <LiquidSteamFlowSVG
+                                    d="M 1805,633 L 1819,638 Q 1833,642 1848,643 L 1864,643 Q 1884,644 1904,645 L 1939,645 Q 1959,646 1979,646 L 1990,645 Q 2010,645 2030,644 L 2042,643 Q 2062,642 2082,640 L 2131,636"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                </>
+                              )}
+                            </g>
+                          )}
+
+                          {/* FLASHING ST4 (HANYA ADA STEAM JIKA INLET 1 BUKA) */}
+                          {isInlet1Open && (
+                            <g id="overview_flow_flashing_st4">
+                              {/* Pipa Percabangan ke Valve Flashing */}
+                              <LiquidSteamFlowSVG
+                                d="M 1670,710 L 1696,711"
+                                active={true}
+                                mode={isFlashOpen ? "flowing" : "standby"}
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                              {/* Valve tembus ke pipa bawah */}
+                              {isFlashOpen && (
+                                <LiquidSteamFlowSVG
+                                  d="M 1735,710 L 1751,711 Q 1766,711 1767,726 L 1768,755"
+                                  active={true}
+                                  mode="flowing"
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                              )}
+                            </g>
+                          )}
+
+                          {/* EXHAUST STEAM ST4 */}
+                          <g id="overview_flow_exhaust_steam_st4">
+                            {/* 1. Pipa dari Tabung ke Valve Exhaust (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 2082,190 L 2082,129 Q 2082,109 2102,110 L 2141,111"
+                              active={true}
+                              mode={isExhaustOpen ? "flowing" : "standby"}
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Menuju Header Exhaust (Hanya jalan saat valve buka / isExhaustOpen > 0) */}
+                            {isExhaustOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 2196,108 L 2240,108"
+                                active={true}
+                                mode="flowing"
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* CONDENSATE 1 ST4 */}
+                          <g id="overview_flow_condensate_1_st4">
+                            {/* 1. Pipa dari Tabung ke Valve Condensate (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 1971,1047 L 1972,1105 Q 1973,1125 1953,1125 L 1696,1127"
+                              active={true}
+                              mode={isCond1Open ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Condensate (Hanya jalan saat valve buka / isCond1Open > 0) */}
+                            {isCond1Open && (
+                              <LiquidSteamFlowSVG
+                                d="M 1654,1126 L 1614,1126"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+                          {/* RELIEF CONDENSATE ST4 */}
+                          <g id="overview_flow_relief_condensate_st4">
+                            {/* 1. Percabangan Pipa Menuju Valve Relief Condensate (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 1768,1110 L 1769,1065 Q 1770,1045 1750,1045 L 1697,1045"
+                              active={true}
+                              mode={isReliefOpen ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve Relief Condensate (Hanya jalan saat valve buka / isReliefOpen > 0) */}
+                            {isReliefOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 1657,1045 L 1619,1046"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+
+                          {/* D. CONDENSATE ST4 */}
+                          <g id="overview_flow_d_cond_st4">
+                            {/* 1. Pipa dari Tabung ke Valve D.Cond (Standby saat tutup/merah, Flowing saat buka/hijau) */}
+                            <LiquidSteamFlowSVG
+                              d="M 1765,891 L 1766,944 Q 1766,964 1746,965 L 1692,966"
+                              active={true}
+                              mode={isDCondOpen ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {/* 2. Pipa Setelah Valve D.Cond (Hanya jalan saat valve buka / isDCondOpen > 0) */}
+                            {isDCondOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 1659,965 L 1616,965"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </g>
+                        </>
+                      );
+                    })()}
+                  </g>
+                  {/* [STOP] 4. STERILIZER 4 (ST4 / TABUNG 4) PROCESS FLOWS ==================== */}
+                </>
+              )}
             </g>
 
             {/* LAYER 3: UNIFIED INDIVIDUAL LINE VIEWS */}
@@ -2662,26 +3897,212 @@ export default function OverviewTab({
 
                 return (
                   <g>
-                    {/* Flow Line Indicators — dikomentarkan */}
+                    {/* Flow Line Indicators */}
                     <g className="som-line-flows">
-                      {/*
-                      {lineNum === 4 && (true || parseFloat(lv("flow_1784282895579", "FLOW", "0")) > 0) && (
-                        <LiquidFlowSVG
-                          d="M 265,143 L 264,98 Q 263,81 247,78 L 247,78 Q 230,74 213,74 L 171,73"
-                          isRunning={true}
-                          color="#38bdf8"
-                          thickness={8}
-                        />
-                      )}
-                      {lineNum === 3 && (true || parseFloat(lv("flow_1784254637309", "FLOW", "0")) > 0) && (
-                        <LiquidFlowSVG
-                          d="M 265,143 L 266,112 Q 266,98 259,86 L 259,86 Q 252,73 238,73 L 170,73"
-                          isRunning={true}
-                          color="#38bdf8"
-                          thickness={8}
-                        />
-                      )}
-                      */}
+                      {(() => {
+                        const {
+                          isInlet1Open,
+                          isInlet2Open,
+                          isInlet3Open,
+                          isInlet4Open,
+                          isFlashOpen,
+                          isExhaustOpen,
+                          isDCondOpen,
+                          isCond1Open,
+                          isReliefOpen,
+                        } = resolveSterilizerValves(lineNum, getMappedValue);
+
+                        return (
+                          <>
+                            {/* TOP MAIN STEAM HEADER */}
+                            <LiquidSteamFlowSVG
+                              d="M -199,-19 L 2444,-19"
+                              active={true}
+                              mode="standby"
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+
+                            {/* INLET STEAM 1 (MASTER) */}
+                            <LiquidSteamFlowSVG
+                              d="M 459,-4 L 460,65"
+                              active={true}
+                              mode={isInlet1Open ? "flowing" : "standby"}
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+                            {isInlet1Open && (
+                              <LiquidSteamFlowSVG
+                                d="M 458,104 L 458,721"
+                                active={true}
+                                mode="flowing"
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                            )}
+
+                            {/* INLET STEAM 2 */}
+                            {isInlet1Open && (
+                              <>
+                                <LiquidSteamFlowSVG
+                                  d="M 466,163 L 528,163"
+                                  active={true}
+                                  mode={isInlet2Open ? "flowing" : "standby"}
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                                {isInlet2Open && (
+                                  <LiquidSteamFlowSVG
+                                    d="M 570,164 L 626,163 Q 646,163 646,183 L 647,208"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                )}
+                              </>
+                            )}
+
+                            {/* INLET STEAM 3 */}
+                            {isInlet1Open && (
+                              <>
+                                <LiquidSteamFlowSVG
+                                  d="M 467,384 L 530,384"
+                                  active={true}
+                                  mode={isInlet3Open ? "flowing" : "standby"}
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                                {isInlet3Open && (
+                                  <LiquidSteamFlowSVG
+                                    d="M 564,384 L 597,384 Q 605,384 613,388 L 613,388 Q 620,391 628,392 L 640,393 Q 659,395 679,395 L 684,395 Q 702,395 720,397 L 720,397 Q 737,398 755,397 L 768,397 Q 788,396 808,396 L 812,396 Q 832,396 852,394 L 866,393 Q 883,392 900,391 L 917,390"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                )}
+                              </>
+                            )}
+
+                            {/* INLET STEAM 4 */}
+                            {isInlet1Open && (
+                              <>
+                                <LiquidSteamFlowSVG
+                                  d="M 463,645 L 530,645"
+                                  active={true}
+                                  mode={isInlet4Open ? "flowing" : "standby"}
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                                {isInlet4Open && (
+                                  <LiquidSteamFlowSVG
+                                    d="M 556,646 L 593,647 Q 603,647 612,651 L 612,651 Q 621,654 631,654 L 649,655 Q 666,656 683,657 L 683,657 Q 699,658 716,658 L 729,658 Q 749,658 769,658 L 795,658 Q 815,658 835,658 L 851,657 Q 871,657 891,655 L 902,654 Q 911,653 920,650 L 928,646"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                )}
+                              </>
+                            )}
+
+                            {/* FLASHING */}
+                            {isInlet1Open && (
+                              <>
+                                <LiquidSteamFlowSVG
+                                  d="M 465,723 L 502,723"
+                                  active={true}
+                                  mode={isFlashOpen ? "flowing" : "standby"}
+                                  color="#38bdf8"
+                                  thickness={10}
+                                />
+                                {isFlashOpen && (
+                                  <LiquidSteamFlowSVG
+                                    d="M 525,722 L 544,722 Q 562,722 563,740 L 564,766"
+                                    active={true}
+                                    mode="flowing"
+                                    color="#38bdf8"
+                                    thickness={10}
+                                  />
+                                )}
+                              </>
+                            )}
+
+                            {/* EXHAUST STEAM */}
+                            <LiquidSteamFlowSVG
+                              d="M 878,208 L 879,142 Q 879,122 899,122 L 920,122"
+                              active={true}
+                              mode={isExhaustOpen ? "flowing" : "standby"}
+                              color="#38bdf8"
+                              thickness={10}
+                            />
+                            {isExhaustOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 958,122 L 1044,122"
+                                active={true}
+                                mode="flowing"
+                                color="#38bdf8"
+                                thickness={10}
+                              />
+                            )}
+
+                            {/* CONDENSATE 1 (BROWN) */}
+                            <LiquidSteamFlowSVG
+                              d="M 768,1058 L 766,1118 Q 766,1138 746,1138 L 500,1137"
+                              active={true}
+                              mode={isCond1Open ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {isCond1Open && (
+                              <LiquidSteamFlowSVG
+                                d="M 459,1137 L 368,1137"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+
+                            {/* RELIEF CONDENSATE (BROWN) */}
+                            <LiquidSteamFlowSVG
+                              d="M 566,1126 L 566,1076 Q 566,1056 546,1057 L 498,1058"
+                              active={true}
+                              mode={isReliefOpen ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {isReliefOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 451,1058 L 372,1058"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+
+                            {/* D. CONDENSATE (BROWN) */}
+                            <LiquidSteamFlowSVG
+                              d="M 562,905 L 562,960 Q 562,980 542,980 L 495,979"
+                              active={true}
+                              mode={isDCondOpen ? "flowing" : "standby"}
+                              color="#b45309"
+                              thickness={10}
+                            />
+                            {isDCondOpen && (
+                              <LiquidSteamFlowSVG
+                                d="M 462,979 L 366,979"
+                                active={true}
+                                mode="flowing"
+                                color="#b45309"
+                                thickness={10}
+                              />
+                            )}
+                          </>
+                        );
+                      })()}
                     </g>
 
                     {/* Render Consolidated Line Blocks (valve_positioner tetap tampil di dalamnya) */}
@@ -2700,11 +4121,47 @@ export default function OverviewTab({
               <>
                 {/* Overview Equipment Icons (Dynamic Mapping by Group) */}
                 {OVERVIEW_EQUIPMENT_ICONS.map((item) => {
-                  const mapped = getMappedValue ? getMappedValue(item.cardId, "MONITOR", "0") : "0";
-                  const num = parseFloat(mapped);
-                  const isRunning = !isNaN(num)
-                    ? num > 0
-                    : String(mapped).toLowerCase() === "open" || mapped === "true" || mapped === "1";
+                  const mapped = (() => {
+                    const matchedCard = TAG_MONITOR_CARDS.find((c) => c.id === item.cardId);
+                    const fallbackVal = matchedCard ? (matchedCard.defaultVal || "0") : "0";
+                    const v = getMappedValue ? getMappedValue(item.cardId, "MONITOR", fallbackVal) : fallbackVal;
+                    if (!v || String(v).trim().toLowerCase() === "no tag" || String(v).trim() === "--") {
+                      return fallbackVal;
+                    }
+                    return v;
+                  })();
+
+                  const strVal = String(mapped).trim().toLowerCase();
+                  const numVal = parseFloat(mapped);
+                  let isOpen = !isNaN(numVal) ? numVal > 0 : (strVal === "open" || strVal === "true" || strVal === "1");
+
+                  // Interlock dengan Master Inlet Steam 1: Jika Inlet Steam 1 bernilai 0 / mati, valve percabangan (Inlet 2, 3, 4, dan Flashing) menjadi MERAH
+                  const stMatch = item.cardId.match(/st(\d+)/);
+                  if (stMatch) {
+                    const stNum = stMatch[1];
+                    const isDependentOnInlet1 =
+                      item.cardId === `card_inlet_steam_2_st${stNum}` ||
+                      item.cardId === `card_inlet_steam_3_st${stNum}` ||
+                      item.cardId === `card_inlet_steam_4_st${stNum}` ||
+                      item.cardId === `card_flashing_st${stNum}`;
+
+                    if (isDependentOnInlet1) {
+                      const inlet1Id = `card_inlet_steam_1_st${stNum}`;
+                      const matchedInlet1 = TAG_MONITOR_CARDS.find((c) => c.id === inlet1Id);
+                      const fallbackInlet1 = matchedInlet1 ? (matchedInlet1.defaultVal || "0") : "0";
+                      const vInlet1 = getMappedValue ? getMappedValue(inlet1Id, "MONITOR", fallbackInlet1) : fallbackInlet1;
+                      const resolvedInlet1 = (!vInlet1 || String(vInlet1).trim().toLowerCase() === "no tag" || String(vInlet1).trim() === "--")
+                        ? fallbackInlet1
+                        : vInlet1;
+                      const numInlet1 = parseFloat(resolvedInlet1);
+                      const strInlet1 = String(resolvedInlet1).trim().toLowerCase();
+                      const isInlet1Open = !isNaN(numInlet1) ? numInlet1 > 0 : (strInlet1 === "open" || strInlet1 === "true" || strInlet1 === "1");
+
+                      if (!isInlet1Open) {
+                        isOpen = false;
+                      }
+                    }
+                  }
 
                   return (
                     <EquipmentIconSVG
@@ -2712,53 +4169,48 @@ export default function OverviewTab({
                       x={item.x}
                       y={item.y}
                       icon={item.icon}
-                      size={item.size || 90}
-                      rotation={item.rotation || 0}
-                      isRunning={isRunning}
-                      onClick={() => handleEquipmentClick && handleEquipmentClick(item.cardId)}
-                      style={getDeveloperStyle(item.cardId)}
+                      size={item.size}
+                      rotation={item.rotation}
+                      isRunning={isOpen}
+                      onClick={() => handleEquipmentClick && handleEquipmentClick(item.cardId || item.id)}
+                      style={getDeveloperStyle(item.cardId || item.id)}
                     />
                   );
                 })}
 
-                {/* TAG MONITOR CARDS (overview) */}
+                {/* Overview Tag Monitor Cards */}
                 {TAG_MONITOR_CARDS.map((card) => {
+                  const defaultFallback = card.defaultVal || "no tag";
+                  const rawMapped = getMappedValue ? getMappedValue(card.id, "MONITOR", defaultFallback) : defaultFallback;
+                  const isNoTag = !rawMapped || String(rawMapped).trim().toLowerCase() === "no tag" || String(rawMapped).trim() === "--";
+                  const displayValue = (isNoTag && defaultFallback !== "no tag") ? defaultFallback : (isNoTag ? "No Tag" : rawMapped);
+
+                  const statusColor = (() => {
+                    if (!displayValue || String(displayValue).trim().toLowerCase() === "no tag" || String(displayValue).trim() === "--") {
+                      return "grey";
+                    }
+                    const str = String(displayValue).trim().toLowerCase();
+                    if (str === "open" || str === "true" || str === "1") return "green";
+                    if (str === "close" || str === "false" || str === "0") return "red";
+                    const num = parseFloat(displayValue);
+                    if (!isNaN(num)) return num > 0 ? "green" : "red";
+                    return card.status || "grey";
+                  })();
+
                   return (
                     <TagMonitorCardSVG
                       key={card.id}
                       x={card.x}
                       y={card.y}
                       title={card.title}
-                      value={(() => {
-                        if (!getMappedValue) return "No Tag";
-                        const mapped = getMappedValue(card.id, "MONITOR", "No Tag");
-                        if (String(mapped).trim().toLowerCase() === "no tag" || mapped === undefined || mapped === null) {
-                          return "No Tag";
-                        }
-                        if (
-                          card.id.startsWith("card_inlet_door_st") ||
-                          card.id.startsWith("card_outlet_door_st") ||
-                          card.id.startsWith("d_cond_st")
-                        ) {
-                          if (mapped === true || mapped === "true" || mapped === "1" || mapped === 1) return "OPEN";
-                          if (mapped === false || mapped === "false" || mapped === "0" || mapped === 0) return "CLOSE";
-                        }
-                        return String(mapped);
-                      })()}
-                      unit={(() => {
-                        if (!getMappedValue) return card.unit;
-                        const mapped = getMappedValue(card.id, "MONITOR", "No Tag");
-                        if (String(mapped).trim().toLowerCase() === "no tag" || mapped === undefined || mapped === null || mapped === "--") {
-                          return "";
-                        }
-                        return card.unit;
-                      })()}
-                      valueColor={card.valueColor}
-                      status={card.status}
+                      value={displayValue}
+                      unit={card.unit}
+                      status={statusColor}
                       width={card.width}
-                      scale={card.scale || 1}
+                      valueColor={card.valueColor}
                       headerPadding={card.headerPadding}
                       bodyPadding={card.bodyPadding}
+                      scale={card.scale}
                       onClick={() => handleEquipmentClick && handleEquipmentClick(card.id)}
                       style={getDeveloperStyle(card.id)}
                     />
@@ -2790,21 +4242,22 @@ export default function OverviewTab({
                     </g>
                   );
                 })}
-                {/* WT FLOW BUILDER OVERLAY */}
-                {flowBuilder && (
-                  <WTFlowOverlay
-                    flows={flowBuilder.flows}
-                    activeFlowIdx={flowBuilder.activeFlowIdx}
-                    isActive={flowBuilder.isActive}
-                    isPlacing={flowBuilder.isPlacing}
-                    onPointDrag={flowBuilder.updatePoint}
-                    onInsertPoint={flowBuilder.insertPoint}
-                    onDeletePoint={flowBuilder.deletePoint}
-                    onSelectFlow={flowBuilder.setActiveFlowIdx}
-                    onCanvasClick={flowBuilder.addPointToActiveFlow}
-                  />
-                )}
               </>
+            )}
+
+            {/* WT FLOW BUILDER OVERLAY (Active across Overview and all Line views) */}
+            {flowBuilder && (
+              <WTFlowOverlay
+                flows={flowBuilder.flows}
+                activeFlowIdx={flowBuilder.activeFlowIdx}
+                isActive={flowBuilder.isActive}
+                isPlacing={flowBuilder.isPlacing}
+                onPointDrag={flowBuilder.updatePoint}
+                onInsertPoint={flowBuilder.insertPoint}
+                onDeletePoint={flowBuilder.deletePoint}
+                onSelectFlow={flowBuilder.setActiveFlowIdx}
+                onCanvasClick={flowBuilder.addPointToActiveFlow}
+              />
             )}
           </svg>
         </div>

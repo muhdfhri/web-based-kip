@@ -76,11 +76,11 @@ export default function UserManagementPage({ user }) {
             const method = editingUser ? 'PUT' : 'POST'
 
             const payload = { 
-                username: newUser.username,
+                username: newUser.username ? newUser.username.trim() : '',
                 password: newUser.password,
-                role_id: newUser.roleId,
-                position_title: newUser.positionTitle,
-                company_name: newUser.companyName,
+                role_id: newUser.roleId ? parseInt(newUser.roleId, 10) : null,
+                position_title: newUser.positionTitle ? newUser.positionTitle.trim() : '',
+                company_name: newUser.companyName ? newUser.companyName.trim() : '',
                 permissionIds: newUser.permissionIds
             }
             if (editingUser && !payload.password) {
@@ -93,7 +93,10 @@ export default function UserManagementPage({ user }) {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(payload)
             })
-            if (!res.ok) throw new Error(`Failed to ${editingUser ? 'update' : 'create'} user`)
+            if (!res.ok) {
+                const data = await res.json().catch(() => null);
+                throw new Error(data?.error || data?.message || `Failed to ${editingUser ? 'update' : 'create'} user`);
+            }
             setShowUserModal(false)
             setEditingUser(null)
             setNewUser({ username: '', password: 'password123', roleId: '', positionTitle: '', companyName: '', permissionIds: [] })

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { dbPool } from '../config/db.js';
 import { requireAuth, authorizePermission, authorize } from '../middleware/jwtMiddleware.js';
 
@@ -43,9 +43,28 @@ router.post('/users', authorizePermission('manage_users'), async (req, res) => {
   try {
     await connection.beginTransaction();
 
+    const cleanUsername = (username || '').trim();
+    if (!cleanUsername) {
+      return res.status(400).json({ success: false, error: 'Username wajib diisi.' });
+    }
+    if (!password) {
+      return res.status(400).json({ success: false, error: 'Password wajib diisi.' });
+    }
+
+    // Check if username already exists
+    const [[existingUser]] = await connection.query('SELECT id FROM users WHERE username = ?', [cleanUsername]);
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        error: `Username '${cleanUsername}' sudah terdaftar dalam sistem. Silakan gunakan username lain.`
+      });
+    }
+
     const currentUserRole = (req.user.userRole || '').toLowerCase();
-    if (currentUserRole === 'mill_manager' && role_id) {
-      const [[targetRole]] = await connection.query('SELECT name FROM roles WHERE id = ?', [role_id]);
+    const cleanRoleId = role_id ? parseInt(role_id, 10) : null;
+
+    if (currentUserRole === 'mill_manager' && cleanRoleId) {
+      const [[targetRole]] = await connection.query('SELECT name FROM roles WHERE id = ?', [cleanRoleId]);
       const targetRoleName = (targetRole?.name || '').toLowerCase();
       if (['admin', 'developer', 'electrical_automation'].includes(targetRoleName)) {
         return res.status(403).json({
@@ -58,19 +77,27 @@ router.post('/users', authorizePermission('manage_users'), async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     const [result] = await connection.query(
       'INSERT INTO users (username, password_hash, position_title, company_name, role_id, must_change_password) VALUES (?,?,?,?,?,1)',
-      [username, hash, position_title, company_name, role_id]
+      [cleanUsername, hash, position_title || '', company_name || '', cleanRoleId]
     );
     const newUserId = result.insertId;
 
     if (Array.isArray(permissionIds) && permissionIds.length > 0) {
-      const values = permissionIds.map(pid => [newUserId, pid]);
-      await connection.query('INSERT INTO user_permissions (user_id, permission_id) VALUES ?', [values]);
+      const placeholders = permissionIds.map(() => '(?, ?)').join(', ');
+      const flatParams = [];
+      permissionIds.forEach(pid => flatParams.push(newUserId, parseInt(pid, 10)));
+      await connection.query(`INSERT INTO user_permissions (user_id, permission_id) VALUES ${placeholders}`, flatParams);
     }
 
     await connection.commit();
-    res.json({ success: true, id: newUserId, debug: req.body });
+    res.json({ success: true, id: newUserId });
   } catch (err) {
     await connection.rollback();
+    if (err.code === 'ER_DUP_ENTRY' || err.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        error: `Username '${username}' sudah terdaftar dalam sistem. Silakan gunakan username lain.`
+      });
+    }
     res.status(500).json({ success: false, error: err.message });
   } finally {
     connection.release();
@@ -95,14 +122,27 @@ router.put('/users/:id', authorizePermission('manage_users'), async (req, res) =
     );
 
     if (!targetUser) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+      return res.status(404).json({ success: false, error: 'User tidak ditemukan' });
+    }
+
+    const cleanUsername = (username || '').trim();
+    if (cleanUsername) {
+      const [[existingUser]] = await connection.query(
+        'SELECT id FROM users WHERE username = ? AND id != ?',
+        [cleanUsername, id]
+      );
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          error: `Username '${cleanUsername}' sudah digunakan oleh akun lain.`
+        });
+      }
     }
 
     const currentUserRole = (req.user.userRole || '').toLowerCase();
     const targetUserRole = (targetUser.role_name || '').toLowerCase();
 
     if (currentUserRole === 'mill_manager') {
-      // 1. Cannot edit Admin, Developer, or Electrical Automation
       if (['admin', 'developer', 'electrical_automation'].includes(targetUserRole)) {
         return res.status(403).json({ 
           success: false, 
@@ -110,7 +150,6 @@ router.put('/users/:id', authorizePermission('manage_users'), async (req, res) =
         });
       }
 
-      // 2. Cannot elevate someone to Admin or Developer
       if (role_id) {
         const [[targetRole]] = await connection.query('SELECT name FROM roles WHERE id = ?', [role_id]);
         const targetRoleName = (targetRole?.name || '').toLowerCase();
@@ -123,8 +162,9 @@ router.put('/users/:id', authorizePermission('manage_users'), async (req, res) =
       }
     }
 
+    const cleanRoleId = role_id ? parseInt(role_id, 10) : null;
     const fields = ['username=?', 'position_title=?', 'company_name=?', 'role_id=?'];
-    const values = [username, position_title, company_name, role_id];
+    const values = [cleanUsername || targetUser.username, position_title || '', company_name || '', cleanRoleId];
     if (password) {
       fields.push('password_hash=?');
       values.push(await bcrypt.hash(password, 10));
@@ -138,8 +178,10 @@ router.put('/users/:id', authorizePermission('manage_users'), async (req, res) =
     if (Array.isArray(permissionIds)) {
       await connection.query('DELETE FROM user_permissions WHERE user_id=?', [id]);
       if (permissionIds.length > 0) {
-        const insertVals = permissionIds.map(pid => [id, pid]);
-        await connection.query('INSERT INTO user_permissions (user_id, permission_id) VALUES ?', [insertVals]);
+        const placeholders = permissionIds.map(() => '(?, ?)').join(', ');
+        const flatParams = [];
+        permissionIds.forEach(pid => flatParams.push(parseInt(id, 10), parseInt(pid, 10)));
+        await connection.query(`INSERT INTO user_permissions (user_id, permission_id) VALUES ${placeholders}`, flatParams);
       }
     }
 
@@ -147,6 +189,12 @@ router.put('/users/:id', authorizePermission('manage_users'), async (req, res) =
     res.json({ success: true });
   } catch (err) {
     await connection.rollback();
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({
+        success: false,
+        error: `Username '${username}' sudah digunakan oleh akun lain.`
+      });
+    }
     res.status(500).json({ success: false, error: err.message });
   } finally {
     connection.release();

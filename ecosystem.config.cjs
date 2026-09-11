@@ -109,7 +109,7 @@ module.exports = {
     {
       name: "security-ai-service",
       script: "app.py",
-      interpreter: "python",
+      interpreter: "python3",
       cwd: "./stations/security/ai/backend",
       watch: false,
       autorestart: true,

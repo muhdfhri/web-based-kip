@@ -1,27 +1,74 @@
-import mysql from "mysql2/promise";
-import dotenv from "dotenv";
+import pg from 'pg';
+import dotenv from 'dotenv';
 dotenv.config();
 
-// Pool untuk mewah_auth
-const dbPassword = process.env.DB_PASSWORD_AUTH || "";
+const { Pool } = pg;
 
-export const dbPool = mysql.createPool({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER_AUTH || "root",
+const dbHost = process.env.DB_HOST || 'localhost';
+const dbPort = parseInt(process.env.DB_PORT || '5432', 10);
+const dbUser = process.env.DB_USER && process.env.DB_USER !== 'root' ? process.env.DB_USER : 'postgres';
+const dbPassword = process.env.DB_PASSWORD !== undefined && process.env.DB_PASSWORD !== '' ? process.env.DB_PASSWORD : 'kip2026';
+const dbName = process.env.DB_NAME || process.env.DB_NAME_AUTH || 'mewah_main';
+
+export const pool = new Pool({
+  host: dbHost,
+  port: dbPort,
+  user: dbUser,
   password: dbPassword,
-  database: process.env.DB_NAME_AUTH || "mewah_auth",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+  database: dbName,
+  max: 10,
+  idleTimeoutMillis: 30000,
 });
 
-// Pool untuk mewah_config
-export const dbPoolConfig = mysql.createPool({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER_CONFIG || "root",
-  password: dbPassword,
-  database: process.env.DB_NAME_CONFIG || "mewah_config",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
+/**
+ * Converts MySQL parameter placeholders (?) to PostgreSQL placeholders ($1, $2, ...)
+ * and replaces backticks (`) with double quotes (")
+ */
+function convertSqlParams(sql) {
+  let paramIndex = 1;
+  const converted = sql.replace(/\?/g, () => `$${paramIndex++}`);
+  return converted.replace(/`/g, '"');
+}
+
+/**
+ * Execute a query with MySQL-compatible return format [rows, fields]
+ */
+async function executeQuery(sql, params = []) {
+  const pgSql = convertSqlParams(sql);
+  const res = await pool.query(pgSql, params);
+
+  const rows = res.rows || [];
+  
+  const affectedRows = res.rowCount || 0;
+  const insertId = (rows[0] && (rows[0].id || rows[0].insert_id)) || 0;
+
+  Object.defineProperties(rows, {
+    affectedRows: { value: affectedRows, writable: true, enumerable: true },
+    insertId: { value: insertId, writable: true, enumerable: true },
+    changedRows: { value: affectedRows, writable: true, enumerable: true },
+  });
+
+  const fields = res.fields || [];
+  return [rows, fields];
+}
+
+export const dbPool = {
+  query: executeQuery,
+  execute: executeQuery,
+  getConnection: async () => {
+    const client = await pool.connect();
+    return {
+      query: (sql, params) => executeQuery.call(client, sql, params),
+      execute: (sql, params) => executeQuery.call(client, sql, params),
+      release: () => client.release(),
+      beginTransaction: async () => client.query('BEGIN'),
+      commit: async () => client.query('COMMIT'),
+      rollback: async () => client.query('ROLLBACK'),
+    };
+  },
+  on: (...args) => pool.on(...args),
+  end: () => pool.end(),
+};
+
+// Main service uses dbPool for auth and dbPoolConfig for config, both pointing to mewah_main
+export const dbPoolConfig = dbPool;

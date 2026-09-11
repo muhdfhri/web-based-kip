@@ -1,8 +1,9 @@
 import React, { useRef } from "react";
 import "./BpvTab.css";
-import bpvImageUrl from "../../assets/BPV-PT-PIS.webp";
+import bpvImageUrl from "../../assets/BPV-PT-KIP.webp";
 import valvePositionerSvg from "../../assets/item/valve_positioner.svg";
 import { EquipmentIconSVG, IpomasMonitorCardSVG } from "../../components/SharedComponents.jsx";
+import { WTFlowOverlay } from "../../components/WTFlowBuilder.jsx";
 
 export const SteamFlowSVG = ({ d, active, isRunning, mode = "flowing", color = "#a9dbe1ff", thickness = 8, className = "" }) => {
   const isActive = active || isRunning;
@@ -38,50 +39,72 @@ export const SteamFlowSVG = ({ d, active, isRunning, mode = "flowing", color = "
   );
 };
 
-export const ValveModernCardSVG = ({ x, y, scale = 1, title = "", position = "0.0", onClick, onToggle, style = {} }) => {
+export const ValveModernCardSVG = ({ x, y, scale = 1, title = "", position = "0.0", onClick, style = {} }) => {
   const isNoTag = !position || String(position).toLowerCase() === "no tag";
   const isOffline = String(position) === "--";
-  const displayPos = isNoTag ? "No Tag" : isOffline ? "--" : `${position}%`;
+  const numPos = isNoTag || isOffline ? 0 : Math.min(100, Math.max(0, parseFloat(position) || 0));
+  const displayPos = isNoTag ? "No Tag" : isOffline ? "--" : `${numPos.toFixed(1)}%`;
 
-  const numPos = parseFloat(position) || 0;
-  const isOpen = numPos > 50;
+  const statusLabel = isNoTag ? "No Tag" : isOffline ? "Offline" : numPos === 0 ? "CLOSED" : numPos === 100 ? "FULLY OPEN" : `${numPos.toFixed(0)}% OPEN`;
+  const badgeBg = isNoTag || isOffline ? "#f1f5f9" : numPos > 0 ? "#f0fdf4" : "#fef2f2";
+  const badgeColor = isNoTag || isOffline ? "#64748b" : numPos > 0 ? "#16a34a" : "#ef4444";
 
   return (
-    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-100, -80)`}>
-      <foreignObject width="200" height="130" style={{ overflow: "visible", pointerEvents: "none" }}>
-        <div 
+    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-95, -55)`}>
+      <foreignObject width="190" height="115" style={{ overflow: "visible", pointerEvents: "none" }}>
+        <div
           onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
           onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
-          style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", padding: "12px", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column", gap: "8px", cursor: "pointer", pointerEvents: "auto", ...style }}>
-          
-          <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "950", color: "#0f172a", borderBottom: "2px solid #ffdb3b", paddingBottom: "6px", textTransform: "uppercase", letterSpacing: "1px" }}>{title}</div>
-          
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "10px", fontWeight: "800", color: "#64748b" }}>COMMAND</span>
-              <button 
-                  onClick={(e) => { e.stopPropagation(); onToggle && onToggle(); }}
-                  style={{
-                      background: isOpen ? '#f0fdf4' : '#fef2f2',
-                      border: isOpen ? '1.5px solid #22c55e' : '1.5px solid #ef4444',
-                      color: isOpen ? '#22c55e' : '#ef4444',
-                      fontWeight: '800',
-                      fontSize: '10px',
-                      padding: '4px 12px',
-                      borderRadius: '4px',
-                      cursor: 'pointer'
-                  }}
-              >
-                  {isOpen ? 'OPEN' : 'CLOSE'}
-              </button>
+          style={{
+            background: "#ffffff",
+            border: "1px solid #cbd5e1",
+            borderRadius: "12px",
+            boxShadow: "0 4px 12px rgba(15, 23, 42, 0.08)",
+            padding: "10px 12px",
+            fontFamily: "'Inter', sans-serif",
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px",
+            cursor: onClick ? "pointer" : "default",
+            pointerEvents: "auto",
+            userSelect: "none",
+            ...style
+          }}
+        >
+          <div style={{ textAlign: "center", fontSize: "11px", fontWeight: "950", color: "#0f172a", borderBottom: "2px solid #ffdb3b", paddingBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            {title}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: "2px" }}>
-              <span style={{ fontSize: "10px", color: "#64748b", fontWeight: "800", marginBottom: "2px" }}>POSITION</span>
-              <div style={{ position: "relative", width: "100%", height: "24px", background: "#f1f5f9", borderRadius: "6px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
-                <div style={{ width: isNoTag || isOffline ? "0%" : `${Math.min(100, Math.max(0, numPos))}%`, height: "100%", background: `linear-gradient(90deg, #ffdb3b, #d4ac0d)`, transition: "width 0.5s ease" }}></div>
-                <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "950", color: isNoTag ? "#64748b" : "#0f172a" }}>{displayPos}</div>
-              </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "2px" }}>
+            <span style={{ fontSize: "9px", fontWeight: "800", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              POSITION
+            </span>
+            <span style={{ fontSize: "9px", fontWeight: "900", background: badgeBg, color: badgeColor, padding: "2px 6px", borderRadius: "4px", border: `1px solid ${badgeColor}33` }}>
+              {statusLabel}
+            </span>
+          </div>
+
+          <div style={{ position: "relative", width: "100%", height: "24px", background: "#f1f5f9", borderRadius: "6px", overflow: "hidden", border: "1px solid #cbd5e1" }}>
+            <div style={{
+              width: `${numPos}%`,
+              height: "100%",
+              background: numPos > 0 ? "linear-gradient(90deg, #ffdb3b, #d4ac0d)" : "transparent",
+              transition: "width 0.4s ease"
+            }} />
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "11px",
+              fontWeight: "950",
+              color: isNoTag ? "#94a3b8" : "#0f172a"
+            }}>
+              {displayPos}
             </div>
           </div>
         </div>
@@ -123,9 +146,9 @@ export const BpvModernStatusCardSVG = ({ x, y, scale = 1, status = "EMERGENCY", 
   else if (String(surplus).toLowerCase() === "no tag") displaySurplus = "No Tag";
 
   return (
-    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-160, -90)`}>
-      <foreignObject width="320" height="180" style={{ overflow: "visible", pointerEvents: "none" }}>
-        <div 
+    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-165, -95)`}>
+      <foreignObject width="330" height="195" style={{ overflow: "visible", pointerEvents: "none" }}>
+        <div
           onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
           onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
           style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "14px", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "16px", fontFamily: "'Inter', sans-serif", cursor: "pointer", pointerEvents: "auto", ...style }}>
@@ -185,9 +208,9 @@ export const BpvControlSwitchPanelSVG = ({
   style = {}
 }) => {
   return (
-    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-180, -75)`} className="bpv-modern-control-group">
-      <foreignObject width="360" height="150" style={{ overflow: "visible", pointerEvents: "none" }}>
-        <div 
+    <g transform={`translate(${x}, ${y}) scale(${scale}) translate(-185, -82)`} className="bpv-modern-control-group">
+      <foreignObject width="370" height="165" style={{ overflow: "visible", pointerEvents: "none" }}>
+        <div
           onClick={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
           onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onClick && onClick(); }}
           style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)", padding: "15px", display: "flex", flexDirection: "column", fontFamily: "'Inter', sans-serif", cursor: "pointer", pointerEvents: "auto", ...style }}>
@@ -276,6 +299,7 @@ export default function BpvTab({
   getMappedValue,
   configMode = false,
   tagMap = {},
+  flowBuilder,
 }) {
   const svgRef = useRef(null);
 
@@ -308,7 +332,7 @@ export default function BpvTab({
         <div className="som-sterilizer-station-flow-body">
           <svg
             ref={svgRef}
-            viewBox="-400 10 2920 1260"
+            viewBox="-260 -30 2660 1260"
             className="station-svg-canvas"
             preserveAspectRatio="xMidYMid meet"
           >
@@ -363,7 +387,7 @@ export default function BpvTab({
               )}
               {/* Flow 1 */}
               <SteamFlowSVG
-                d="M 1106,715 L 1108,534 Q 1108,522 1096,522 L -204,519 Q -216,519 -216,507 L -217,10"
+                d="M 1118,706 L 1116,542 Q 1116,522 1096,522 L -189,522 Q -209,522 -209,502 L -208,1"
                 active={true}
                 mode="flowing"
                 color="#38bdf8"
@@ -371,7 +395,7 @@ export default function BpvTab({
               />
               {/* Flow 2 */}
               <SteamFlowSVG
-                d="M 1196,714 L 1194,504 Q 1194,492 1182,492 L -169,492 Q -181,492 -181,480 L -181,11"
+                d="M 1205,709 L 1205,508 Q 1205,488 1185,488 L -150,488 Q -170,488 -170,468 L -173,3"
                 active={true}
                 mode="flowing"
                 color="#38bdf8"
@@ -379,7 +403,7 @@ export default function BpvTab({
               />
               {/* Flow 3 */}
               <SteamFlowSVG
-                d="M 1282,714 L 1285,464 Q 1285,449 1270,449 L -119,446 Q -134,446 -134,431 L -136,11"
+                d="M 2362,392 L 1346,395 Q 1326,395 1326,415 L 1323,657"
                 active={true}
                 mode="flowing"
                 color="#38bdf8"
@@ -387,7 +411,7 @@ export default function BpvTab({
               />
               {/* Flow 4 */}
               <SteamFlowSVG
-                d="M 1373,719 L 1373,430 Q 1373,417 1360,417 L -86,410 Q -99,410 -99,397 L -104,14"
+                d="M 1466,741 L 1466,348"
                 active={true}
                 mode="flowing"
                 color="#38bdf8"
@@ -395,7 +419,7 @@ export default function BpvTab({
               />
               {/* Flow 5 */}
               <SteamFlowSVG
-                d="M 1459,714 L 1461,394 Q 1461,381 1448,381 L -42,378 Q -55,378 -55,365 L -59,10"
+                d="M 2360,440 L 1580,446 Q 1560,446 1560,466 L 1557,658"
                 active={true}
                 mode="flowing"
                 color="#38bdf8"
@@ -403,7 +427,7 @@ export default function BpvTab({
               />
               {/* Flow 6 */}
               <SteamFlowSVG
-                d="M 2365,424 L 1691,424 Q 1678,424 1668,432 L 1667,433 Q 1657,440 1653,452 L 1653,452 Q 1649,463 1649,475 L 1649,670"
+                d="M 1698,744 L 1698,351"
                 active={true}
                 mode="flowing"
                 color="#38bdf8"
@@ -449,32 +473,30 @@ export default function BpvTab({
             <g transform="translate(110, 0)">
 
               <EquipmentIconSVG x={310} y={893} icon={valvePositionerSvg} isRunning={currentMakeupPos > 0.5} size={190} rotation={270} />
-              <ValveModernCardSVG 
-                x={310} 
-                y={1080} 
-                scale={1.4} 
-                title="MAKE-UP VALVE" 
-                position={displayMakeupPos} 
-                onClick={() => handleEquipmentClick && handleEquipmentClick("bpv_makeup_valve")} 
-                onToggle={() => setBpvMakeupPos && setBpvMakeupPos(prev => parseFloat(prev) > 50 ? 0 : 100)}
-                style={getDeveloperStyle && getDeveloperStyle("bpv_makeup_valve")} 
+              <ValveModernCardSVG
+                x={310}
+                y={1080}
+                scale={1.4}
+                title="MAKE-UP VALVE"
+                position={displayMakeupPos}
+                onClick={() => handleEquipmentClick && handleEquipmentClick("bpv_makeup_valve")}
+                style={getDeveloperStyle && getDeveloperStyle("bpv_makeup_valve")}
               />
 
               <EquipmentIconSVG x={1989} y={760} icon={valvePositionerSvg} isRunning={currentBlowoffPos > 0.5} size={100} rotation={0} />
-              <ValveModernCardSVG 
-                x={2160} 
-                y={740} 
-                scale={1.1} 
-                title="BLOW-OFF VALVE" 
-                position={displayBlowoffPos} 
-                onClick={() => handleEquipmentClick && handleEquipmentClick("bpv_blowoff_valve")} 
-                onToggle={() => setBpvBlowoffPos && setBpvBlowoffPos(prev => parseFloat(prev) > 50 ? 0 : 100)}
-                style={getDeveloperStyle && getDeveloperStyle("bpv_blowoff_valve")} 
+              <ValveModernCardSVG
+                x={2160}
+                y={740}
+                scale={1.1}
+                title="BLOW-OFF VALVE"
+                position={displayBlowoffPos}
+                onClick={() => handleEquipmentClick && handleEquipmentClick("bpv_blowoff_valve")}
+                style={getDeveloperStyle && getDeveloperStyle("bpv_blowoff_valve")}
               />
 
               <AtmosphereLabelSVG x={2170} y={210} />
 
-              <IpomasMonitorCardSVG x={-180} y={700} id="blr_pres" title="BOILER PRESSURE" singleValue={getMappedValue ? getMappedValue("blr_pres", "MONITOR", "--") : "--"} singleUnit="Bar" width={140} scale={1.2} onClick={handleEquipmentClick} style={getDeveloperStyle("blr_pres")} />
+              <IpomasMonitorCardSVG x={-180} y={700} id="blr_pres" title="BOILER PRESSURE" singleValue={getMappedValue ? getMappedValue("blr_pres", "MONITOR", "--") : "--"} singleUnit="Bar" width={160} scale={1.2} onClick={handleEquipmentClick} style={getDeveloperStyle("blr_pres")} />
               <IpomasMonitorCardSVG x={1400} y={1000} id="bpv_pres" title="PRESSURE BPV" singleValue={getMappedValue ? getMappedValue("bpv_pres", "MONITOR", "--") : "--"} singleUnit="BAR" width={200} scale={1.4} onClick={handleEquipmentClick} style={getDeveloperStyle("bpv_pres")} />
 
               <BpvModernStatusCardSVG
@@ -489,6 +511,21 @@ export default function BpvTab({
                 style={getDeveloperStyle("bpv_status")}
               />
             </g>
+
+            {/* WT FLOW BUILDER OVERLAY (BPV Tab) */}
+            {flowBuilder && (
+              <WTFlowOverlay
+                flows={flowBuilder.flows}
+                activeFlowIdx={flowBuilder.activeFlowIdx}
+                isActive={flowBuilder.isActive}
+                isPlacing={flowBuilder.isPlacing}
+                onPointDrag={flowBuilder.updatePoint}
+                onInsertPoint={flowBuilder.insertPoint}
+                onDeletePoint={flowBuilder.deletePoint}
+                onSelectFlow={flowBuilder.setActiveFlowIdx}
+                onCanvasClick={flowBuilder.addPointToActiveFlow}
+              />
+            )}
           </svg>
         </div>
       </div>

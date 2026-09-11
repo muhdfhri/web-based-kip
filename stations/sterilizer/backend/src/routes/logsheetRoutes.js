@@ -90,9 +90,9 @@ router.get('/export-excel', async (req, res) => {
     const sheet = workbook.addWorksheet('Logsheet & Score');
 
     // Header styling
-    sheet.getCell('A1').value = 'PT. PALUTA INTI SAWIT';
+    sheet.getCell('A1').value = 'PT. KENCANA INTI PERKASA';
     sheet.getCell('A1').font = { name: 'Arial', size: 10, bold: true };
-    sheet.getCell('A2').value = 'PMKS. PALUTA INTI SAWIT';
+    sheet.getCell('A2').value = 'PMKS. KENCANA INTI PERKASA';
     sheet.getCell('A2').font = { name: 'Arial', size: 10, bold: true };
 
     sheet.mergeCells('E2:K3');

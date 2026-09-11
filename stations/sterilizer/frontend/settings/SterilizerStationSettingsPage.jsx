@@ -10,22 +10,22 @@ import "../tabs/Recipe/RecipeTab.css";
 // Default Values for Steps (matching the provided image)
 // ==========================================
 const defaultRecipesValues = [
-  { step: 1, unf: 300, nrm: 300, wet: 450, inl1: false, inl2: false, dinl: false, con: true, rcon: false, dcon: false, exh: true, bar: "0.00", mode: "OFF", doorIn: "Close", doorOut: "Close" },
-  { step: 2, unf: 1200, nrm: 1200, wet: 1200, inl1: true, inl2: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.20", mode: "Above", doorIn: "Close", doorOut: "Close" },
-  { step: 3, unf: 300, nrm: 300, wet: 300, inl1: false, inl2: false, dinl: false, con: true, rcon: false, dcon: false, exh: false, bar: "1.00", mode: "Below", doorIn: "Close", doorOut: "Close" },
-  { step: 4, unf: 900, nrm: 900, wet: 900, inl1: true, inl2: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.40", mode: "Above", doorIn: "Close", doorOut: "Close" },
-  { step: 5, unf: 300, nrm: 300, wet: 300, inl1: false, inl2: false, dinl: false, con: true, rcon: false, dcon: false, exh: false, bar: "1.00", mode: "Below", doorIn: "Close", doorOut: "Close" },
-  { step: 6, unf: 600, nrm: 600, wet: 600, inl1: true, inl2: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.80", mode: "Above", doorIn: "Close", doorOut: "Close" },
-  { step: 7, unf: 300, nrm: 300, wet: 300, inl1: true, inl2: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.80", mode: "OFF", doorIn: "Close", doorOut: "Close" },
-  { step: 8, unf: 30, nrm: 30, wet: 30, inl1: true, inl2: true, dinl: true, con: false, rcon: true, dcon: true, exh: false, bar: "2.60", mode: "Below", doorIn: "Close", doorOut: "Close" },
-  { step: 9, unf: 600, nrm: 600, wet: 600, inl1: true, inl2: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.80", mode: "OFF", doorIn: "Close", doorOut: "Close" },
-  { step: 10, unf: 30, nrm: 30, wet: 30, inl1: true, inl2: false, dinl: false, con: false, rcon: true, dcon: true, exh: false, bar: "2.60", mode: "Below", doorIn: "Close", doorOut: "Close" },
-  { step: 11, unf: 600, nrm: 600, wet: 600, inl1: true, inl2: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.80", mode: "OFF", doorIn: "Close", doorOut: "Close" },
-  { step: 12, unf: 30, nrm: 30, wet: 30, inl1: true, inl2: false, dinl: false, con: false, rcon: true, dcon: true, exh: false, bar: "2.60", mode: "Below", doorIn: "Close", doorOut: "Close" },
-  { step: 13, unf: 600, nrm: 900, wet: 1200, inl1: true, inl2: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.80", mode: "OFF", doorIn: "Close", doorOut: "Close" },
-  { step: 14, unf: 300, nrm: 300, wet: 300, inl1: false, inl2: false, dinl: false, con: true, rcon: true, dcon: true, exh: false, bar: "2.00", mode: "Below", doorIn: "Close", doorOut: "Close" },
-  { step: 15, unf: 300, nrm: 300, wet: 300, inl1: false, inl2: false, dinl: false, con: true, rcon: true, dcon: true, exh: true, bar: "0.01", mode: "OFF", doorIn: "Close", doorOut: "Close" },
-  { step: 16, unf: 1200, nrm: 1200, wet: 1200, inl1: false, inl2: false, dinl: false, con: false, rcon: false, dcon: false, exh: false, bar: "", mode: "OFF", doorIn: "Open", doorOut: "Open" }
+  { step: 1, unf: 300, nrm: 300, wet: 450, inl1: false, inl2: false, inl3: false, inl4: false, flas: false, dinl: false, con: true, rcon: false, dcon: false, exh: true, bar: "0.00", mode: "OFF", doorIn: "Close", doorOut: "Close" },
+  { step: 2, unf: 1200, nrm: 1200, wet: 1200, inl1: true, inl2: true, inl3: false, inl4: false, flas: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.20", mode: "Above", doorIn: "Close", doorOut: "Close" },
+  { step: 3, unf: 300, nrm: 300, wet: 300, inl1: false, inl2: false, inl3: false, inl4: false, flas: false, dinl: false, con: true, rcon: false, dcon: false, exh: false, bar: "1.00", mode: "Below", doorIn: "Close", doorOut: "Close" },
+  { step: 4, unf: 900, nrm: 900, wet: 900, inl1: true, inl2: true, inl3: false, inl4: false, flas: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.40", mode: "Above", doorIn: "Close", doorOut: "Close" },
+  { step: 5, unf: 300, nrm: 300, wet: 300, inl1: false, inl2: false, inl3: false, inl4: false, flas: false, dinl: false, con: true, rcon: false, dcon: false, exh: false, bar: "1.00", mode: "Below", doorIn: "Close", doorOut: "Close" },
+  { step: 6, unf: 600, nrm: 600, wet: 600, inl1: true, inl2: true, inl3: false, inl4: false, flas: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.80", mode: "Above", doorIn: "Close", doorOut: "Close" },
+  { step: 7, unf: 300, nrm: 300, wet: 300, inl1: true, inl2: true, inl3: false, inl4: false, flas: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.80", mode: "OFF", doorIn: "Close", doorOut: "Close" },
+  { step: 8, unf: 30, nrm: 30, wet: 30, inl1: true, inl2: true, inl3: false, inl4: false, flas: true, dinl: true, con: false, rcon: true, dcon: true, exh: false, bar: "2.60", mode: "Below", doorIn: "Close", doorOut: "Close" },
+  { step: 9, unf: 600, nrm: 600, wet: 600, inl1: true, inl2: true, inl3: false, inl4: false, flas: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.80", mode: "OFF", doorIn: "Close", doorOut: "Close" },
+  { step: 10, unf: 30, nrm: 30, wet: 30, inl1: true, inl2: false, inl3: false, inl4: false, flas: false, dinl: false, con: false, rcon: true, dcon: true, exh: false, bar: "2.60", mode: "Below", doorIn: "Close", doorOut: "Close" },
+  { step: 11, unf: 600, nrm: 600, wet: 600, inl1: true, inl2: true, inl3: false, inl4: false, flas: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.80", mode: "OFF", doorIn: "Close", doorOut: "Close" },
+  { step: 12, unf: 30, nrm: 30, wet: 30, inl1: true, inl2: false, inl3: false, inl4: false, flas: false, dinl: false, con: false, rcon: true, dcon: true, exh: false, bar: "2.60", mode: "Below", doorIn: "Close", doorOut: "Close" },
+  { step: 13, unf: 600, nrm: 900, wet: 1200, inl1: true, inl2: true, inl3: false, inl4: false, flas: true, dinl: true, con: false, rcon: false, dcon: false, exh: false, bar: "2.80", mode: "OFF", doorIn: "Close", doorOut: "Close" },
+  { step: 14, unf: 300, nrm: 300, wet: 300, inl1: false, inl2: false, inl3: false, inl4: false, flas: false, dinl: false, con: true, rcon: true, dcon: true, exh: false, bar: "2.00", mode: "Below", doorIn: "Close", doorOut: "Close" },
+  { step: 15, unf: 300, nrm: 300, wet: 300, inl1: false, inl2: false, inl3: false, inl4: false, flas: false, dinl: false, con: true, rcon: true, dcon: true, exh: true, bar: "0.01", mode: "OFF", doorIn: "Close", doorOut: "Close" },
+  { step: 16, unf: 1200, nrm: 1200, wet: 1200, inl1: false, inl2: false, inl3: false, inl4: false, flas: false, dinl: false, con: false, rcon: false, dcon: false, exh: false, bar: "", mode: "OFF", doorIn: "Open", doorOut: "Open" }
 ];
 
 const STEP_FUNCTIONS = [
@@ -79,6 +79,7 @@ function SterilizerStationSettingsPage({
     };
   };
   const [selectedLine, setSelectedLine] = useState(1);
+  const [scoreLine, setScoreLine] = useState(1);
   const [copySourceLine, setCopySourceLine] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [activeKeypad, setActiveKeypad] = useState(null);
@@ -151,25 +152,32 @@ function SterilizerStationSettingsPage({
   const [overLimitTime, setOverLimitTime] = useState(300);
   const [overLimitScore, setOverLimitScore] = useState(300);
 
-  const [scoreLogics, setScoreLogics] = useState([
-    { step: 1, function: "Deaeration", target: 100, actual: 90, unit: "°C", decimals: 0, param: "deaeration_temp" },
-    { step: 2, function: "1st Peak Up", target: 2.50, actual: 2.00, unit: "bar", decimals: 2, param: "peak1_press" },
-    { step: 4, function: "2nd Peak Up", target: 2.50, actual: 2.30, unit: "bar", decimals: 2, param: "peak2_press" },
-    { step: 6, function: "3rd Peak Up", target: 2.80, actual: 2.40, unit: "bar", decimals: 2, param: "peak3_press" },
-    { step: 7, function: "Holding", target: 2.80, actual: 2.70, unit: "bar", decimals: 2, param: "holding_press" },
-    { step: 8, function: "1st Intermitten Blow", target: 140, actual: 138, unit: "°C", decimals: 0, param: "blow1_temp" },
-    { step: 9, function: "Holding", target: 2.80, actual: 2.65, unit: "bar", decimals: 2, param: "holding2_press" },
-    { step: 10, function: "2nd Intermitten Blow", target: 140, actual: 139, unit: "°C", decimals: 0, param: "blow2_temp" },
-    { step: 11, function: "Holding", target: 2.80, actual: 2.50, unit: "bar", decimals: 2, param: "holding3_press" },
-    { step: 12, function: "3rd Intermitten Blow", target: 140, actual: 140, unit: "°C", decimals: 0, param: "blow3_temp" },
-    { step: 13, function: "Holding", target: 2.80, actual: 2.80, unit: "bar", decimals: 2, param: "holding4_press" },
-    { step: 14, function: "Blow-down", target: 120, actual: 150, unit: "s", decimals: 0, param: "blowdown_time" },
-    { step: 15, function: "Exhaust", target: 180, actual: 265, unit: "s", decimals: 0, param: "exhaust_time" },
-    { step: "FFB", function: "FFB loading in/out", target: 1200, actual: 900, unit: "s", decimals: 0, param: "ffb_loading" },
-    { step: "T_Ster", function: "Target Sterilization Time", target: 6690, actual: 6550, unit: "s", decimals: 0, param: "target_ster_time" },
-    { step: "T_Cyc", function: "Target Cycle Time", target: 7890, actual: 7450, unit: "s", decimals: 0, param: "target_cyc_time" },
-    { step: "Tput", function: "Throughput", target: 22.81, actual: 24.16, unit: "mt/hr", decimals: 2, param: "throughput_rate" }
-  ]);
+const createDefaultScoreLogics = () => [
+  { step: 1, function: "Deaeration", target: 100, actual: 90, unit: "°C", decimals: 0, param: "deaeration_temp" },
+  { step: 2, function: "1st Peak Up", target: 2.50, actual: 2.00, unit: "bar", decimals: 2, param: "peak1_press" },
+  { step: 4, function: "2nd Peak Up", target: 2.50, actual: 2.30, unit: "bar", decimals: 2, param: "peak2_press" },
+  { step: 6, function: "3rd Peak Up", target: 2.80, actual: 2.40, unit: "bar", decimals: 2, param: "peak3_press" },
+  { step: 7, function: "Holding", target: 2.80, actual: 2.70, unit: "bar", decimals: 2, param: "holding_press" },
+  { step: 8, function: "1st Intermitten Blow", target: 140, actual: 138, unit: "°C", decimals: 0, param: "blow1_temp" },
+  { step: 9, function: "Holding", target: 2.80, actual: 2.65, unit: "bar", decimals: 2, param: "holding2_press" },
+  { step: 10, function: "2nd Intermitten Blow", target: 140, actual: 139, unit: "°C", decimals: 0, param: "blow2_temp" },
+  { step: 11, function: "Holding", target: 2.80, actual: 2.50, unit: "bar", decimals: 2, param: "holding3_press" },
+  { step: 12, function: "3rd Intermitten Blow", target: 140, actual: 140, unit: "°C", decimals: 0, param: "blow3_temp" },
+  { step: 13, function: "Holding", target: 2.80, actual: 2.80, unit: "bar", decimals: 2, param: "holding4_press" },
+  { step: 14, function: "Blow-down", target: 120, actual: 150, unit: "s", decimals: 0, param: "blowdown_time" },
+  { step: 15, function: "Exhaust", target: 180, actual: 265, unit: "s", decimals: 0, param: "exhaust_time" },
+  { step: "FFB", function: "FFB loading in/out", target: 1200, actual: 900, unit: "s", decimals: 0, param: "ffb_loading" },
+  { step: "T_Ster", function: "Target Sterilization Time", target: 6690, actual: 6550, unit: "s", decimals: 0, param: "target_ster_time" },
+  { step: "T_Cyc", function: "Target Cycle Time", target: 7890, actual: 7450, unit: "s", decimals: 0, param: "target_cyc_time" },
+  { step: "Tput", function: "Throughput", target: 22.81, actual: 24.16, unit: "mt/hr", decimals: 2, param: "throughput_rate" }
+];
+
+  const [scoreLogics, setScoreLogics] = useState({
+    1: createDefaultScoreLogics(),
+    2: createDefaultScoreLogics(),
+    3: createDefaultScoreLogics(),
+    4: createDefaultScoreLogics()
+  });
 
   const calculateScore = (target, actual, stepKey) => {
     if (target <= 0 || actual <= 0) return 0;
@@ -262,6 +270,9 @@ function SterilizerStationSettingsPage({
                     const valveFields = [
                       { field: "inl1", eq: `recipe_line_${line}_step_${stepNum}_inl1` },
                       { field: "inl2", eq: `recipe_line_${line}_step_${stepNum}_inl2` },
+                      { field: "inl3", eq: `recipe_line_${line}_step_${stepNum}_inl3` },
+                      { field: "inl4", eq: `recipe_line_${line}_step_${stepNum}_inl4` },
+                      { field: "flas", eq: `recipe_line_${line}_step_${stepNum}_flas` },
                       { field: "dinl", eq: `recipe_line_${line}_step_${stepNum}_dinl` },
                       { field: "con",  eq: `recipe_line_${line}_step_${stepNum}_con`  },
                       { field: "rcon", eq: `recipe_line_${line}_step_${stepNum}_rcon` },
@@ -534,7 +545,10 @@ function SterilizerStationSettingsPage({
 
           const inl1 = syncValve(`recipe_line_${line}_step_${stepNum}_inl1`, "VALVE", stepObj.inl1, "inl1");
           const inl2 = syncValve(`recipe_line_${line}_step_${stepNum}_inl2`, "VALVE", stepObj.inl2, "inl2");
-          const dinl = syncValve(`recipe_line_${line}_step_${stepNum}_dinl`, "VALVE", stepObj.dinl, "dinl");
+          const inl3 = syncValve(`recipe_line_${line}_step_${stepNum}_inl3`, "VALVE", stepObj.inl3, "inl3");
+          const inl4 = syncValve(`recipe_line_${line}_step_${stepNum}_inl4`, "VALVE", stepObj.inl4, "inl4");
+          const flas = syncValve(`recipe_line_${line}_step_${stepNum}_flas`, "VALVE", stepObj.flas ?? stepObj.dinl, "flas");
+          const dinl = flas;
           const con  = syncValve(`recipe_line_${line}_step_${stepNum}_con`,  "VALVE", stepObj.con,  "con");
           const rcon = syncValve(`recipe_line_${line}_step_${stepNum}_rcon`, "VALVE", stepObj.rcon, "rcon");
           const dcon = syncValve(`recipe_line_${line}_step_${stepNum}_dcon`, "VALVE", stepObj.dcon, "dcon");
@@ -553,11 +567,11 @@ function SterilizerStationSettingsPage({
               if (live === 1 || live === "1" || live === "Below") liveMode = "Below";
               else if (live === 2 || live === "2" || live === "Above") liveMode = "Above";
               const initStep = initialRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
-              const initVal = initStep ? initStep[field] : null;
-              if (currentVal === initVal && currentVal !== liveMode) {
-                recipesChanged = true;
-                const nextInitStep = nextInitRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
-                if (nextInitStep) nextInitStep[field] = liveMode;
+              if (initStep && initStep.mode !== undefined) {
+                if (initStep.mode !== liveMode) {
+                  return liveMode;
+                }
+              } else {
                 return liveMode;
               }
             }
@@ -574,24 +588,24 @@ function SterilizerStationSettingsPage({
 
             const live = getMapLiveVal(eq, sig);
             if (live !== undefined && live !== null) {
-              const liveBool = live === true || live === "true" || live === 1 || live === "1" || live === "OPEN" || String(live).toUpperCase() === "OPEN";
-              const liveStr = liveBool ? "Open" : "Close";
+              let liveDoor = "Close";
+              if (live === 1 || live === "1" || live === "Open" || live === "OPEN" || live === true) liveDoor = "Open";
               const initStep = initialRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
-              const initVal = initStep ? initStep[field] : null;
-              if (currentVal === initVal && currentVal !== liveStr) {
-                recipesChanged = true;
-                const nextInitStep = nextInitRecipes?.[cat]?.[line]?.find((s) => s.step === stepNum);
-                if (nextInitStep) nextInitStep[field] = liveStr;
-                return liveStr;
+              if (initStep && initStep[field] !== undefined) {
+                if (initStep[field] !== liveDoor) {
+                  return liveDoor;
+                }
+              } else {
+                return liveDoor;
               }
             }
             return currentVal;
           };
 
-          const doorIn = syncDoor(`recipe_line_${line}_step_${stepNum}_doorIn`, "VALVE", stepObj.doorIn, "doorIn");
-          const doorOut = syncDoor(`recipe_line_${line}_step_${stepNum}_doorOut`, "VALVE", stepObj.doorOut, "doorOut");
+          const doorIn = syncDoor(`recipe_line_${line}_step_${stepNum}_doorin`, "DOOR_INLET", stepObj.doorIn, "doorIn");
+          const doorOut = syncDoor(`recipe_line_${line}_step_${stepNum}_doorout`, "DOOR_OUTLET", stepObj.doorOut, "doorOut");
 
-          return { ...stepObj, bar, nrm, unf, wet, inl1, inl2, dinl, con, rcon, dcon, exh, mode, doorIn, doorOut };
+          return { ...stepObj, bar, nrm, unf, wet, inl1, inl2, inl3, inl4, flas, dinl, con, rcon, dcon, exh, mode, doorIn, doorOut };
         });
       }
     });
@@ -614,27 +628,39 @@ function SterilizerStationSettingsPage({
   useEffect(() => {
     if (!getMappedValue) return;
 
-    const currentLogics = scoreLogicsRef.current;
-    if (!currentLogics || currentLogics.length === 0) return;
+    const currentMap = scoreLogicsRef.current;
+    if (!currentMap) return;
 
     let changed = false;
-    const next = currentLogics.map((row) => {
-      const liveVal = getMappedValue(
-        `settings_score_logic_${row.param}_actual`,
-        "ACTUAL"
-      );
-      // getMappedValue returns "No Tag" or "--" when not mapped/no data
-      if (liveVal === "No Tag" || liveVal === "--" || liveVal === undefined || liveVal === null) return row;
+    const isObj = currentMap && typeof currentMap === "object" && !Array.isArray(currentMap);
+    const nextMap = isObj ? { ...currentMap } : { 1: currentMap, 2: currentMap, 3: currentMap, 4: currentMap };
 
-      const numVal = Number(liveVal);
-      if (isNaN(numVal) || numVal === row.actual) return row;
+    [1, 2, 3, 4].forEach((line) => {
+      const lineRows = nextMap[line] || createDefaultScoreLogics();
+      let lineChanged = false;
 
-      changed = true;
-      return { ...row, actual: numVal };
+      const nextRows = lineRows.map((row) => {
+        const liveVal = getMappedValue(
+          `recipe_line_${line}_score_${row.param}`,
+          "ACTUAL"
+        );
+        if (liveVal === "No Tag" || liveVal === "--" || liveVal === undefined || liveVal === null) return row;
+
+        const numVal = Number(liveVal);
+        if (isNaN(numVal) || numVal === row.actual) return row;
+
+        lineChanged = true;
+        return { ...row, actual: numVal };
+      });
+
+      if (lineChanged) {
+        changed = true;
+        nextMap[line] = nextRows;
+      }
     });
 
     if (changed) {
-      setScoreLogics(next);
+      setScoreLogics(nextMap);
     }
   }, [getMappedValue]);
 
@@ -757,22 +783,27 @@ function SterilizerStationSettingsPage({
       updateStepField(kp.stepIdx, kp.param, val);
     } else if (kp.section === 'scoreLogic') {
       const newVal = val;
+      const targetLine = scoreLine || selectedLine;
       setScoreLogics((prev) => {
-        const next = [...prev];
-        next[kp.idx] = { ...next[kp.idx], target: newVal };
-        return next;
+        const isObj = prev && typeof prev === "object" && !Array.isArray(prev);
+        const map = isObj ? { ...prev } : { 1: prev, 2: prev, 3: prev, 4: prev };
+        const activeList = [...(map[targetLine] || createDefaultScoreLogics())];
+        activeList[kp.idx] = { ...activeList[kp.idx], target: newVal };
+        return { ...map, [targetLine]: activeList };
       });
-      // Update initialScoreLogics so live sync doesn't overwrite user's new value
       setInitialScoreLogics((prev) => {
         if (!prev) return prev;
-        const next = [...prev];
-        next[kp.idx] = { ...next[kp.idx], target: newVal };
-        return next;
+        const isObj = prev && typeof prev === "object" && !Array.isArray(prev);
+        const map = isObj ? { ...prev } : { 1: prev, 2: prev, 3: prev, 4: prev };
+        const activeList = [...(map[targetLine] || createDefaultScoreLogics())];
+        activeList[kp.idx] = { ...activeList[kp.idx], target: newVal };
+        return { ...map, [targetLine]: activeList };
       });
-      // Immediately write to PLC
-      const row = scoreLogics[kp.idx];
+      // Immediately write to PLC for targetLine
+      const activeList = (scoreLogics && typeof scoreLogics === "object" && !Array.isArray(scoreLogics)) ? (scoreLogics[targetLine] || []) : (Array.isArray(scoreLogics) ? scoreLogics : []);
+      const row = activeList[kp.idx];
       if (row) {
-        const plcKey = `settings_score_logic_${row.param}_target__TARGET`;
+        const plcKey = `recipe_line_${targetLine}_score_${row.param}__TARGET`;
         const tagId = tagMap[plcKey];
         if (tagId) {
           usePlcStore.getState().sendCommand(tagId, newVal, plcKey, "sterilizer");
@@ -1135,17 +1166,19 @@ const handleRestoreDefault = () => {
       const lineSteps = localRecipes[category]?.[selectedLine] || [];
       const recipeData = [
         ["RECIPE STEPS"],
-        ["Step", "Function", "Inlet 1", "Inlet 2", "D. Inlet", "Cond.", "R.Cond.", "D.Cond.", "Exh.", "Pressure Setpoint (bar)", "Valve Mode"],
+        ["Step", "Function", "Inlet 1", "Inlet 2", "Inlet 3", "Inlet 4", "Flashing", "Cond.", "R.Cond.", "D.Cond.", "Exh.", "Pressure Setpoint (bar)", "Valve Mode"],
         ...lineSteps.map((step) => [
           step.step,
           "MODULATE",
           step.inl1 ? "OPEN" : "CLOSE",
-            step.inl2 ? "OPEN" : "CLOSE",
-            step.dinl ? "OPEN" : "CLOSE",
-            step.con ? "OPEN" : "CLOSE",
-            step.rcon ? "OPEN" : "CLOSE",
-            step.dcon ? "OPEN" : "CLOSE",
-            step.exh ? "OPEN" : "CLOSE",
+          step.inl2 ? "OPEN" : "CLOSE",
+          step.inl3 ? "OPEN" : "CLOSE",
+          step.inl4 ? "OPEN" : "CLOSE",
+          (step.flas ?? step.dinl) ? "OPEN" : "CLOSE",
+          step.con ? "OPEN" : "CLOSE",
+          step.rcon ? "OPEN" : "CLOSE",
+          step.dcon ? "OPEN" : "CLOSE",
+          step.exh ? "OPEN" : "CLOSE",
           step.bar || "0.00",
           step.mode || "OFF",
           step.nrm || 0,
@@ -1706,7 +1739,7 @@ const handleRestoreDefault = () => {
   // Real-time live value resolver — called at render time so always fresh from PLC
   // Priority: pendingEdits (user typed new value) → getMappedValue (live PLC) → direct tags lookup → null
   const getLiveRecipeVal = (line, stepNum, field) => {
-    const isValve = ['inl1', 'inl2', 'dinl', 'con', 'rcon', 'dcon', 'exh'].includes(field);
+    const isValve = ['inl1', 'inl2', 'inl3', 'inl4', 'flas', 'dinl', 'con', 'rcon', 'dcon', 'exh'].includes(field);
     const isMode = field === 'mode';
     const isDoor = field === 'doorIn' || field === 'doorOut';
     if (field !== 'bar' && !isValve && !isMode && !isDoor) return null;
@@ -1877,22 +1910,24 @@ const handleRestoreDefault = () => {
                         <th rowSpan="2">S</th>
                         <th rowSpan="2">VALVE</th>
                         <th rowSpan="2" title="Inlet 1">INL1</th>
-                          <th rowSpan="2" title="Inlet 2">INL2</th>
-                          <th rowSpan="2" title="D. Inlet">D.INL</th>
-                          <th rowSpan="2" title="Condensate">CON</th>
-                          <th rowSpan="2" title="R. Condensate">R.CON</th>
-                          <th rowSpan="2" title="D. Condensate">D.CON</th>
-                          <th rowSpan="2" title="Exhaust">EXH</th>
+                        <th rowSpan="2" title="Inlet 2">INL2</th>
+                        <th rowSpan="2" title="Inlet 3">INL3</th>
+                        <th rowSpan="2" title="Inlet 4">INL4</th>
+                        <th rowSpan="2" title="Flashing">FLAS</th>
+                        <th rowSpan="2" title="Condensate">CON</th>
+                        <th rowSpan="2" title="R. Condensate">R.CON</th>
+                        <th rowSpan="2" title="D. Condensate">D.CON</th>
+                        <th rowSpan="2" title="Exhaust">EXH</th>
                         <th colSpan="3">Pressure Overriding Setpoint</th>
-                          <th colSpan="2">Door Overriding</th>
-                                                  </tr>
-                        <tr>
-                          <th>Pressure</th>
-                          <th>Unit</th>
-                          <th>Jumper</th>
-                          <th>Inlet</th>
-                          <th>Outlet</th>
-                        </tr>
+                        <th colSpan="2">Door Overriding</th>
+                      </tr>
+                      <tr>
+                        <th>Pressure</th>
+                        <th>Unit</th>
+                        <th>Jumper</th>
+                        <th>Inlet</th>
+                        <th>Outlet</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {currentLineSteps.map((step, idx) => (
@@ -1903,7 +1938,9 @@ const handleRestoreDefault = () => {
                           </td>
                           {renderValveCell(step, idx, "inl1", "Inlet 1 Valve")}
                           {renderValveCell(step, idx, "inl2", "Inlet 2 Valve")}
-                          {renderValveCell(step, idx, "dinl", "D. Inlet Valve")}
+                          {renderValveCell(step, idx, "inl3", "Inlet 3 Valve")}
+                          {renderValveCell(step, idx, "inl4", "Inlet 4 Valve")}
+                          {renderValveCell(step, idx, "flas", "Flashing Valve")}
                           {renderValveCell(step, idx, "con", "Condensate Valve")}
                           {renderValveCell(step, idx, "rcon", "R. Condensate Valve")}
                           {renderValveCell(step, idx, "dcon", "D. Condensate Valve")}
@@ -2096,75 +2133,129 @@ const handleRestoreDefault = () => {
                   <table className="som-score-logics-table">
                     <thead>
                       <tr>
-                        <th>Step</th>
-                        <th>Function</th>
-                        <th>Target</th>
-                        <th>Actual</th>
-                        <th>Score</th>
+                        <th rowSpan="2" style={{ verticalAlign: "middle" }}>STEP</th>
+                        <th rowSpan="2" style={{ verticalAlign: "middle" }}>FUNCTION</th>
+                        <th rowSpan="2" style={{ verticalAlign: "middle" }}>TARGET</th>
+                        <th colSpan="2" style={{ textAlign: "center", padding: "4px 6px", background: "#f8fafc" }}>
+                          <div style={{ display: "flex", justifyContent: "center", gap: "6px" }}>
+                            {[1, 2, 3, 4].map((lNum) => {
+                              const activeScoreLine = scoreLine || selectedLine;
+                              const isActive = activeScoreLine === lNum;
+                              return (
+                                <button
+                                  key={lNum}
+                                  type="button"
+                                  onClick={() => setScoreLine(lNum)}
+                                  style={{
+                                    background: isActive ? "#3b82f6" : "#ffffff",
+                                    color: isActive ? "#ffffff" : "#475569",
+                                    border: isActive ? "1px solid #2563eb" : "1px solid #cbd5e1",
+                                    borderRadius: "6px",
+                                    padding: "3px 12px",
+                                    fontSize: "11px",
+                                    fontWeight: "900",
+                                    cursor: "pointer",
+                                    boxShadow: isActive ? "0 2px 4px rgba(59, 130, 246, 0.3)" : "none",
+                                    transition: "all 0.2s ease"
+                                  }}
+                                >
+                                  Line {lNum}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </th>
+                      </tr>
+                      <tr>
+                        <th style={{ textAlign: "center", background: "#f1f5f9", fontSize: "10px", fontWeight: "900", color: "#0f172a", padding: "3px 0", borderBottom: "2px solid #3b82f6" }}>
+                          ACTUAL
+                        </th>
+                        <th style={{ textAlign: "center", background: "#f1f5f9", fontSize: "10px", fontWeight: "900", color: "#0f172a", padding: "3px 0", borderBottom: "2px solid #3b82f6" }}>
+                          SCORE
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {scoreLogics.map((row, idx) => {
-                        const isFfbStart = row.step === "FFB";
-                        return (
-                          <Fragment key={row.param || idx}>
-                            {isFfbStart && (
-                              <tr className="som-table-divider-row">
-                                <td colSpan="5">GLOBAL PERFORMANCE METRICS</td>
+                      {(() => {
+                        const activeScoreLine = scoreLine || selectedLine;
+                        const activeList = (scoreLogics && typeof scoreLogics === "object" && !Array.isArray(scoreLogics))
+                          ? (scoreLogics[activeScoreLine] || createDefaultScoreLogics())
+                          : (Array.isArray(scoreLogics) ? scoreLogics : createDefaultScoreLogics());
+                        return activeList.map((row, idx) => {
+                          const isFfbStart = row.step === "FFB";
+                          const liveTarget = getMappedValue ? getMappedValue(`recipe_line_${activeScoreLine}_score_${row.param}`, "TARGET") : null;
+                          const liveActual = getMappedValue ? getMappedValue(`recipe_line_${activeScoreLine}_score_${row.param}`, "ACTUAL") : null;
+                          
+                          const displayTarget = (liveTarget !== null && liveTarget !== "No Tag" && liveTarget !== "--") ? Number(liveTarget) : row.target;
+                          const displayActual = (liveActual !== null && liveActual !== "No Tag" && liveActual !== "--") ? Number(liveActual) : row.actual;
+                          const currentScore = calculateScore(displayTarget, displayActual, row.step);
+
+                          return (
+                            <Fragment key={row.param || idx}>
+                              {isFfbStart && (
+                                <tr className="som-table-divider-row">
+                                  <td colSpan="5">GLOBAL PERFORMANCE METRICS</td>
+                                </tr>
+                              )}
+                              <tr className={typeof row.step !== "number" ? "som-global-metric-row" : ""}>
+                                <td className="som-n">{row.step}</td>
+                                <td className="som-func-name">{row.function}</td>
+                                <td>
+                                  <ValBox
+                                    value={displayTarget}
+                                    decimals={row.decimals}
+                                    unit={row.unit}
+                                    onClick={
+                                      configMode
+                                        ? () => handleEquipmentClick(
+                                            `recipe_line_${activeScoreLine}_score_${row.param}`,
+                                            [],
+                                            [{ key: "TARGET", label: `Line ${activeScoreLine} ${row.function} Target Setpoint` }]
+                                          )
+                                        : () => setActiveKeypad({
+                                            section: "scoreLogic",
+                                            idx: idx,
+                                            param: "target",
+                                            label: `Line ${activeScoreLine} Target ${row.function}`,
+                                            unit: row.unit
+                                          })
+                                    }
+                                    style={getDeveloperStyle(`recipe_line_${activeScoreLine}_score_${row.param}`, "TARGET")}
+                                  />
+                                </td>
+
+                                <td style={{ background: "#f0f9ff" }}>
+                                  <ValBox
+                                    value={displayActual}
+                                    decimals={row.decimals}
+                                    unit={row.unit}
+                                    onClick={
+                                      configMode
+                                        ? () => handleEquipmentClick(
+                                            `recipe_line_${activeScoreLine}_score_${row.param}`,
+                                            [],
+                                            [{ key: "ACTUAL", label: `Line ${activeScoreLine} ${row.function} Actual Value` }]
+                                          )
+                                        : null
+                                    }
+                                    style={{
+                                      border: "1.5px solid #0284c7",
+                                      boxShadow: "0 0 6px rgba(2, 132, 199, 0.2)",
+                                      ...getDeveloperStyle(`recipe_line_${activeScoreLine}_score_${row.param}`, "ACTUAL")
+                                    }}
+                                  />
+                                </td>
+
+                                <td className="som-score-cell">
+                                  <span className="som-score-text">
+                                    {currentScore}%
+                                  </span>
+                                </td>
                               </tr>
-                            )}
-                            <tr className={typeof row.step !== "number" ? "som-global-metric-row" : ""}>
-                              <td className="som-n">{row.step}</td>
-                              <td className="som-func-name">{row.function}</td>
-                              <td>
-                                <ValBox
-                                  value={row.target}
-                                  decimals={row.decimals}
-                                  unit={row.unit}
-                                  onClick={
-                                    configMode
-                                      ? () => handleEquipmentClick(
-                                          `settings_score_logic_${row.param}_target`,
-                                          [],
-                                          [{ key: "TARGET", label: `${row.function} Target Setpoint` }]
-                                        )
-                                      : () => setActiveKeypad({
-                                          section: "scoreLogic",
-                                          idx: idx,
-                                          param: "target",
-                                          label: `Target ${row.function}`,
-                                          unit: row.unit
-                                        })
-                                  }
-                                  style={getDeveloperStyle(`settings_score_logic_${row.param}_target`, "TARGET")}
-                                />
-                              </td>
-                              <td>
-                                <ValBox
-                                  value={row.actual}
-                                  decimals={row.decimals}
-                                  unit={row.unit}
-                                  onClick={
-                                    configMode
-                                      ? () => handleEquipmentClick(
-                                          `settings_score_logic_${row.param}_actual`,
-                                          [],
-                                          [{ key: "ACTUAL", label: `${row.function} Actual Value` }]
-                                        )
-                                      : null
-                                  }
-                                  style={getDeveloperStyle(`settings_score_logic_${row.param}_actual`, "ACTUAL")}
-                                />
-                              </td>
-                              <td className="som-score-cell">
-                                <span className="som-score-text">
-                                  {calculateScore(row.target, row.actual, row.step)}%
-                                </span>
-                              </td>
-                            </tr>
-                          </Fragment>
-                        );
-                      })}
+                            </Fragment>
+                          );
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>

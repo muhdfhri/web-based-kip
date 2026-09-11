@@ -8,7 +8,7 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
             <div className="som-patrol-card guards-card">
                 <div className="som-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span><FaUserShield style={{ marginRight: '6px', fontSize: '11px' }} />GUARD STATUS</span>
-                    <span style={{ fontSize: '10px', color: '#10b981', fontWeight: 700 }}>{patrolGuards.length} aktif</span>
+                    <span style={{ fontSize: '10px', color: '#10b981', fontWeight: 700 }}>{patrolGuards.length} ACTIVE</span>
                 </div>
                 <div className="som-guards-list">
                     {patrolGuards.length === 0 && <div style={{color: '#64748b', fontSize: '12px', padding: '15px', textAlign: 'center'}}>No active guards</div>}
@@ -24,7 +24,7 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                                     <div className="guard-name-row"><span className="guard-name">{guard.name || `ID: ${guard.session_id}`}</span></div>
                                     <div className="guard-location">
                                         {(!guard.latitude || !guard.longitude) ? (
-                                            <b style={{ color: '#ef4444', animation: 'pulse 2s infinite' }}>Mencari Sinyal GPS...</b>
+                                            <b style={{ color: '#ef4444', animation: 'pulse 2s infinite' }}>Searching GPS Signal...</b>
                                         ) : (
                                             <b>{guard.current_station_key || 'Patrolling'}</b>
                                         )}
@@ -40,18 +40,25 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
             {/* PATROL HISTORY — with Replay buttons */}
             <div className="som-patrol-card journey-card" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div className="som-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span><FaWalking style={{ marginRight: '6px', fontSize: '11px' }} />RIWAYAT PATROLI</span>
-                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>{patrolHistory.length} sesi</span>
+                    <span><FaWalking style={{ marginRight: '6px', fontSize: '11px' }} />PATROL HISTORY</span>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>{patrolHistory.length} SESSIONS</span>
                 </div>
                 <div className="som-checkpoint-journey" style={{ flex: 1, overflowY: 'auto' }}>
                     {patrolHistory.length === 0 && (
-                        <div style={{color: '#64748b', fontSize: '12px', padding: '15px', textAlign: 'center'}}>Belum ada patroli hari ini</div>
+                        <div style={{color: '#64748b', fontSize: '12px', padding: '15px', textAlign: 'center'}}>No patrol history today</div>
                     )}
                     {patrolHistory.map((session) => {
                         const isActive = session.status === 'active';
                         const isReplaying = replaySessionId === session.id;
-                        const startTime = new Date(session.started_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-                        const endTime = session.completed_at ? new Date(session.completed_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : null;
+                        const formatTime = (dateStr) => {
+                            if (!dateStr) return null;
+                            const d = new Date(dateStr);
+                            const hours = String(d.getHours()).padStart(2, '0');
+                            const mins = String(d.getMinutes()).padStart(2, '0');
+                            return `${hours}:${mins}`;
+                        };
+                        const startTime = formatTime(session.started_at);
+                        const endTime = formatTime(session.completed_at);
 
                         return (
                             <div key={session.id} className={`som-history-item ${isReplaying ? 'replaying' : ''}`}>
@@ -60,7 +67,7 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                                     <div className="history-info">
                                         <div className="history-name">{session.guard_name}</div>
                                         <div className="history-meta">
-                                            {startTime}{endTime ? ` — ${endTime}` : ' (aktif)'}
+                                            {startTime}{endTime ? ` — ${endTime} WIB` : ' WIB (active)'}
                                             <span className="history-cp-count" title={session.checkpoint_names || `${session.checkpoint_count} Checkpoints`}>
                                                 <FaMapMarkerAlt style={{ fontSize: '9px', marginLeft: '4px', marginRight: '3px' }} /> 
                                                 {session.checkpoint_names ? `${session.checkpoint_count} (${session.checkpoint_names})` : session.checkpoint_count}
@@ -68,11 +75,11 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                                         </div>
                                     </div>
                                 </div>
-                                {!isActive && session.track_count > 0 && (
+                                {!isActive && (session.track_count > 0 || session.checkpoint_count > 0) && (
                                     <button
                                         className={`history-replay-btn ${isReplaying ? 'stop' : ''}`}
                                         onClick={() => setReplaySessionId(isReplaying ? null : session.id)}
-                                        title={isReplaying ? 'Stop Replay' : 'Replay Patroli'}
+                                        title={isReplaying ? 'Stop Replay' : 'Replay Patrol'}
                                     >
                                         {isReplaying ? <FaStop /> : <FaPlay />}
                                     </button>

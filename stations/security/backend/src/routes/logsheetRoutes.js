@@ -1,18 +1,83 @@
 import express from 'express';
 import http from 'http';
+import pg from 'pg';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const router = express.Router();
 
+const poolAi = new pg.Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432', 10),
+  user: process.env.DB_USER && process.env.DB_USER !== 'root' ? process.env.DB_USER : 'postgres',
+  password: process.env.DB_PASSWORD !== undefined && process.env.DB_PASSWORD !== '' ? process.env.DB_PASSWORD : 'kip2026',
+  database: 'mewah_security_ai',
+  max: 10,
+  idleTimeoutMillis: 30000,
+});
+
+async function fetchLogsFromDb(targetStation, category, startDate, endDate, page, limit) {
+  try {
+    const whereConditions = [];
+    const params = [];
+    let paramIdx = 1;
+
+    if (targetStation && targetStation !== 'all-stations') {
+      whereConditions.push(`REPLACE(station_slug, '_', '-') = REPLACE($${paramIdx++}, '_', '-')`);
+      params.push(targetStation);
+    }
+
+    if (category && category.toUpperCase() !== 'ALL' && category.toUpperCase() !== 'ALL CATEGORIES') {
+      whereConditions.push(`category = $${paramIdx++}`);
+      params.push(category.toUpperCase());
+    }
+
+    if (startDate) {
+      const cleanStart = startDate.replace('T', ' ').replace('Z', '').split('.')[0];
+      whereConditions.push(`detected_at >= $${paramIdx++}`);
+      params.push(cleanStart);
+    }
+
+    if (endDate) {
+      const cleanEnd = endDate.replace('T', ' ').replace('Z', '').split('.')[0];
+      whereConditions.push(`detected_at <= $${paramIdx++}`);
+      params.push(cleanEnd);
+    }
+
+    const whereClause = whereConditions.length > 0 ? ` WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const countRes = await poolAi.query(`SELECT COUNT(*) as total FROM security_ai_detection_logs${whereClause}`, params);
+    const total = parseInt(countRes.rows[0]?.total || 0, 10);
+
+    const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    const querySql = `SELECT * FROM security_ai_detection_logs${whereClause} ORDER BY detected_at DESC, id DESC LIMIT $${paramIdx++} OFFSET $${paramIdx++}`;
+    const dataRes = await poolAi.query(querySql, [...params, limit, offset]);
+
+    return {
+      aiLogs: dataRes.rows || [],
+      pagination: {
+        total,
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        totalPages: Math.ceil(total / limit) || 1
+      }
+    };
+  } catch (err) {
+    console.error('[Logsheet Gateway] Fallback DB Query Error:', err.message);
+    return { aiLogs: [], pagination: { total: 0, page: parseInt(page, 10), totalPages: 1 } };
+  }
+}
+
 /**
  * GET /api/security/logsheet/event-logs
- * Fetch event logs from AI Security microservice (:4101)
+ * Fetch event logs from AI Security microservice (:4101) or fallback to PostgreSQL DB
  */
 router.get('/event-logs', async (req, res) => {
   const { station, stationSlug, category, page = 1, limit = 11, startDate, endDate } = req.query;
   const targetStation = stationSlug || station || req.params.station || 'all-stations';
 
   try {
-    const { aiLogs, pagination } = await new Promise((resolve) => {
+    let { aiLogs, pagination } = await new Promise((resolve) => {
       let path = targetStation && targetStation !== 'all-stations'
         ? `/api/security-ai/analytics/detection-logs?station_slug=${encodeURIComponent(targetStation)}&page=${page}&limit=${limit}`
         : `/api/security-ai/analytics/detection-logs?page=${page}&limit=${limit}`;
@@ -32,23 +97,34 @@ router.get('/event-logs', async (req, res) => {
         resAi.on('end', () => {
           try {
             const parsed = JSON.parse(body);
-            resolve({
-              aiLogs: parsed.data || [],
-              pagination: parsed.pagination || { total: (parsed.data || []).length, page: parseInt(page, 10), totalPages: 1 }
-            });
+            if (parsed.success && Array.isArray(parsed.data)) {
+              resolve({
+                aiLogs: parsed.data,
+                pagination: parsed.pagination || { total: parsed.data.length, page: parseInt(page, 10), totalPages: 1 }
+              });
+            } else {
+              resolve({ aiLogs: null, pagination: null });
+            }
           } catch {
-            resolve({ aiLogs: [], pagination: { total: 0, page: parseInt(page, 10), totalPages: 1 } });
+            resolve({ aiLogs: null, pagination: null });
           }
         });
       });
 
       reqAi.on('error', (err) => {
-        console.warn('[Logsheet Gateway] Warning: Could not fetch logs from Security AI (:4101):', err.message);
-        resolve({ aiLogs: [], pagination: { total: 0, page: parseInt(page, 10), totalPages: 1 } });
+        console.warn('[Logsheet Gateway] Warning: Could not fetch logs from Security AI (:4101), using PostgreSQL fallback:', err.message);
+        resolve({ aiLogs: null, pagination: null });
       });
 
       reqAi.end();
     });
+
+    // Fallback to PostgreSQL DB if HTTP call failed or returned null
+    if (!aiLogs) {
+      const dbResult = await fetchLogsFromDb(targetStation, category, startDate, endDate, page, limit);
+      aiLogs = dbResult.aiLogs;
+      pagination = dbResult.pagination;
+    }
 
     const formattedLogs = aiLogs.map(item => ({
       id: `ai_${item.id}`,

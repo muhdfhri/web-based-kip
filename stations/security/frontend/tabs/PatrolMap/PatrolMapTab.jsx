@@ -316,7 +316,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
         const avatarStyle = searching
             ? `border-radius: 50% !important; border-color:${borderColor};box-shadow:0 0 12px ${borderColor}40;opacity:0.7;`
             : `border-radius: 50% !important; border-color:${borderColor};box-shadow:0 0 12px ${borderColor}40;`;
-        const tagExtra = searching ? `<div style="font-size:8px;color:#ef4444;font-weight:700;margin-top:2px;">📡 Mencari GPS...</div>` : '';
+        const tagExtra = searching ? `<div style="font-size:8px;color:#ef4444;font-weight:700;margin-top:2px;">📡 Searching GPS...</div>` : '';
         return L.divIcon({
             className: 'custom-guard-icon',
             html: `
@@ -351,113 +351,162 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                     <MapUpdater center={center} zoom={zoom} bearing={bearing} />
                     <TileLayer url="http://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} />
 
-                    {/* LIVE: Patrol track polyline */}
-                    {patrolTracks.filter(t => t.latitude && t.longitude).reduce((acc, curr) => {
-                        let group = acc.find(g => g[0].session_id === curr.session_id);
-                        if (!group) { group = []; acc.push(group); }
-                        group.push(curr);
-                        return acc;
-                    }, []).map(pts => {
-                        const sorted = [...pts].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
-                        const rawPositions = sorted.map(t => [parseFloat(t.latitude), parseFloat(t.longitude)]);
-                        let positions = filterCleanTrack(rawPositions).map(p => [p[0] + 0, p[1] + 0]);
-                        
-                        const activeGuard = patrolGuards.find(g => g.session_id === sorted[0].session_id && g.latitude && g.longitude);
-                        if (activeGuard) {
-                            const guardPos = [parseFloat(activeGuard.latitude) + 0, parseFloat(activeGuard.longitude) + 0];
-                            const lastPos = positions[positions.length - 1];
-                            if (!lastPos || calculateHaversine(lastPos[0], lastPos[1], guardPos[0], guardPos[1]) > 0.3) {
-                                positions = [...positions, guardPos];
-                            }
-                        }
-                        
-                        return (
-                            <React.Fragment key={`lt-m-${sorted[0].session_id}`}>
-                                <Polyline positions={positions} pathOptions={{ color: '#ef4444', weight: 6, opacity: 0.2, lineCap: 'round', lineJoin: 'round', className: 'pm-track-halo' }} />
-                                <Polyline positions={positions} pathOptions={{ color: '#ef4444', weight: 2, opacity: 0.8, lineCap: 'round', lineJoin: 'round', smoothFactor: 1.5 }} />
-                                {positions.map((pos, idx) => (
-                                    <CircleMarker key={`ping-m-${idx}`} center={pos} radius={3} pathOptions={{ color: '#fff', weight: 1, fillColor: '#ef4444', fillOpacity: 1 }} />
-                                ))}
-                            </React.Fragment>
-                        );
-                    })}
+                    {isReplayMode ? (
+                        <>
+                            {/* Replay trail (drawn progressively) */}
+                            {replayTrailPositions.length > 1 && (
+                                <Polyline
+                                    positions={replayTrailPositions}
+                                    pathOptions={{ color: '#ff0055', weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round', className: 'pm-track-replay-glow' }}
+                                />
+                            )}
 
-                    {/* LIVE: Checkpoint markers */}
-                    {stationCheckpoints.map(cp => {
-                        if (!cp.latitude || !cp.longitude) return null;
-                        const sData = getStationData(cp);
-                        const handleMarkerClick = () => {
-                            if (window.MapMarkerChannel && window.MapMarkerChannel.postMessage) {
-                                window.MapMarkerChannel.postMessage(JSON.stringify({
-                                    title: cp.station_name,
-                                    time: sData.lastCheck,
-                                    guard: sData.activeGuardName,
-                                    photo: sData.activeProofImg,
-                                    lat: cp.latitude,
-                                    lng: cp.longitude
-                                }));
-                            }
-                        };
-                        return (
-                            <Marker 
-                                key={`cp-m-${cp.id}`} 
-                                position={[parseFloat(cp.latitude) + 0, parseFloat(cp.longitude) + 0]} 
-                                icon={createCheckpointIcon(cp)}
-                                eventHandlers={{ click: handleMarkerClick }}
-                            >
-                                <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
-                                    <div className="pm-tooltip-card" onClick={handleMarkerClick}>
-                                        <div className="pm-tooltip-title">{cp.station_name}</div>
-                                        <div className="pm-tooltip-meta">{sData.lastCheck} • {sData.activeGuardName}</div>
-                                        {sData.activeProofImg && (
-                                            <div className="pm-tooltip-photo">
-                                                <img src={sData.activeProofImg} alt="Bukti" />
-                                                <div className="pm-click-hint">KLIK UNTUK PERBESAR</div>
+                            {/* Replay checkpoints */}
+                            {replayVisibleCheckpoints.map((cp, i) => {
+                                const sData = getStationData(cp);
+                                return (
+                                    <Marker
+                                        key={`rcp-m-${i}`}
+                                        position={[parseFloat(cp.latitude) + 0, parseFloat(cp.longitude) + 0]}
+                                        icon={createCheckpointIcon(cp)}
+                                    >
+                                        <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
+                                            <div className="pm-tooltip-card">
+                                                <div className="pm-tooltip-title">{cp.station_name}</div>
+                                                <div className="pm-tooltip-meta">{sData.lastCheck}</div>
                                             </div>
-                                        )}
-                                    </div>
-                                </Tooltip>
-                            </Marker>
-                        );
-                    })}
+                                        </Tooltip>
+                                    </Marker>
+                                );
+                            })}
 
-                    {/* LIVE: Guard avatars (including bridge mobile guards) */}
-                    {(() => {
-                        const merged = [...patrolGuards];
-                        Object.values(mobileGuards).forEach(mg => {
-                            if (mg && mg.lat && mg.lng) {
-                                const existingIdx = merged.findIndex(g => String(g.user_id || g.id) === String(mg.userId));
-                                const guardItem = {
-                                    session_id: mg.userId,
-                                    guard_name: mg.name || 'Guard Mobile',
-                                    latitude: mg.lat,
-                                    longitude: mg.lng,
-                                    status: 'active'
-                                };
-                                if (existingIdx >= 0) {
-                                    merged[existingIdx] = { ...merged[existingIdx], ...guardItem };
-                                } else {
-                                    merged.push(guardItem);
+                            {/* Replay guard avatar */}
+                            {replayCurrentPos && (
+                                <Marker
+                                    position={replayCurrentPos}
+                                    icon={createGuardIcon(replayData.session, '#ff0055')}
+                                />
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            {/* LIVE: Patrol track polyline */}
+                            {patrolTracks.filter(t => t.latitude && t.longitude).reduce((acc, curr) => {
+                                let group = acc.find(g => g[0].session_id === curr.session_id);
+                                if (!group) { group = []; acc.push(group); }
+                                group.push(curr);
+                                return acc;
+                            }, []).map(pts => {
+                                const sorted = [...pts].sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at));
+                                const rawPositions = sorted.map(t => [parseFloat(t.latitude), parseFloat(t.longitude)]);
+                                let positions = filterCleanTrack(rawPositions).map(p => [p[0] + 0, p[1] + 0]);
+                                
+                                const activeGuard = patrolGuards.find(g => g.session_id === sorted[0].session_id && g.latitude && g.longitude);
+                                if (activeGuard) {
+                                    const guardPos = [parseFloat(activeGuard.latitude) + 0, parseFloat(activeGuard.longitude) + 0];
+                                    const lastPos = positions[positions.length - 1];
+                                    if (!lastPos || calculateHaversine(lastPos[0], lastPos[1], guardPos[0], guardPos[1]) > 0.3) {
+                                        positions = [...positions, guardPos];
+                                    }
                                 }
-                            }
-                        });
+                                
+                                return (
+                                    <React.Fragment key={`lt-m-${sorted[0].session_id}`}>
+                                        <Polyline positions={positions} pathOptions={{ color: '#ff0055', weight: 6, opacity: 0.3, lineCap: 'round', lineJoin: 'round', className: 'pm-track-halo' }} />
+                                        <Polyline positions={positions} pathOptions={{ color: '#ff0055', weight: 3, opacity: 0.9, lineCap: 'round', lineJoin: 'round', smoothFactor: 1.5 }} />
+                                        {positions.map((pos, idx) => (
+                                            <CircleMarker key={`ping-m-${idx}`} center={pos} radius={3} pathOptions={{ color: '#fff', weight: 1, fillColor: '#ff0055', fillOpacity: 1 }} />
+                                        ))}
+                                    </React.Fragment>
+                                );
+                            })}
 
-                        return merged.map((guard, idx) => {
-                            const hasGps = !!(guard.latitude && guard.longitude);
-                            if (!hasGps) return null;
-                            const pos = [parseFloat(guard.latitude), parseFloat(guard.longitude)];
-                            return (
-                                <Marker key={`guard-m-${guard.session_id || idx}`} position={pos} icon={createGuardIcon(guard)}>
-                                    <Tooltip direction="top" offset={[0, -45]} opacity={1} className="pm-hover-tooltip">
-                                        <div className="pm-tooltip-card">
-                                            <div className="pm-tooltip-title">{guard.guard_name}</div>
-                                            <div className="pm-tooltip-meta">Aktif Patroli</div>
-                                        </div>
-                                    </Tooltip>
-                                </Marker>
-                            );
-                        });
-                    })()}
+                            {/* LIVE: Checkpoint markers */}
+                            {stationCheckpoints.map(cp => {
+                                if (!cp.latitude || !cp.longitude) return null;
+                                const sData = getStationData(cp);
+                                const handleMarkerClick = () => {
+                                    if (window.MapMarkerChannel && window.MapMarkerChannel.postMessage) {
+                                        window.MapMarkerChannel.postMessage(JSON.stringify({
+                                            title: cp.station_name,
+                                            time: sData.lastCheck,
+                                            guard: sData.activeGuardName,
+                                            photo: sData.activeProofImg,
+                                            lat: cp.latitude,
+                                            lng: cp.longitude
+                                        }));
+                                    }
+                                };
+                                return (
+                                    <Marker 
+                                        key={`cp-m-${cp.id}`} 
+                                        position={[parseFloat(cp.latitude) + 0, parseFloat(cp.longitude) + 0]} 
+                                        icon={createCheckpointIcon(cp)}
+                                        eventHandlers={{ click: handleMarkerClick }}
+                                    >
+                                        <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
+                                            <div className="pm-tooltip-card" onClick={handleMarkerClick}>
+                                                <div className="pm-tooltip-title">{cp.station_name}</div>
+                                                <div className="pm-tooltip-meta">{sData.lastCheck} • {sData.activeGuardName}</div>
+                                                {sData.activeProofImg && (
+                                                    <div className="pm-tooltip-photo">
+                                                        <img src={sData.activeProofImg} alt="Bukti" />
+                                                        <div className="pm-click-hint">KLIK UNTUK PERBESAR</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Tooltip>
+                                    </Marker>
+                                );
+                            })}
+
+                             {/* LIVE: Guard avatars (including bridge mobile guards) */}
+                            {(() => {
+                                const merged = [...patrolGuards];
+                                Object.values(mobileGuards).forEach(mg => {
+                                    if (mg && mg.lat && mg.lng) {
+                                        const mgId = String(mg.userId || mg.id || '');
+                                        const mgName = (mg.name || '').toLowerCase();
+                                        
+                                        const existingIdx = merged.findIndex(g => {
+                                            const gId = String(g.user_id || g.id || g.session_id || '');
+                                            const gName = (g.guard_name || g.name || '').toLowerCase();
+                                            return (mgId && gId === mgId) || (mgName && gName === mgName);
+                                        });
+
+                                        const guardItem = {
+                                            session_id: mg.userId || mg.id,
+                                            guard_name: mg.name || 'Guard Mobile',
+                                            latitude: mg.lat,
+                                            longitude: mg.lng,
+                                            status: 'active'
+                                        };
+                                        if (existingIdx >= 0) {
+                                            merged[existingIdx] = { ...merged[existingIdx], ...guardItem };
+                                        } else {
+                                            merged.push(guardItem);
+                                        }
+                                    }
+                                });
+
+                                return merged.map((guard, idx) => {
+                                    const hasGps = !!(guard.latitude && guard.longitude);
+                                    if (!hasGps) return null;
+                                    const pos = [parseFloat(guard.latitude), parseFloat(guard.longitude)];
+                                    return (
+                                        <Marker key={`guard-m-${guard.session_id || idx}`} position={pos} icon={createGuardIcon(guard)}>
+                                            <Tooltip direction="top" offset={[0, -45]} opacity={1} className="pm-hover-tooltip">
+                                                <div className="pm-tooltip-card">
+                                                    <div className="pm-tooltip-title">{guard.guard_name}</div>
+                                                    <div className="pm-tooltip-meta">Active Patrol</div>
+                                                </div>
+                                            </Tooltip>
+                                        </Marker>
+                                    );
+                                });
+                            })()}
+                        </>
+                    )}
                 </MapContainer>
             </div>
         );
@@ -469,15 +518,15 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
             {showSettings && (
                 <div className="pm-settings-overlay">
                     <div className="pm-settings-modal">
-                        <h3 className="pm-settings-title">Pengaturan Lokasi Pabrik</h3>
+                        <h3 className="pm-settings-title">Factory Location Settings</h3>
                         <div className="pm-field"><label>Latitude</label><input type="text" value={tempLat} onChange={e => setTempLat(e.target.value)} /></div>
                         <div className="pm-field"><label>Longitude</label><input type="text" value={tempLng} onChange={e => setTempLng(e.target.value)} /></div>
                         <div className="pm-field"><label>Zoom Level</label><input type="number" step="1" min="1" max="22" value={tempZoom} onChange={e => setTempZoom(e.target.value)} /></div>
-                        <div className="pm-field"><label>Rotasi Peta (Derajat)</label><input type="number" step="1" min="0" max="360" value={tempBearing} onChange={e => setTempBearing(e.target.value)} /></div>
+                        <div className="pm-field"><label>Map Rotation (Degrees)</label><input type="number" step="1" min="0" max="360" value={tempBearing} onChange={e => setTempBearing(e.target.value)} /></div>
 
                         <div className="pm-settings-actions">
-                            <button onClick={() => setShowSettings(false)} className="pm-btn-cancel">Batal</button>
-                            <button onClick={saveSettings} className="pm-btn-save">Simpan</button>
+                            <button onClick={() => setShowSettings(false)} className="pm-btn-cancel">Cancel</button>
+                            <button onClick={saveSettings} className="pm-btn-save">Save</button>
                         </div>
                     </div>
                 </div>
@@ -493,7 +542,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                         <div className="som-map-legend" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             {isReplayMode && (
                                 <button onClick={stopReplay} className="pm-stop-replay-btn">
-                                    <FaStop style={{ marginRight: '5px' }} /> Kembali ke Live
+                                    <FaStop style={{ marginRight: '5px' }} /> Back to Live
                                 </button>
                             )}
                             {!isReplayMode && (
@@ -514,7 +563,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                     {/* Replay banner */}
                     {isReplayMode && (
                         <div className="pm-replay-banner">
-                            <span>🎬 Mode Replay — {replayData.session.guard_name} ({new Date(replayData.session.started_at).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})})</span>
+                            <span>🎬 Replay Mode — {replayData.session.guard_name} ({new Date(replayData.session.started_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'})})</span>
                         </div>
                     )}
 
@@ -528,7 +577,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                 {replayTrailPositions.length > 1 && (
                                     <Polyline
                                         positions={replayTrailPositions}
-                                        pathOptions={{ color: '#ef4444', weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round', className: 'pm-track-replay-glow' }}
+                                        pathOptions={{ color: '#ff0055', weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round', className: 'pm-track-replay-glow' }}
                                     />
                                 )}
 
@@ -724,12 +773,12 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                         <div className="pm-hud">
                             <div className="pm-hud-item">
                                 <span className="pm-hud-value">{patrolGuards.length}</span>
-                                <span className="pm-hud-label">Aktif</span>
+                                <span className="pm-hud-label">ACTIVE</span>
                             </div>
                             <div className="pm-hud-divider"></div>
                             <div className="pm-hud-item">
                                 <span className="pm-hud-value">{stationCheckpoints.length}</span>
-                                <span className="pm-hud-label">Checkpoint</span>
+                                <span className="pm-hud-label">CHECKPOINTS</span>
                             </div>
                         </div>
                     )}

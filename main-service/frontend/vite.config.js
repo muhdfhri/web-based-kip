@@ -133,6 +133,7 @@ export default defineConfig({
       "/api/grading": "http://localhost:3006",
       "/api/reports": "http://localhost:3007",
       "/api/security": "http://localhost:3101",
+      "/uploads": "http://localhost:3101",
       "/api/weighbridge": "http://localhost:3102",
       "/api/grading-ramp": "http://localhost:3103",
       "/api/loading-ramp": "http://localhost:3104",

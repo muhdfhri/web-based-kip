@@ -15,7 +15,7 @@ def get_cctv_configs():
     try:
         conn = get_db_ai_connection()
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM security_ai_cctv_configs WHERE is_active = 1")
+            cursor.execute("SELECT * FROM security_ai_cctv_configs WHERE is_active IS TRUE")
             cameras = cursor.fetchall()
         conn.close()
         return jsonify({"success": True, "data": cameras})
@@ -32,7 +32,7 @@ def add_or_update_cctv_config():
     camera_name = data.get('camera_name', 'CCTV Pos Security')
     station_slug = data.get('station_slug', 'security')
     rtsp_url = data.get('rtsp_url')
-    is_active = 1 if data.get('is_active', True) else 0
+    is_active = bool(data.get('is_active', True))
     
     if not camera_code or not rtsp_url:
         return jsonify({"success": False, "message": "camera_code dan rtsp_url wajib diisi"}), 400
@@ -43,11 +43,11 @@ def add_or_update_cctv_config():
             sql = """
                 INSERT INTO security_ai_cctv_configs (camera_code, camera_name, station_slug, rtsp_url, is_active)
                 VALUES (%s, %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                    camera_name = VALUES(camera_name),
-                    station_slug = VALUES(station_slug),
-                    rtsp_url = VALUES(rtsp_url),
-                    is_active = VALUES(is_active)
+                ON CONFLICT (camera_code) DO UPDATE SET
+                    camera_name = EXCLUDED.camera_name,
+                    station_slug = EXCLUDED.station_slug,
+                    rtsp_url = EXCLUDED.rtsp_url,
+                    is_active = EXCLUDED.is_active
             """
             cursor.execute(sql, (camera_code, camera_name, station_slug, rtsp_url, is_active))
         conn.close()

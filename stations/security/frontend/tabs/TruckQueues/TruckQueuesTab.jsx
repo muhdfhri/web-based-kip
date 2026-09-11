@@ -618,8 +618,19 @@ function TruckQueuesTab() {
                                   COMPLETE
                                 </button>
                                 <button
-                                  onClick={() => announceQueue(q)}
-                                  title="Repeat speaker call"
+                                  onClick={async () => {
+                                    announceQueue(q);
+                                    try {
+                                      const token = localStorage.getItem('kip_token');
+                                      await fetch(`/api/security/queues/call/${q.id}`, {
+                                        method: 'POST',
+                                        headers: { 'Authorization': `Bearer ${token}` }
+                                      });
+                                    } catch (e) {
+                                      console.error('Failed to trigger recall API:', e);
+                                    }
+                                  }}
+                                  title="Repeat speaker call on Web & Mobile"
                                   style={{
                                     background: '#fff7ed',
                                     color: '#ea580c',

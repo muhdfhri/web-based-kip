@@ -45,21 +45,26 @@ function syncToAiBackend(cameraData) {
 router.get('/', async (req, res) => {
   try {
     const showAll = req.query.all === 'true' || req.query.all === '1';
-    const { location, search } = req.query;
+    const { location, search, station_slug } = req.query;
     const filterKeyword = (location || search || '').trim();
 
-    // 1. Menambahkan station_slug pada query SELECT
-    let sql = 'SELECT id, camera_name, location, station_slug, rtsp_url, is_active, sort_order, created_at FROM cctv_cameras WHERE 1=1';
+    // 1. Menambahkan station_slug dan camera_code pada query SELECT
+    let sql = 'SELECT id, camera_code, camera_name, location, station_slug, rtsp_url, is_active, sort_order, created_at FROM cctv_cameras WHERE 1=1';
     const params = [];
 
     if (!showAll) {
       sql += ' AND is_active = 1';
     }
 
+    if (station_slug) {
+      sql += ' AND LOWER(station_slug) = LOWER(?)';
+      params.push(station_slug.trim());
+    }
+
     if (filterKeyword) {
-      sql += ' AND (LOWER(location) LIKE ? OR LOWER(camera_name) LIKE ?)';
+      sql += ' AND (LOWER(location) LIKE ? OR LOWER(camera_name) LIKE ? OR LOWER(camera_code) LIKE ?)';
       const pattern = `%${filterKeyword.toLowerCase()}%`;
-      params.push(pattern, pattern);
+      params.push(pattern, pattern, pattern);
     }
 
     sql += ' ORDER BY sort_order ASC, id ASC';
@@ -68,9 +73,10 @@ router.get('/', async (req, res) => {
     const hostHeader = req.headers.host ? req.headers.host : 'localhost:3101';
     const protocol = req.protocol || 'http';
 
-    // 2. Menambahkan station_slug: cam.station_slug || 'security' pada mapping objek
+    // 2. Menambahkan station_slug dan camera_code pada mapping objek
     const cameras = rows.map(cam => ({
       ...cam,
+      camera_code: cam.camera_code || `CAM_${cam.id}`,
       station_slug: cam.station_slug || 'security',
       stream_url: `${protocol}://${hostHeader}/api/security/cctv/stream/${cam.id}`
     }));
@@ -89,7 +95,7 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { camera_name, location, station_slug, rtsp_url, is_active = 1, sort_order = 0 } = req.body;
+    const { camera_code, camera_name, location, station_slug, rtsp_url, is_active = 1, sort_order = 0 } = req.body;
 
     if (!camera_name || !rtsp_url) {
       return res.status(400).json({ success: false, message: 'Nama Kamera dan RTSP URL wajib diisi' });
@@ -98,12 +104,20 @@ router.post('/', async (req, res) => {
     const targetSlug = station_slug || 'security';
 
     const [result] = await dbPool.query(
-      'INSERT INTO cctv_cameras (camera_name, location, station_slug, rtsp_url, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-      [camera_name, location || null, targetSlug, rtsp_url, is_active ? 1 : 0, parseInt(sort_order, 10) || 0]
+      'INSERT INTO cctv_cameras (camera_code, camera_name, location, station_slug, rtsp_url, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
+      [camera_code || null, camera_name, location || null, targetSlug, rtsp_url, is_active ? 1 : 0, parseInt(sort_order, 10) || 0]
     );
 
+    const insertedId = result.insertId || (result[0] && result[0].id) || 0;
+    const finalCode = (camera_code && camera_code.trim()) ? camera_code.trim() : `CAM_${insertedId}`;
+
+    if (insertedId > 0) {
+      await dbPool.query('UPDATE cctv_cameras SET camera_code = ? WHERE id = ?', [finalCode, insertedId]);
+    }
+
     syncToAiBackend({
-      id: result.insertId,
+      id: insertedId,
+      camera_code: finalCode,
       camera_name,
       location,
       station_slug: targetSlug,
@@ -113,7 +127,8 @@ router.post('/', async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Kamera CCTV berhasil ditambahkan',
-      id: result.insertId
+      id: insertedId,
+      camera_code: finalCode
     });
   } catch (error) {
     console.error('Error creating CCTV:', error);
@@ -132,17 +147,25 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ success: false, message: 'ID Kamera tidak valid' });
     }
 
-    const { camera_name, location, station_slug, rtsp_url, is_active, sort_order } = req.body;
+    // Fetch existing camera to preserve camera_code if omitted
+    const [existingRows] = await dbPool.query('SELECT camera_code, camera_name, location, station_slug, rtsp_url, is_active FROM cctv_cameras WHERE id = ?', [cameraId]);
+    if (existingRows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Kamera CCTV tidak ditemukan' });
+    }
+    const existingCam = existingRows[0];
+
+    const { camera_code, camera_name, location, station_slug, rtsp_url, is_active, sort_order } = req.body;
 
     if (!camera_name || !rtsp_url) {
       return res.status(400).json({ success: false, message: 'Nama Kamera dan RTSP URL wajib diisi' });
     }
 
-    const targetSlug = station_slug || 'security';
+    const targetSlug = station_slug || existingCam.station_slug || 'security';
+    const finalCode = (camera_code && camera_code.trim()) ? camera_code.trim() : (existingCam.camera_code || `CAM_${cameraId}`);
 
     const [result] = await dbPool.query(
-      'UPDATE cctv_cameras SET camera_name = ?, location = ?, station_slug = ?, rtsp_url = ?, is_active = ?, sort_order = ? WHERE id = ?',
-      [camera_name, location || null, targetSlug, rtsp_url, is_active ? 1 : 0, parseInt(sort_order, 10) || 0, cameraId]
+      'UPDATE cctv_cameras SET camera_code = ?, camera_name = ?, location = ?, station_slug = ?, rtsp_url = ?, is_active = ?, sort_order = ? WHERE id = ?',
+      [finalCode, camera_name, location || null, targetSlug, rtsp_url, is_active ? 1 : 0, parseInt(sort_order, 10) || 0, cameraId]
     );
 
     if (result.affectedRows === 0) {
@@ -151,10 +174,12 @@ router.put('/:id', async (req, res) => {
 
     syncToAiBackend({
       id: cameraId,
+      camera_code: finalCode,
       camera_name,
       location,
       station_slug: targetSlug,
-      rtsp_url
+      rtsp_url,
+      is_active: is_active ? 1 : 0
     });
 
     res.json({

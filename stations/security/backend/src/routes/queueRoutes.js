@@ -176,37 +176,43 @@ const getQueueList = async (req, res) => {
   try {
     const [rows] = await dbPool.query(
       `SELECT 
-        id,
-        COALESCE(queue_code, CONCAT(classification_code, '-', LPAD(sequence_number, 3, '0'))) AS queueCode,
-        COALESCE(queue_code, CONCAT(classification_code, '-', LPAD(sequence_number, 3, '0'))) AS queue_number,
-        license_plate AS licensePlate,
-        license_plate AS plate_number,
-        driver_name AS driverName,
-        driver_name,
-        classification_code AS classification_id,
-        classification_code AS classificationCode,
-        classification_code AS classification_name,
-        status,
-        check_in_at AS checkInAt,
-        check_in_at,
-        weigh_in_at AS weighInAt,
-        weigh_in_at,
-        driver_photo AS driverPhoto,
-        driver_photo,
-        no_do AS noDo,
-        no_do,
-        no_sim AS noSim,
-        no_sim,
-        perusahaan,
-        transporter_company AS transporterCompany,
-        transporter_company,
-        notes,
-        created_at AS createdAt,
-        created_at,
-        updated_at AS updatedAt,
-        updated_at
-       FROM security_truck_queues 
-       ORDER BY check_in_at DESC`
+        q.id,
+        COALESCE(q.queue_code, CONCAT(q.classification_code, '-', LPAD(q.sequence_number, 3, '0'))) AS queueCode,
+        COALESCE(q.queue_code, CONCAT(q.classification_code, '-', LPAD(q.sequence_number, 3, '0'))) AS queue_number,
+        COALESCE(q.queue_code, CONCAT(q.classification_code, '-', LPAD(q.sequence_number, 3, '0'))) AS ticket_number,
+        q.license_plate AS licensePlate,
+        q.license_plate AS plate_number,
+        q.driver_name AS driverName,
+        q.driver_name,
+        q.classification_code AS classification_id,
+        q.classification_code AS classificationCode,
+        COALESCE(c.label, q.classification_code) AS classification_label,
+        COALESCE(c.label, q.classification_code) AS classification_name,
+        COALESCE(c.label, q.classification_code) AS classification,
+        q.status,
+        q.check_in_at AS checkInAt,
+        q.check_in_at,
+        q.weigh_in_at AS weighInAt,
+        q.weigh_in_at,
+        q.driver_photo AS driverPhoto,
+        q.driver_photo,
+        q.no_do AS noDo,
+        q.no_do,
+        q.no_sim AS noSim,
+        q.no_sim,
+        q.perusahaan,
+        q.transporter_company AS transporterCompany,
+        q.transporter_company,
+        q.notes,
+        q.created_at AS createdAt,
+        q.created_at,
+        q.updated_at AS updatedAt,
+        q.updated_at
+       FROM security_truck_queues q
+       LEFT JOIN (
+         SELECT DISTINCT ON (code) code, label FROM security_queue_classifications ORDER BY code, id
+       ) c ON q.classification_code = c.code
+       ORDER BY q.check_in_at DESC`
     );
     res.json({ success: true, data: rows });
   } catch (error) {
@@ -224,13 +230,13 @@ router.get('/active', getQueueList);
 router.get('/summary', async (req, res) => {
   try {
     const [queueCount] = await dbPool.query(
-      'SELECT COUNT(*) as count FROM security_truck_queues WHERE status IN ("WAITING", "WEIGH_IN", "GRADING")'
+      "SELECT COUNT(*) as count FROM security_truck_queues WHERE status IN ('WAITING', 'WEIGH_IN', 'GRADING')"
     );
     const [patrolCount] = await dbPool.query(
-      'SELECT COUNT(*) as count FROM security_guards_status WHERE status = "active"'
+      "SELECT COUNT(*) as count FROM security_guards_status WHERE status = 'active'"
     );
     const [incidentCount] = await dbPool.query(
-      'SELECT COUNT(*) as count FROM security_incidents WHERE status = "SUBMITTED"'
+      "SELECT COUNT(*) as count FROM security_incidents WHERE status = 'SUBMITTED'"
     );
     
     res.json({
@@ -337,8 +343,8 @@ const createQueueHandler = async (req, res) => {
 
     const [result] = await dbPool.query(
       `INSERT INTO security_truck_queues 
-       (queue_code, classification_code, queue_date, sequence_number, driver_name, no_sim, license_plate, no_do, transporter_company, perusahaan, driver_photo, status, check_in_at, notes, registered_by, registered_by_name) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "WAITING", CURRENT_TIMESTAMP, ?, 1, 'Security')`,
+       (queue_code, classification_code, queue_date, sequence_number, driver_name, no_sim, license_plate, no_do, transporter_company, perusahaan, driver_photo, status, check_in_at, notes, registered_by, registered_by_name, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'WAITING', CURRENT_TIMESTAMP, ?, 1, 'Security', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [
         finalQueueCode,
         finalClassCode,
@@ -354,6 +360,7 @@ const createQueueHandler = async (req, res) => {
         finalNotes
       ]
     );
+
 
     const newQueue = {
       id: result.insertId,
@@ -410,7 +417,7 @@ const callQueueHandler = async (req, res) => {
     }
 
     await dbPool.query(
-      'UPDATE security_truck_queues SET status = "WEIGH_IN", weigh_in_at = CURRENT_TIMESTAMP WHERE id = ?',
+      "UPDATE security_truck_queues SET status = 'WEIGH_IN', weigh_in_at = CURRENT_TIMESTAMP WHERE id = ?",
       [id]
     );
 

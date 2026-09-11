@@ -278,7 +278,14 @@ function IncidentsTab() {
                     const type = inc.incident_type || inc.type || inc.incident_category || 'Patrol Finding';
                     const reporter = inc.reported_by_name || inc.guardName || `Guard (ID: ${inc.reported_by || inc.user_id || '-'})`;
                     const priority = (inc.priority || 'MEDIUM').toUpperCase();
-                    const photo = inc.photo_path || inc.photoPath;
+                    const rawPhoto = inc.photo_path || inc.photoPath;
+                    const getPhotoUrl = (urlStr) => {
+                      if (!urlStr) return null;
+                      if (urlStr.startsWith('http') || urlStr.startsWith('blob:') || urlStr.startsWith('data:')) return urlStr;
+                      if (urlStr.startsWith('/uploads')) return `http://${window.location.hostname}:3101${urlStr}`;
+                      return urlStr;
+                    };
+                    const photo = getPhotoUrl(rawPhoto);
                     const status = (inc.status || 'SUBMITTED').toUpperCase();
 
                     let statusLabel = 'WAITING OPERATOR';
@@ -366,7 +373,15 @@ function IncidentsTab() {
                                 gap: '6px'
                               }}
                             >
-                              <img src={photo} alt="Incident Proof" style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
+                              <img 
+                                src={photo} 
+                                alt="Incident Proof" 
+                                style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} 
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.style.display = 'none';
+                                }}
+                              />
                               <span style={{ fontSize: '10px', fontWeight: '700', color: '#475569', paddingRight: '4px' }}>View</span>
                             </button>
                           ) : (
@@ -468,7 +483,11 @@ function IncidentsTab() {
                 <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', marginBottom: '6px' }}>PHOTO EVIDENCE</div>
                 {(selectedIncident.photo_path || selectedIncident.photoPath) ? (
                   <div style={{ width: '100%', borderRadius: '10px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#000' }}>
-                    <img src={selectedIncident.photo_path || selectedIncident.photoPath} alt="Incident" style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '250px', objectFit: 'contain' }} />
+                    <img 
+                      src={(selectedIncident.photo_path || selectedIncident.photoPath).startsWith('/uploads') ? `http://${window.location.hostname}:3101${selectedIncident.photo_path || selectedIncident.photoPath}` : (selectedIncident.photo_path || selectedIncident.photoPath)} 
+                      alt="Incident" 
+                      style={{ width: '100%', height: 'auto', display: 'block', maxHeight: '250px', objectFit: 'contain' }} 
+                    />
                   </div>
                 ) : (
                   <div style={{ width: '100%', height: '180px', borderRadius: '10px', background: '#f8fafc', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '12px', fontWeight: '600' }}>

@@ -703,7 +703,7 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
     const now = Date.now();
     let durationMs = 5 * 60 * 60 * 1000;
     let stepMs = 1 * 60 * 60 * 1000;
-    
+
     if (trendPeriod === "2H") {
       durationMs = 2 * 60 * 60 * 1000;
       stepMs = 1 * 60 * 60 * 1000;
@@ -714,7 +714,7 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
       durationMs = 24 * 60 * 60 * 1000;
       stepMs = 6 * 60 * 60 * 1000;
     }
-    
+
     const end = now - (trendOffset * stepMs);
     const start = end - durationMs;
     return { start, end };
@@ -760,7 +760,7 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
 
   const getResolution = useCallback((period) =>
     period === "2H" ? 7200 : period === "5H" ? 18000 : period === "8H" ? 28800 : period === "D" ? 86400 : 18000
-  , []);
+    , []);
 
   // Fetch Historical Trend Data
   const [trendData, setTrendData] = useState({
@@ -1098,14 +1098,23 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
               </svg>
             </button>
 
+            <button
+              className={`wt-flow-toggle-btn ${flowBuilder.isActive ? "active" : ""}`}
+              onClick={flowBuilder.toggle}
+              title="Toggle Interactive Flow Builder (Shortcut: Ctrl + Q)"
+            >
+              <span>{flowBuilder.isActive ? "🔴" : "🔧"}</span>
+              {flowBuilder.isActive ? "EXIT FLOW BUILDER" : "FLOW BUILDER"}
+            </button>
+
             {onSelectSubmenu && (
-                <button
-                  className={`som-view-btn ${showSettings ? "active" : ""}`}
-                  onClick={() => setShowSettings(true)}
-                  style={{ marginLeft: "8px" }}
-                >
-                  ⚙️ SETTINGS
-                </button>
+              <button
+                className={`som-view-btn ${showSettings ? "active" : ""}`}
+                onClick={() => setShowSettings(true)}
+                style={{ marginLeft: "8px" }}
+              >
+                ⚙️ SETTINGS
+              </button>
             )}
           </div>
         </header>
@@ -1170,6 +1179,7 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
               getMappedValue={getMappedValue}
               configMode={configMode}
               tagMap={tagMap}
+              flowBuilder={flowBuilder}
             />
           ) : (
             <OverviewTab

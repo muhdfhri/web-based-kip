@@ -49,18 +49,13 @@ function WeighbridgePage() {
                 console.warn('[Weighbridge] Queue fetch fallback:', err)
             }
 
-            // 2. Fetch CCTVs
+            // 2. Fetch CCTVs (Filtered by station_slug = weighbridge)
             try {
-                const cRes = await fetch('/api/security/cctv?location=weighbridge')
+                const cRes = await fetch('/api/security/cctv?station_slug=weighbridge')
                 if (cRes.ok) {
                     const cJson = await cRes.json()
                     if (cJson.success && isMounted) {
-                        const wbCameras = (cJson.data || []).filter(cam => {
-                            const loc = (cam.location || '').toLowerCase()
-                            const name = (cam.camera_name || '').toLowerCase()
-                            return loc.includes('weighbridge') || loc.includes('wb') || name.includes('weighbridge') || name.includes('wb')
-                        })
-                        setCctvs(wbCameras)
+                        setCctvs(cJson.data || [])
                     }
                 }
             } catch (err) {
