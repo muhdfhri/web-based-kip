@@ -4,3 +4,6 @@ dist/
 logs/
 *.log
 .turbo/
+*.zip
+stations/security/backend/uploads/
+stations/security.zip
