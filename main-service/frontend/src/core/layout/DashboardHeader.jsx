@@ -46,7 +46,7 @@ const UNLOCKED_STATIONS = [
   // 'EFB Plant',
   'Press Station',
   'Kernel Plant',
-  // 'Oil Clarification Room',
+  'Oil Clarification Room',
   'Boiler House',
   'Engine Room',
   // 'Raw Water Treatment',

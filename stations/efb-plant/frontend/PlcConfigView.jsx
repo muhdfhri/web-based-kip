@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import "./PlcConfigView.css";
 
 // Auth header helper â€” accessible by all components in this file
@@ -73,7 +73,7 @@ const PlcConfigView = ({ user, stationSlug = "efb-plant" }) => {
     return () => clearInterval(interval);
   }, [activeTab]);
 
-  // âœ… FIX: Batch poll all live values in ONE request instead of N requests
+  // ✅ FIX: Batch poll all live values in ONE request instead of N requests
   useEffect(() => {
     if (activeTab !== "tags" || tags.length === 0) return;
 
@@ -82,8 +82,10 @@ const PlcConfigView = ({ user, stationSlug = "efb-plant" }) => {
         const res = await fetch("/api/efb-plant/plc-config/tags-live", {
           headers: authHeaders(),
         });
-        if (res.status === 403) return;
-        const data = await res.json();
+        if (!res.ok) return;
+        const text = await res.text();
+        if (!text) return;
+        const data = JSON.parse(text);
         if (data.success) {
           setLiveValues(data.data);
         }
@@ -92,7 +94,7 @@ const PlcConfigView = ({ user, stationSlug = "efb-plant" }) => {
       }
     };
 
-    const intervalId = setInterval(pollLive, 3000);
+    const intervalId = setInterval(pollLive, 200);
     pollLive();
     return () => clearInterval(intervalId);
   }, [activeTab, tags]);
@@ -123,6 +125,9 @@ const PlcConfigView = ({ user, stationSlug = "efb-plant" }) => {
         alert("Session expired. Please logout and login again.");
       } else if (res.status === 403) {
         alert("Access Denied: Developer role required.");
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(`Error saving device: ${errData.error || errData.message || res.statusText}`);
       }
     } catch (err) {
       console.error("Failed to save device:", err);
@@ -264,10 +269,17 @@ const PlcConfigView = ({ user, stationSlug = "efb-plant" }) => {
     fetchData();
   };
 
-  // âœ… Helper: Render live value with freshness indicator
-  const renderLiveValue = (tagId) => {
-    const liveData = liveValues[tagId];
-    if (!liveData) {
+  // ✅ Helper: Render live value with freshness indicator
+  const renderLiveValue = (tag) => {
+    const tagId = typeof tag === 'object' ? tag.id : tag;
+    const tagName = typeof tag === 'object' ? tag.tag_name : null;
+    
+    let liveData = liveValues[tagId];
+    if (liveData === undefined && tagName) {
+      liveData = liveValues[tagName];
+    }
+
+    if (liveData === undefined || liveData === null) {
       return (
         <span style={{ color: "var(--text-secondary)", fontSize: "0.75rem" }}>
           NO DATA
@@ -275,8 +287,10 @@ const PlcConfigView = ({ user, stationSlug = "efb-plant" }) => {
       );
     }
 
-    const { value, age_seconds, stale } = liveData;
-    const ageNum = age_seconds || 0;
+    const isObject = typeof liveData === 'object' && liveData !== null;
+    const value = isObject && liveData.value !== undefined ? liveData.value : liveData;
+    const ageNum = isObject && liveData.age_seconds !== undefined ? liveData.age_seconds : 0;
+    const stale = isObject && liveData.stale !== undefined ? liveData.stale : false;
 
     // Determine freshness level
     let freshnessColor, freshnessLabel;
@@ -297,8 +311,15 @@ const PlcConfigView = ({ user, stationSlug = "efb-plant" }) => {
     // Format numeric values to max 2 decimal places
     const displayValue = (val) => {
       if (val === null || val === undefined) return "--";
+      
+      const isBoolType = typeof tag === 'object' && tag !== null && tag.data_type === "BOOL";
+      if (isBoolType || typeof val === 'boolean') {
+        if (val === true || val === "true" || val === 1 || val === "1") return "TRUE";
+        return "FALSE";
+      }
+
       const num = parseFloat(val);
-      if (isNaN(num)) return val; // Return original if not a number
+      if (isNaN(num)) return String(val); // Return stringified original if not a number
       // Rounds to max 2 decimal places, avoids trailing zeros
       return +(Math.round(num + "e+2") + "e-2");
     };
@@ -693,7 +714,7 @@ const PlcConfigView = ({ user, stationSlug = "efb-plant" }) => {
                           {tag.data_type}
                         </span>
                       </td>
-                      <td>{renderLiveValue(tag.id)}</td>
+                      <td>{renderLiveValue(tag)}</td>
                       <td style={{ textAlign: "center" }}>
                         <div
                           style={{

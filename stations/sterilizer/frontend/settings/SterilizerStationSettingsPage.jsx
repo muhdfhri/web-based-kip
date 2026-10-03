@@ -142,13 +142,13 @@ function SterilizerStationSettingsPage({
   });
 
   // Card 2 State: Design Capacity & Scoring
-  const [designCapacity, setDesignCapacity] = useState(50);
-  const [numberSterilizer, setNumberSterilizer] = useState(2); // Match spreadsheet default
+  const [designCapacity, setDesignCapacity] = useState(45);
+  const [numberSterilizer, setNumberSterilizer] = useState(2);
   const [millDesignCapacity, setMillDesignCapacity] = useState(45.0);
-  const [actualThroughput, setActualThroughput] = useState(48.32);
-  const [sterilScore, setSterilScore] = useState(89);
-  const [leadTimeScore, setLeadTimeScore] = useState(133);
-  const [throughputScore, setThroughputScore] = useState(107);
+  const [actualThroughput, setActualThroughput] = useState(0);
+  const [sterilScore, setSterilScore] = useState(215);
+  const [leadTimeScore, setLeadTimeScore] = useState(194);
+  const [throughputScore, setThroughputScore] = useState(100);
   const [overLimitTime, setOverLimitTime] = useState(300);
   const [overLimitScore, setOverLimitScore] = useState(300);
 
@@ -192,26 +192,42 @@ const createDefaultScoreLogics = () => [
     return Math.round((actual / target) * 100);
   };
 
-  // Card 3 State: Control Logics
-  const [sequencingStep, setSequencingStep] = useState(7);
-  const [safetyMaxPressure, setSafetyMaxPressure] = useState(3.00);
-  const [safetyExhaustValveOpen, setSafetyExhaustValveOpen] = useState(3.00);
-  const [safetyExhaustValveClose, setSafetyExhaustValveClose] = useState(2.90);
-  const [cbdMaxPressure, setCbdMaxPressure] = useState(2.90);
-  const [cbdCondensateValveOpen, setCbdCondensateValveOpen] = useState(2.90);
-  const [cbdCondensateValveClose, setCbdCondensateValveClose] = useState(2.80);
-  const [tempStartStep, setTempStartStep] = useState(7);
-  const [tempStopStep, setTempStopStep] = useState(14);
-  const [tempReliefValveOpen, setTempReliefValveOpen] = useState(136);
-  const [tempReliefValveClose, setTempReliefValveClose] = useState(140);
-  const [bpvSettings, setBpvSettings] = useState(defaultBpvSettings);
-  const [bpvMakeupHigh, setBpvMakeupHigh] = useState(3.00);
-  const [bpvMakeupLow, setBpvMakeupLow] = useState(2.80);
-  const [bpvSurplusHigh, setBpvSurplusHigh] = useState(3.20);
-  const [bpvSurplusLow, setBpvSurplusLow] = useState(3.00);
-  const [mainSteamMin, setMainSteamMin] = useState(19.5);
-  const [bpvSafetyMaxOpen, setBpvSafetyMaxOpen] = useState(3.20);
-  const [bpvSafetyMaxClose, setBpvSafetyMaxClose] = useState(3.00);
+  // Card 3 State: Control Logics & PID BPV Settings
+  const [safetyDoor, setSafetyDoor] = useState(0.03);
+  const [autoBlowdown, setAutoBlowdown] = useState(2.75);
+  const [holdingPressure, setHoldingPressure] = useState(2.70);
+  const [startToStepCycle, setStartToStepCycle] = useState(7);
+  const [safetyPressure, setSafetyPressure] = useState(2.80);
+
+  const [sequencingOnStep, setSequencingOnStep] = useState(2);
+  const [sequencingStopStep, setSequencingStopStep] = useState(13);
+
+  const [tempHoldingStepStart, setTempHoldingStepStart] = useState(7);
+  const [tempHoldingStepStop, setTempHoldingStepStop] = useState(11);
+  const [tempIdle, setTempIdle] = useState(140.0);
+  const [tempLow, setTempLow] = useState(138.0);
+  const [timeOpenCon, setTimeOpenCon] = useState(3);
+  const [timeCloseCon, setTimeCloseCon] = useState(10);
+  const [highTemp, setHighTemp] = useState(140.0);
+
+  const [mainSteam, setMainSteam] = useState(18.0);
+
+  // BPV PID Settings
+  const [bpvMakeupSetPoint, setBpvMakeupSetPoint] = useState(2.95);
+  const [bpvMakeupP, setBpvMakeupP] = useState(2.0);
+  const [bpvMakeupI, setBpvMakeupI] = useState(1.0);
+  const [bpvMakeupD, setBpvMakeupD] = useState(0.0);
+  const [bpvMakeupPosition, setBpvMakeupPosition] = useState(100);
+  const [bpvMakeupMax, setBpvMakeupMax] = useState(null);
+  const [bpvMakeupMin, setBpvMakeupMin] = useState(null);
+
+  const [bpvSurplusSetPoint, setBpvSurplusSetPoint] = useState(3.10);
+  const [bpvSurplusP, setBpvSurplusP] = useState(2.0);
+  const [bpvSurplusI, setBpvSurplusI] = useState(1.0);
+  const [bpvSurplusD, setBpvSurplusD] = useState(0.0);
+  const [bpvSurplusPosition, setBpvSurplusPosition] = useState(0);
+  const [bpvSurplusMax, setBpvSurplusMax] = useState(null);
+  const [bpvSurplusMin, setBpvSurplusMin] = useState(null);
   const [initialVals, setInitialVals] = useState({});
   const tags = usePlcStore((state) => state.tags);
   const scoreLogicsRef = useRef([]);
@@ -310,11 +326,17 @@ const createDefaultScoreLogics = () => [
 
             const tempInit = {};
 
-            const initParam = (dbKey, eq, sig, setter) => {
+            const initParam = (dbKey, eq, sig, setter, defaultVal = null) => {
               let finalVal = dbParams[dbKey];
               if (finalVal === undefined || finalVal === null) {
                 const liveVal = getMapVal(eq, sig);
-                finalVal = liveVal !== undefined ? liveVal : null;
+                if (liveVal !== undefined && liveVal !== null) {
+                  finalVal = Number(liveVal);
+                } else {
+                  // No DB and no PLC value — keep the state's existing default, don't set to null
+                  if (defaultVal !== null) tempInit[dbKey] = defaultVal;
+                  return;
+                }
               } else {
                 finalVal = Number(finalVal);
               }
@@ -322,64 +344,74 @@ const createDefaultScoreLogics = () => [
               tempInit[dbKey] = finalVal;
             };
 
-            initParam("designCapacity", "settings_capacity_design_capacity", "DESIGN_CAPACITY", setDesignCapacity);
-            initParam("numberSterilizer", "settings_capacity_number_sterilizer", "NUMBER_STERILIZER", setNumberSterilizer);
-            initParam("millDesignCapacity", "settings_capacity_mill_design_capacity", "MILL_DESIGN_CAPACITY", setMillDesignCapacity);
-            initParam("actualThroughput", "settings_capacity_actual_throughput", "ACTUAL_THROUGHPUT", setActualThroughput);
-            initParam("sterilScore", "settings_score_perf_steril", "SCORE", setSterilScore);
-            initParam("leadTimeScore", "settings_score_perf_lead_time", "SCORE", setLeadTimeScore);
-            initParam("throughputScore", "settings_score_perf_throughput", "SCORE", setThroughputScore);
-            initParam("overLimitTime", "settings_tolerance_over_limit_time", "TIME", setOverLimitTime);
-            initParam("overLimitScore", "settings_tolerance_over_limit_score", "SCORE", setOverLimitScore);
-            initParam("sequencingStep", "settings_logic_sequencing_step", "STEP", setSequencingStep);
-            initParam("safetyMaxPressure", "settings_logic_safety_max_pressure", "SETPOINT", setSafetyMaxPressure);
-            initParam("safetyExhaustValveOpen", "settings_logic_safety_exhaust_open", "SETPOINT", setSafetyExhaustValveOpen);
-            initParam("safetyExhaustValveClose", "settings_logic_safety_exhaust_close", "SETPOINT", setSafetyExhaustValveClose);
-            initParam("cbdMaxPressure", "settings_logic_cbd_max_pressure", "SETPOINT", setCbdMaxPressure);
-            initParam("cbdCondensateValveOpen", "settings_logic_cbd_condensate_open", "SETPOINT", setCbdCondensateValveOpen);
-            initParam("cbdCondensateValveClose", "settings_logic_cbd_condensate_close", "SETPOINT", setCbdCondensateValveClose);
-            initParam("tempStartStep", "settings_logic_temp_override_start", "STEP", setTempStartStep);
-            initParam("tempStopStep", "settings_logic_temp_override_stop", "STEP", setTempStopStep);
-            initParam("tempReliefValveOpen", "settings_logic_temp_override_relief_open", "SETPOINT", setTempReliefValveOpen);
-            initParam("tempReliefValveClose", "settings_logic_temp_override_relief_close", "SETPOINT", setTempReliefValveClose);
-            initParam("bpvMakeupHigh", "settings_bpv_makeup_high", "SETPOINT", setBpvMakeupHigh);
-            initParam("bpvMakeupLow", "settings_bpv_makeup_low", "SETPOINT", setBpvMakeupLow);
-            initParam("bpvSurplusHigh", "settings_bpv_surplus_high", "SETPOINT", setBpvSurplusHigh);
-            initParam("bpvSurplusLow", "settings_bpv_surplus_low", "SETPOINT", setBpvSurplusLow);
-            initParam("mainSteamMin", "settings_logic_main_steam_min", "SETPOINT", setMainSteamMin);
-            initParam("bpvSafetyMaxOpen", "settings_logic_bpv_safety_max_open", "SETPOINT", setBpvSafetyMaxOpen);
-            initParam("bpvSafetyMaxClose", "settings_logic_bpv_safety_max_close", "SETPOINT", setBpvSafetyMaxClose);
+            initParam("designCapacity", "settings_capacity_design_capacity", "DESIGN_CAPACITY", setDesignCapacity, 45);
+            initParam("numberSterilizer", "settings_capacity_number_sterilizer", "NUMBER_STERILIZER", setNumberSterilizer, 2);
+            initParam("millDesignCapacity", "settings_capacity_mill_design_capacity", "MILL_DESIGN_CAPACITY", setMillDesignCapacity, 45.0);
+            initParam("actualThroughput", "settings_capacity_actual_throughput", "ACTUAL_THROUGHPUT", setActualThroughput, 0);
+            initParam("sterilScore", "settings_score_perf_steril", "SCORE", setSterilScore, 215);
+            initParam("leadTimeScore", "settings_score_perf_lead_time", "SCORE", setLeadTimeScore, 194);
+            initParam("throughputScore", "settings_score_perf_throughput", "SCORE", setThroughputScore, 100);
+            initParam("overLimitTime", "settings_tolerance_over_limit_time", "TIME", setOverLimitTime, 300);
+            initParam("overLimitScore", "settings_tolerance_over_limit_score", "SCORE", setOverLimitScore, 300);
+            initParam("safetyDoor", "settings_logic_safety_door", "SETPOINT", setSafetyDoor);
+            initParam("autoBlowdown", "settings_logic_auto_blowdown", "SETPOINT", setAutoBlowdown);
+            initParam("holdingPressure", "settings_logic_holding_pressure", "SETPOINT", setHoldingPressure);
+            initParam("startToStepCycle", "settings_logic_start_to_step_cycle", "SETPOINT", setStartToStepCycle);
+            initParam("safetyPressure", "settings_logic_safety_pressure", "SETPOINT", setSafetyPressure);
+            initParam("sequencingOnStep", "settings_sequencing_on_step", "STEP", setSequencingOnStep);
+            initParam("sequencingStopStep", "settings_sequencing_stop_step", "STEP", setSequencingStopStep);
+            initParam("tempHoldingStepStart", "settings_temp_holding_step_start", "STEP", setTempHoldingStepStart);
+            initParam("tempHoldingStepStop", "settings_temp_holding_step_stop", "STEP", setTempHoldingStepStop);
+            initParam("tempIdle", "settings_temp_idle", "SETPOINT", setTempIdle);
+            initParam("tempLow", "settings_temp_low", "SETPOINT", setTempLow);
+            initParam("timeOpenCon", "settings_temp_time_open_con", "TIME", setTimeOpenCon);
+            initParam("timeCloseCon", "settings_temp_time_close_con", "TIME", setTimeCloseCon);
+            initParam("highTemp", "settings_temp_high", "SETPOINT", setHighTemp);
+            initParam("mainSteam", "settings_main_steam", "SETPOINT", setMainSteam);
+            initParam("bpvMakeupSetPoint", "settings_bpv_makeup_setpoint", "SETPOINT", setBpvMakeupSetPoint);
+            initParam("bpvMakeupP", "settings_bpv_makeup_p", "SETPOINT", setBpvMakeupP);
+            initParam("bpvMakeupI", "settings_bpv_makeup_i", "SETPOINT", setBpvMakeupI);
+            initParam("bpvMakeupD", "settings_bpv_makeup_d", "SETPOINT", setBpvMakeupD);
+            initParam("bpvMakeupPosition", "settings_bpv_makeup_position", "POSITION", setBpvMakeupPosition);
+            initParam("bpvSurplusSetPoint", "settings_bpv_surplus_setpoint", "SETPOINT", setBpvSurplusSetPoint);
+            initParam("bpvSurplusP", "settings_bpv_surplus_p", "SETPOINT", setBpvSurplusP);
+            initParam("bpvSurplusI", "settings_bpv_surplus_i", "SETPOINT", setBpvSurplusI);
+            initParam("bpvSurplusD", "settings_bpv_surplus_d", "SETPOINT", setBpvSurplusD);
+            initParam("bpvSurplusPosition", "settings_bpv_surplus_position", "POSITION", setBpvSurplusPosition);
 
             setInitialVals(tempInit);
 
-            if (dbParams.scoreLogics !== undefined) {
-               const logics = [...dbParams.scoreLogics];
-               logics.forEach(row => {
-                  // TARGET: read from DB only (user sets this, writes to PLC)
-                  // Do NOT override with PLC tag value — PLC may lag behind the saved value.
-
-                  // ACTUAL: read from PLC only (PLC feeds this back, read-only)
-                  const liveAct = getMapVal(`settings_score_logic_${row.param}_actual`, "ACTUAL");
-                  if (liveAct !== undefined) {
-                     row.actual = liveAct;
-                  }
-               });
-               setScoreLogics(logics);
-               setInitialScoreLogics(JSON.parse(JSON.stringify(logics)));
+            if (dbParams.scoreLogics !== undefined && dbParams.scoreLogics !== null) {
+               let logics;
+               if (Array.isArray(dbParams.scoreLogics) && dbParams.scoreLogics.length > 0) {
+                 // Old flat array format - wrap as object keyed by line
+                 logics = {
+                   1: dbParams.scoreLogics,
+                   2: dbParams.scoreLogics,
+                   3: dbParams.scoreLogics,
+                   4: dbParams.scoreLogics
+                 };
+               } else if (dbParams.scoreLogics && typeof dbParams.scoreLogics === 'object' && !Array.isArray(dbParams.scoreLogics)) {
+                 // New object format {1:[...], 2:[...], 3:[...], 4:[...]}
+                 logics = dbParams.scoreLogics;
+               } else {
+                 logics = null;
+               }
+               if (logics) {
+                 // Apply live PLC actual values
+                 [1,2,3,4].forEach(ln => {
+                   if (!logics[ln]) return;
+                   logics[ln].forEach(row => {
+                     const liveAct = getMapVal(`settings_score_logic_${row.param}_actual`, "ACTUAL");
+                     if (liveAct !== undefined) row.actual = liveAct;
+                   });
+                 });
+                 setScoreLogics(logics);
+                 setInitialScoreLogics(JSON.parse(JSON.stringify(logics)));
+               }
             }
-            if (dbParams.bpvSettings !== undefined) {
-               const bSettings = [...dbParams.bpvSettings];
-               bSettings.forEach((row, i) => {
-                  const checkMap = (eq, sig) => {
-                     const val = getMapVal(eq, sig);
-                     return val !== undefined ? val : null;
-                  };
-                  row.pressure = checkMap(`settings_bpv_settings_row_${i}_pressure`, "PRESSURE");
-                  row.makeup = checkMap(`settings_bpv_settings_row_${i}_makeup`, "VALVE");
-                  row.surplus = checkMap(`settings_bpv_settings_row_${i}_surplus`, "VALVE");
-               });
-               setBpvSettings(bSettings);
-            }
+            // Note: bpvSettings (old table-style) was replaced by PID params above
+            // No setBpvSettings call needed here
           }
         }
       } catch (err) {
@@ -440,24 +472,31 @@ const createDefaultScoreLogics = () => [
       { key: "throughputScore", eq: "settings_score_perf_throughput", sig: "SCORE", val: throughputScore, set: setThroughputScore },
       { key: "overLimitTime", eq: "settings_tolerance_over_limit_time", sig: "TIME", val: overLimitTime, set: setOverLimitTime },
       { key: "overLimitScore", eq: "settings_tolerance_over_limit_score", sig: "SCORE", val: overLimitScore, set: setOverLimitScore },
-      { key: "sequencingStep", eq: "settings_logic_sequencing_step", sig: "STEP", val: sequencingStep, set: setSequencingStep },
-      { key: "safetyMaxPressure", eq: "settings_logic_safety_max_pressure", sig: "SETPOINT", val: safetyMaxPressure, set: setSafetyMaxPressure },
-      { key: "safetyExhaustValveOpen", eq: "settings_logic_safety_exhaust_open", sig: "SETPOINT", val: safetyExhaustValveOpen, set: setSafetyExhaustValveOpen },
-      { key: "safetyExhaustValveClose", eq: "settings_logic_safety_exhaust_close", sig: "SETPOINT", val: safetyExhaustValveClose, set: setSafetyExhaustValveClose },
-      { key: "cbdMaxPressure", eq: "settings_logic_cbd_max_pressure", sig: "SETPOINT", val: cbdMaxPressure, set: setCbdMaxPressure },
-      { key: "cbdCondensateValveOpen", eq: "settings_logic_cbd_condensate_open", sig: "SETPOINT", val: cbdCondensateValveOpen, set: setCbdCondensateValveOpen },
-      { key: "cbdCondensateValveClose", eq: "settings_logic_cbd_condensate_close", sig: "SETPOINT", val: cbdCondensateValveClose, set: setCbdCondensateValveClose },
-      { key: "tempStartStep", eq: "settings_logic_temp_override_start", sig: "STEP", val: tempStartStep, set: setTempStartStep },
-      { key: "tempStopStep", eq: "settings_logic_temp_override_stop", sig: "STEP", val: tempStopStep, set: setTempStopStep },
-      { key: "tempReliefValveOpen", eq: "settings_logic_temp_override_relief_open", sig: "SETPOINT", val: tempReliefValveOpen, set: setTempReliefValveOpen },
-      { key: "tempReliefValveClose", eq: "settings_logic_temp_override_relief_close", sig: "SETPOINT", val: tempReliefValveClose, set: setTempReliefValveClose },
-      { key: "bpvMakeupHigh", eq: "settings_bpv_makeup_high", sig: "SETPOINT", val: bpvMakeupHigh, set: setBpvMakeupHigh },
-      { key: "bpvMakeupLow", eq: "settings_bpv_makeup_low", sig: "SETPOINT", val: bpvMakeupLow, set: setBpvMakeupLow },
-      { key: "bpvSurplusHigh", eq: "settings_bpv_surplus_high", sig: "SETPOINT", val: bpvSurplusHigh, set: setBpvSurplusHigh },
-      { key: "bpvSurplusLow", eq: "settings_bpv_surplus_low", sig: "SETPOINT", val: bpvSurplusLow, set: setBpvSurplusLow },
-      { key: "mainSteamMin", eq: "settings_logic_main_steam_min", sig: "SETPOINT", val: mainSteamMin, set: setMainSteamMin },
-      { key: "bpvSafetyMaxOpen", eq: "settings_logic_bpv_safety_max_open", sig: "SETPOINT", val: bpvSafetyMaxOpen, set: setBpvSafetyMaxOpen },
-      { key: "bpvSafetyMaxClose", eq: "settings_logic_bpv_safety_max_close", sig: "SETPOINT", val: bpvSafetyMaxClose, set: setBpvSafetyMaxClose },
+      { key: "safetyDoor", eq: "settings_logic_safety_door", sig: "SETPOINT", val: safetyDoor, set: setSafetyDoor },
+      { key: "autoBlowdown", eq: "settings_logic_auto_blowdown", sig: "SETPOINT", val: autoBlowdown, set: setAutoBlowdown },
+      { key: "holdingPressure", eq: "settings_logic_holding_pressure", sig: "SETPOINT", val: holdingPressure, set: setHoldingPressure },
+      { key: "startToStepCycle", eq: "settings_logic_start_to_step_cycle", sig: "SETPOINT", val: startToStepCycle, set: setStartToStepCycle },
+      { key: "safetyPressure", eq: "settings_logic_safety_pressure", sig: "SETPOINT", val: safetyPressure, set: setSafetyPressure },
+      { key: "sequencingOnStep", eq: "settings_sequencing_on_step", sig: "STEP", val: sequencingOnStep, set: setSequencingOnStep },
+      { key: "sequencingStopStep", eq: "settings_sequencing_stop_step", sig: "STEP", val: sequencingStopStep, set: setSequencingStopStep },
+      { key: "tempHoldingStepStart", eq: "settings_temp_holding_step_start", sig: "STEP", val: tempHoldingStepStart, set: setTempHoldingStepStart },
+      { key: "tempHoldingStepStop", eq: "settings_temp_holding_step_stop", sig: "STEP", val: tempHoldingStepStop, set: setTempHoldingStepStop },
+      { key: "tempIdle", eq: "settings_temp_idle", sig: "SETPOINT", val: tempIdle, set: setTempIdle },
+      { key: "tempLow", eq: "settings_temp_low", sig: "SETPOINT", val: tempLow, set: setTempLow },
+      { key: "timeOpenCon", eq: "settings_temp_time_open_con", sig: "TIME", val: timeOpenCon, set: setTimeOpenCon },
+      { key: "timeCloseCon", eq: "settings_temp_time_close_con", sig: "TIME", val: timeCloseCon, set: setTimeCloseCon },
+      { key: "highTemp", eq: "settings_temp_high", sig: "SETPOINT", val: highTemp, set: setHighTemp },
+      { key: "mainSteam", eq: "settings_main_steam", sig: "SETPOINT", val: mainSteam, set: setMainSteam },
+      { key: "bpvMakeupSetPoint", eq: "settings_bpv_makeup_setpoint", sig: "SETPOINT", val: bpvMakeupSetPoint, set: setBpvMakeupSetPoint },
+      { key: "bpvMakeupP", eq: "settings_bpv_makeup_p", sig: "SETPOINT", val: bpvMakeupP, set: setBpvMakeupP },
+      { key: "bpvMakeupI", eq: "settings_bpv_makeup_i", sig: "SETPOINT", val: bpvMakeupI, set: setBpvMakeupI },
+      { key: "bpvMakeupD", eq: "settings_bpv_makeup_d", sig: "SETPOINT", val: bpvMakeupD, set: setBpvMakeupD },
+      { key: "bpvMakeupPosition", eq: "settings_bpv_makeup_position", sig: "POSITION", val: bpvMakeupPosition, set: setBpvMakeupPosition },
+      { key: "bpvSurplusSetPoint", eq: "settings_bpv_surplus_setpoint", sig: "SETPOINT", val: bpvSurplusSetPoint, set: setBpvSurplusSetPoint },
+      { key: "bpvSurplusP", eq: "settings_bpv_surplus_p", sig: "SETPOINT", val: bpvSurplusP, set: setBpvSurplusP },
+      { key: "bpvSurplusI", eq: "settings_bpv_surplus_i", sig: "SETPOINT", val: bpvSurplusI, set: setBpvSurplusI },
+      { key: "bpvSurplusD", eq: "settings_bpv_surplus_d", sig: "SETPOINT", val: bpvSurplusD, set: setBpvSurplusD },
+      { key: "bpvSurplusPosition", eq: "settings_bpv_surplus_position", sig: "POSITION", val: bpvSurplusPosition, set: setBpvSurplusPosition },
     ];
 
     let initialValsUpdated = false;
@@ -694,10 +733,8 @@ const createDefaultScoreLogics = () => [
     const step = localRecipes[selectedCategory]?.[selectedLine]?.[idx];
     const stepNum = step?.step ?? (idx + 1);
     // Store pending edit so display shows user's value (not live PLC) before SAVE
-    if (field === 'bar') {
-      const pendingKey = `${selectedLine}_${stepNum}_bar`;
-      setPendingEdits((prev) => ({ ...prev, [pendingKey]: Number(val) }));
-    }
+    const pendingKey = `${selectedLine}_${stepNum}_${field}`;
+    setPendingEdits((prev) => ({ ...prev, [pendingKey]: Number(val) }));
     setLocalRecipes((prev) => {
       const next = JSON.parse(JSON.stringify(prev));
       if (!next[selectedCategory]) next[selectedCategory] = {};
@@ -841,33 +878,36 @@ const createDefaultScoreLogics = () => [
         setOverLimitScore(Number(val));
         sendToPlc(val, "settings_tolerance_over_limit_score", "SCORE");
       }
+    } else if (kp.section === 'controlLogics') {
+      if (kp.param === 'safetyDoor') setSafetyDoor(val);
+      if (kp.param === 'autoBlowdown') setAutoBlowdown(val);
+      if (kp.param === 'holdingPressure') setHoldingPressure(val);
+      if (kp.param === 'startToStepCycle') setStartToStepCycle(val);
+      if (kp.param === 'safetyPressure') setSafetyPressure(val);
     } else if (kp.section === 'sequencing') {
-      if (kp.param === 'sequencingStep') setSequencingStep(val);
-    } else if (kp.section === 'safety') {
-      if (kp.param === 'maxPressure') setSafetyMaxPressure(val);
-      if (kp.param === 'exhaustValveOpen') setSafetyExhaustValveOpen(val);
-      if (kp.param === 'exhaustValveClose') setSafetyExhaustValveClose(val);
-    } else if (kp.section === 'cbd') {
-      if (kp.param === 'maxPressure') setCbdMaxPressure(val);
-      if (kp.param === 'condensateValveOpen') setCbdCondensateValveOpen(val);
-      if (kp.param === 'condensateValveClose') setCbdCondensateValveClose(val);
+      if (kp.param === 'sequencingOnStep') setSequencingOnStep(val);
+      if (kp.param === 'sequencingStopStep') setSequencingStopStep(val);
     } else if (kp.section === 'tempOverriding') {
-      if (kp.param === 'startStep') setTempStartStep(val);
-      if (kp.param === 'stopStep') setTempStopStep(val);
-      if (kp.param === 'reliefValveOpen') setTempReliefValveOpen(val);
-      if (kp.param === 'reliefValveClose') setTempReliefValveClose(val);
-    } else if (kp.section === 'bpvRow') {
-      updateBpvRow(kp.idx, kp.param, val.toString());
-    } else if (kp.section === 'bpvValves') {
-      if (kp.param === 'makeupHigh') setBpvMakeupHigh(val);
-      if (kp.param === 'makeupLow') setBpvMakeupLow(val);
-      if (kp.param === 'surplusHigh') setBpvSurplusHigh(val);
-      if (kp.param === 'surplusLow') setBpvSurplusLow(val);
+      if (kp.param === 'tempHoldingStepStart') setTempHoldingStepStart(val);
+      if (kp.param === 'tempHoldingStepStop') setTempHoldingStepStop(val);
+      if (kp.param === 'tempIdle') setTempIdle(val);
+      if (kp.param === 'tempLow') setTempLow(val);
+      if (kp.param === 'timeOpenCon') setTimeOpenCon(val);
+      if (kp.param === 'timeCloseCon') setTimeCloseCon(val);
+      if (kp.param === 'highTemp') setHighTemp(val);
     } else if (kp.section === 'mainSteam') {
-      if (kp.param === 'mainSteamMin') setMainSteamMin(val);
-    } else if (kp.section === 'bpvSafety') {
-      if (kp.param === 'maxOpen') setBpvSafetyMaxOpen(val);
-      if (kp.param === 'maxClose') setBpvSafetyMaxClose(val);
+      setMainSteam(val);
+    } else if (kp.section === 'bpvValves') {
+      if (kp.param === 'makeupSetPoint') setBpvMakeupSetPoint(val);
+      if (kp.param === 'makeupP') setBpvMakeupP(val);
+      if (kp.param === 'makeupI') setBpvMakeupI(val);
+      if (kp.param === 'makeupD') setBpvMakeupD(val);
+      if (kp.param === 'makeupPosition') setBpvMakeupPosition(val);
+      if (kp.param === 'surplusSetPoint') setBpvSurplusSetPoint(val);
+      if (kp.param === 'surplusP') setBpvSurplusP(val);
+      if (kp.param === 'surplusI') setBpvSurplusI(val);
+      if (kp.param === 'surplusD') setBpvSurplusD(val);
+      if (kp.param === 'surplusPosition') setBpvSurplusPosition(val);
     }
 
     setActiveKeypad(null);
@@ -891,25 +931,31 @@ const createDefaultScoreLogics = () => [
         overLimitTime,
         overLimitScore,
         scoreLogics,
-        sequencingStep,
-        safetyMaxPressure,
-        safetyExhaustValveOpen,
-        safetyExhaustValveClose,
-        cbdMaxPressure,
-        cbdCondensateValveOpen,
-        cbdCondensateValveClose,
-        tempStartStep,
-        tempStopStep,
-        tempReliefValveOpen,
-        tempReliefValveClose,
-        bpvSettings,
-        bpvMakeupHigh,
-        bpvMakeupLow,
-        bpvSurplusHigh,
-        bpvSurplusLow,
-        mainSteamMin,
-        bpvSafetyMaxOpen,
-        bpvSafetyMaxClose,
+        safetyDoor,
+        autoBlowdown,
+        holdingPressure,
+        startToStepCycle,
+        safetyPressure,
+        sequencingOnStep,
+        sequencingStopStep,
+        tempHoldingStepStart,
+        tempHoldingStepStop,
+        tempIdle,
+        tempLow,
+        timeOpenCon,
+        timeCloseCon,
+        highTemp,
+        mainSteam,
+        bpvMakeupSetPoint,
+        bpvMakeupP,
+        bpvMakeupI,
+        bpvMakeupD,
+        bpvMakeupPosition,
+        bpvSurplusSetPoint,
+        bpvSurplusP,
+        bpvSurplusI,
+        bpvSurplusD,
+        bpvSurplusPosition,
       };
 
       const token = localStorage.getItem("kip_token");
@@ -986,31 +1032,48 @@ const createDefaultScoreLogics = () => [
       sendPlc(actualThroughput, "actualThroughput", "settings_capacity_actual_throughput", "ACTUAL_THROUGHPUT");
       sendPlc(overLimitTime, "overLimitTime", "settings_tolerance_over_limit_time", "TIME");
       sendPlc(overLimitScore, "overLimitScore", "settings_tolerance_over_limit_score", "SCORE");
-      sendPlc(sequencingStep, "sequencingStep", "settings_logic_sequencing_step", "STEP");
-      sendPlc(safetyMaxPressure, "safetyMaxPressure", "settings_logic_safety_max_pressure", "SETPOINT");
-      sendPlc(safetyExhaustValveOpen, "safetyExhaustValveOpen", "settings_logic_safety_exhaust_open", "SETPOINT");
-      sendPlc(safetyExhaustValveClose, "safetyExhaustValveClose", "settings_logic_safety_exhaust_close", "SETPOINT");
-      sendPlc(cbdMaxPressure, "cbdMaxPressure", "settings_logic_cbd_max_pressure", "SETPOINT");
-      sendPlc(cbdCondensateValveOpen, "cbdCondensateValveOpen", "settings_logic_cbd_condensate_open", "SETPOINT");
-      sendPlc(cbdCondensateValveClose, "cbdCondensateValveClose", "settings_logic_cbd_condensate_close", "SETPOINT");
-      sendPlc(tempStartStep, "tempStartStep", "settings_logic_temp_override_start", "STEP");
-      sendPlc(tempStopStep, "tempStopStep", "settings_logic_temp_override_stop", "STEP");
-      sendPlc(tempReliefValveOpen, "tempReliefValveOpen", "settings_logic_temp_override_relief_open", "SETPOINT");
-      sendPlc(tempReliefValveClose, "tempReliefValveClose", "settings_logic_temp_override_relief_close", "SETPOINT");
-      sendPlc(bpvMakeupHigh, "bpvMakeupHigh", "settings_bpv_makeup_high", "SETPOINT");
-      sendPlc(bpvMakeupLow, "bpvMakeupLow", "settings_bpv_makeup_low", "SETPOINT");
-      sendPlc(bpvSurplusHigh, "bpvSurplusHigh", "settings_bpv_surplus_high", "SETPOINT");
-      sendPlc(bpvSurplusLow, "bpvSurplusLow", "settings_bpv_surplus_low", "SETPOINT");
-      sendPlc(mainSteamMin, "mainSteamMin", "settings_logic_main_steam_min", "SETPOINT");
-      sendPlc(bpvSafetyMaxOpen, "bpvSafetyMaxOpen", "settings_logic_bpv_safety_max_open", "SETPOINT");
-      sendPlc(bpvSafetyMaxClose, "bpvSafetyMaxClose", "settings_logic_bpv_safety_max_close", "SETPOINT");
+      sendPlc(safetyDoor, "safetyDoor", "settings_logic_safety_door", "SETPOINT");
+      sendPlc(autoBlowdown, "autoBlowdown", "settings_logic_auto_blowdown", "SETPOINT");
+      sendPlc(holdingPressure, "holdingPressure", "settings_logic_holding_pressure", "SETPOINT");
+      sendPlc(startToStepCycle, "startToStepCycle", "settings_logic_start_to_step_cycle", "SETPOINT");
+      sendPlc(safetyPressure, "safetyPressure", "settings_logic_safety_pressure", "SETPOINT");
+      sendPlc(sequencingOnStep, "sequencingOnStep", "settings_sequencing_on_step", "STEP");
+      sendPlc(sequencingStopStep, "sequencingStopStep", "settings_sequencing_stop_step", "STEP");
+      sendPlc(tempHoldingStepStart, "tempHoldingStepStart", "settings_temp_holding_step_start", "STEP");
+      sendPlc(tempHoldingStepStop, "tempHoldingStepStop", "settings_temp_holding_step_stop", "STEP");
+      sendPlc(tempIdle, "tempIdle", "settings_temp_idle", "SETPOINT");
+      sendPlc(tempLow, "tempLow", "settings_temp_low", "SETPOINT");
+      sendPlc(timeOpenCon, "timeOpenCon", "settings_temp_time_open_con", "TIME");
+      sendPlc(timeCloseCon, "timeCloseCon", "settings_temp_time_close_con", "TIME");
+      sendPlc(highTemp, "highTemp", "settings_temp_high", "SETPOINT");
+      sendPlc(mainSteam, "mainSteam", "settings_main_steam", "SETPOINT");
+      sendPlc(bpvMakeupSetPoint, "bpvMakeupSetPoint", "settings_bpv_makeup_setpoint", "SETPOINT");
+      sendPlc(bpvMakeupP, "bpvMakeupP", "settings_bpv_makeup_p", "SETPOINT");
+      sendPlc(bpvMakeupI, "bpvMakeupI", "settings_bpv_makeup_i", "SETPOINT");
+      sendPlc(bpvMakeupD, "bpvMakeupD", "settings_bpv_makeup_d", "SETPOINT");
+      sendPlc(bpvMakeupPosition, "bpvMakeupPosition", "settings_bpv_makeup_position", "POSITION");
+      sendPlc(bpvSurplusSetPoint, "bpvSurplusSetPoint", "settings_bpv_surplus_setpoint", "SETPOINT");
+      sendPlc(bpvSurplusP, "bpvSurplusP", "settings_bpv_surplus_p", "SETPOINT");
+      sendPlc(bpvSurplusI, "bpvSurplusI", "settings_bpv_surplus_i", "SETPOINT");
+      sendPlc(bpvSurplusD, "bpvSurplusD", "settings_bpv_surplus_d", "SETPOINT");
+      sendPlc(bpvSurplusPosition, "bpvSurplusPosition", "settings_bpv_surplus_position", "POSITION");
       
-      scoreLogics.forEach((row) => {
-        const key = `settings_score_logic_${row.param}_target__TARGET`;
-        const tagId = tagMap[key];
-        if (tagId) {
-          usePlcStore.getState().sendCommand(tagId, row.target, key, "sterilizer");
-        }
+      // Write scoreLogics targets to PLC (supports both multi-line object and flat array)
+      const scoreLogicsMap = (scoreLogics && typeof scoreLogics === "object" && !Array.isArray(scoreLogics))
+        ? scoreLogics
+        : { 1: Array.isArray(scoreLogics) ? scoreLogics : [] };
+
+      Object.entries(scoreLogicsMap).forEach(([lineNum, rows]) => {
+        if (!Array.isArray(rows)) return;
+        rows.forEach((row) => {
+          if (!row || row.param === undefined) return;
+          const perLineKey = `recipe_line_${lineNum}_score_${row.param}__TARGET`;
+          const globalKey = `settings_score_logic_${row.param}_target__TARGET`;
+          const tagId = tagMap[perLineKey] || tagMap[globalKey];
+          if (tagId) {
+            usePlcStore.getState().sendCommand(tagId, row.target, tagMap[perLineKey] ? perLineKey : globalKey, "sterilizer");
+          }
+        });
       });
 
       // Update local & initial recipes state with the exact payload saved
@@ -1021,7 +1084,12 @@ const createDefaultScoreLogics = () => [
       // Clear pending & draft edits — PLC & DB now hold the new values
       setPendingEdits({});
       setDraftEdits({});
-      alert("Settings saved successfully to database and PLC!");
+      const alertMsg = (json?.writtenCount !== undefined && json.writtenCount > 0)
+        ? `Settings applied directly to PLC (${json.writtenCount} tag${json.writtenCount === 1 ? '' : 's'} written)!`
+        : (json?.writtenCount === 0)
+        ? "Settings saved to database (0 tags written to PLC)."
+        : "Settings saved successfully to PLC!";
+      alert(alertMsg);
       handleBackToOverview();
     } catch (err) {
       console.error(err);
@@ -1092,44 +1160,46 @@ const handleRestoreDefault = () => {
       setThroughputScore(107);
       setOverLimitTime(300);
       setOverLimitScore(300);
-      setScoreLogics([
-        { step: 1, function: "Deaeration", target: 100, actual: 90, unit: "°C", decimals: 0, param: "deaeration_temp" },
-        { step: 2, function: "1st Peak Up", target: 2.50, actual: 2.00, unit: "bar", decimals: 2, param: "peak1_press" },
-        { step: 4, function: "2nd Peak Up", target: 2.50, actual: 2.30, unit: "bar", decimals: 2, param: "peak2_press" },
-        { step: 6, function: "3rd Peak Up", target: 2.80, actual: 2.40, unit: "bar", decimals: 2, param: "peak3_press" },
-        { step: 7, function: "Holding", target: 2.80, actual: 2.70, unit: "bar", decimals: 2, param: "holding_press" },
-        { step: 8, function: "1st Intermitten Blow", target: 140, actual: 138, unit: "°C", decimals: 0, param: "blow1_temp" },
-        { step: 9, function: "Holding", target: 2.80, actual: 2.65, unit: "bar", decimals: 2, param: "holding2_press" },
-        { step: 10, function: "2nd Intermitten Blow", target: 140, actual: 139, unit: "°C", decimals: 0, param: "blow2_temp" },
-        { step: 11, function: "Holding", target: 2.80, actual: 2.50, unit: "bar", decimals: 2, param: "holding3_press" },
-        { step: 12, function: "3rd Intermitten Blow", target: 140, actual: 140, unit: "°C", decimals: 0, param: "blow3_temp" },
-        { step: 13, function: "Holding", target: 2.80, actual: 2.80, unit: "bar", decimals: 2, param: "holding4_press" },
-        { step: 14, function: "Blow-down", target: 120, actual: 150, unit: "s", decimals: 0, param: "blowdown_time" },
-        { step: 15, function: "Exhaust", target: 180, actual: 265, unit: "s", decimals: 0, param: "exhaust_time" },
-        { step: "FFB", function: "FFB loading in/out", target: 1200, actual: 900, unit: "s", decimals: 0, param: "ffb_loading" },
-        { step: "T_Ster", function: "Target Sterilization Time", target: 6690, actual: 6550, unit: "s", decimals: 0, param: "target_ster_time" },
-        { step: "T_Cyc", function: "Target Cycle Time", target: 7890, actual: 7450, unit: "s", decimals: 0, param: "target_cyc_time" },
-        { step: "Tput", function: "Throughput", target: 22.81, actual: 24.16, unit: "mt/hr", decimals: 2, param: "throughput_rate" }
-      ]);
-      setSequencingStep(7);
-      setSafetyMaxPressure(3.00);
-      setSafetyExhaustValveOpen(3.00);
-      setSafetyExhaustValveClose(2.90);
-      setCbdMaxPressure(2.90);
-      setCbdCondensateValveOpen(2.90);
-      setCbdCondensateValveClose(2.80);
-      setTempStartStep(7);
-      setTempStopStep(14);
-      setTempReliefValveOpen(136);
-      setTempReliefValveClose(140);
-      setBpvSettings(defaultBpvSettings);
-      setBpvMakeupHigh(3.00);
-      setBpvMakeupLow(2.80);
-      setBpvSurplusHigh(3.20);
-      setBpvSurplusLow(3.00);
-      setMainSteamMin(19.5);
-      setBpvSafetyMaxOpen(3.20);
-      setBpvSafetyMaxClose(3.00);
+      setScoreLogics({
+        1: createDefaultScoreLogics(),
+        2: createDefaultScoreLogics(),
+        3: createDefaultScoreLogics(),
+        4: createDefaultScoreLogics()
+      });
+      setDesignCapacity(45);
+      setNumberSterilizer(2);
+      setMillDesignCapacity(45.0);
+      setActualThroughput(0);
+      setSterilScore(215);
+      setLeadTimeScore(194);
+      setThroughputScore(100);
+      setOverLimitTime(300);
+      setOverLimitScore(300);
+      setSafetyDoor(0.03);
+      setAutoBlowdown(2.75);
+      setHoldingPressure(2.70);
+      setStartToStepCycle(7);
+      setSafetyPressure(2.80);
+      setSequencingOnStep(2);
+      setSequencingStopStep(13);
+      setTempHoldingStepStart(7);
+      setTempHoldingStepStop(11);
+      setTempIdle(140.0);
+      setTempLow(138.0);
+      setTimeOpenCon(3);
+      setTimeCloseCon(10);
+      setHighTemp(140.0);
+      setMainSteam(18.0);
+      setBpvMakeupSetPoint(2.95);
+      setBpvMakeupP(2.0);
+      setBpvMakeupI(1.0);
+      setBpvMakeupD(0.0);
+      setBpvMakeupPosition(100);
+      setBpvSurplusSetPoint(3.10);
+      setBpvSurplusP(2.0);
+      setBpvSurplusI(1.0);
+      setBpvSurplusD(0.0);
+      setBpvSurplusPosition(0);
     }
   };
 
@@ -1191,8 +1261,12 @@ const handleRestoreDefault = () => {
       // -------------------------------------------------------------
       // SECTION 2: STERILIZER SCORE LOGICS
       // -------------------------------------------------------------
-      const stepScoreLogics = scoreLogics.filter(row => typeof row.step === "number");
-      const globalPerformanceMetrics = scoreLogics.filter(row => typeof row.step !== "number");
+      const activeScoreLine = scoreLine || selectedLine || 1;
+      const currentScoreList = (scoreLogics && typeof scoreLogics === "object" && !Array.isArray(scoreLogics))
+        ? (scoreLogics[activeScoreLine] || createDefaultScoreLogics())
+        : (Array.isArray(scoreLogics) ? scoreLogics : createDefaultScoreLogics());
+      const stepScoreLogics = currentScoreList.filter(row => typeof row.step === "number");
+      const globalPerformanceMetrics = currentScoreList.filter(row => typeof row.step !== "number");
 
       const stepScoreData = [
         ["STEP SCORE LOGICS"],
@@ -1590,11 +1664,15 @@ const handleRestoreDefault = () => {
         // -------------------------------------------------------------
         // SECTION 2: SCORE LOGICS & CAPACITIES (Columns L-P)
         // -------------------------------------------------------------
-        const newScoreLogics = [...scoreLogics];
+        const activeScoreLine = scoreLine || selectedLine || 1;
+        const currentScoreList = (scoreLogics && typeof scoreLogics === "object" && !Array.isArray(scoreLogics))
+          ? (scoreLogics[activeScoreLine] || createDefaultScoreLogics())
+          : (Array.isArray(scoreLogics) ? scoreLogics : createDefaultScoreLogics());
+        const newScoreLogics = [...currentScoreList];
         
         // Find indices in scoreLogics list that correspond to numeric steps
         const stepScoreIndices = [];
-        scoreLogics.forEach((row, idx) => {
+        currentScoreList.forEach((row, idx) => {
           if (typeof row.step === "number") stepScoreIndices.push(idx);
         });
 
@@ -1612,7 +1690,7 @@ const handleRestoreDefault = () => {
 
         // Global Performance Metrics (rows 21 to 24)
         const globalIndices = [];
-        scoreLogics.forEach((row, idx) => {
+        currentScoreList.forEach((row, idx) => {
           if (typeof row.step !== "number") globalIndices.push(idx);
         });
 
@@ -1690,7 +1768,11 @@ const handleRestoreDefault = () => {
           return next;
         });
 
-        setScoreLogics(newScoreLogics);
+        setScoreLogics((prev) => {
+          const isObj = prev && typeof prev === "object" && !Array.isArray(prev);
+          const map = isObj ? { ...prev } : { 1: prev, 2: prev, 3: prev, 4: prev };
+          return { ...map, [activeScoreLine]: newScoreLogics };
+        });
         setDesignCapacity(designCapVal);
         setNumberSterilizer(numberSterilizerVal);
         setMillDesignCapacity(millDesignCapVal);
@@ -1728,6 +1810,29 @@ const handleRestoreDefault = () => {
       }
     };
     reader.readAsArrayBuffer(file);
+  };
+
+  const getLiveSettingVal = (dbKey, localVal, eq, sig, allowNoTag = false) => {
+    if (localVal !== initialVals[dbKey] && initialVals[dbKey] !== undefined) return localVal;
+    if (getMappedValue) {
+      const val = getMappedValue(eq, sig);
+      if (val !== "No Tag" && val !== "--" && val !== undefined && val !== null) {
+        const num = Number(val);
+        if (!isNaN(num)) return num;
+      }
+    }
+    const key = `${eq}__${sig}`;
+    const tagId = tagMap?.[key];
+    if (tagId && availableTags?.length) {
+      const tagObj = availableTags.find((t) => String(t.id) === String(tagId));
+      if (tagObj && tags?.[tagObj.tag_name]?.value !== undefined && tags[tagObj.tag_name]?.value !== null) {
+        const num = Number(tags[tagObj.tag_name].value);
+        if (!isNaN(num)) return num;
+      }
+      if (tagObj) return "--";
+    }
+    if (allowNoTag) return "No Tag";
+    return localVal !== undefined && localVal !== null ? localVal : "No Tag";
   };
 
   // Helper calculation formulas for display (Totals calculated dynamically)
@@ -2177,10 +2282,15 @@ const handleRestoreDefault = () => {
                     </thead>
                     <tbody>
                       {(() => {
-                        const activeScoreLine = scoreLine || selectedLine;
-                        const activeList = (scoreLogics && typeof scoreLogics === "object" && !Array.isArray(scoreLogics))
-                          ? (scoreLogics[activeScoreLine] || createDefaultScoreLogics())
-                          : (Array.isArray(scoreLogics) ? scoreLogics : createDefaultScoreLogics());
+                        const activeScoreLine = scoreLine || selectedLine || 1;
+                        let activeList;
+                        if (scoreLogics && typeof scoreLogics === "object" && !Array.isArray(scoreLogics)) {
+                          activeList = scoreLogics[activeScoreLine] || createDefaultScoreLogics();
+                        } else if (Array.isArray(scoreLogics) && scoreLogics.length > 0) {
+                          activeList = scoreLogics;
+                        } else {
+                          activeList = createDefaultScoreLogics();
+                        }
                         return activeList.map((row, idx) => {
                           const isFfbStart = row.step === "FFB";
                           const liveTarget = getMappedValue ? getMappedValue(`recipe_line_${activeScoreLine}_score_${row.param}`, "TARGET") : null;
@@ -2261,206 +2371,233 @@ const handleRestoreDefault = () => {
                 </div>
 
                 {/* Bottom settings panels side-by-side */}
-                <div className="som-score-bottom-panels">
-                  {/* Capacity Settings Group */}
-                  <div className="som-score-group-box">
-                    <h4 className="som-score-group-title">Capacity Settings</h4>
-                    <div className="som-capacity-row">
-                      <span className="som-capacity-label">Sterilizer Design Cap.</span>
-                      <ValBox
-                        value={designCapacity}
-                        decimals={0}
-                        unit="ton"
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_capacity_design_capacity",
-                                [],
-                                [{ key: "DESIGN_CAPACITY", label: "Sterilizer Design Capacity" }]
-                              )
-                            : () => setActiveKeypad({
-                                section: "capacity",
-                                param: "designCapacity",
-                                label: "Sterilizer Design Capacity",
-                                unit: "ton"
-                              })
-                        }
-                        style={getDeveloperStyle("settings_capacity_design_capacity", "DESIGN_CAPACITY")}
-                      />
-                    </div>
-                    <div className="som-capacity-row">
-                      <span className="som-capacity-label">No. of Sterilizer</span>
-                      <ValBox
-                        value={numberSterilizer}
-                        decimals={0}
-                        unit="unit"
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_capacity_number_sterilizer",
-                                [],
-                                [{ key: "NUMBER_STERILIZER", label: "Number of Sterilizers" }]
-                              )
-                            : () => setActiveKeypad({
-                                section: "capacity",
-                                param: "numberSterilizer",
-                                label: "Number of Sterilizer",
-                                unit: "unit"
-                              })
-                        }
-                        style={getDeveloperStyle("settings_capacity_number_sterilizer", "NUMBER_STERILIZER")}
-                      />
-                    </div>
-                    <div className="som-capacity-row">
-                      <span className="som-capacity-label">Mill Design Cap.</span>
-                      <ValBox
-                        value={millDesignCapacity}
-                        decimals={1}
-                        unit="mt/hr"
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_capacity_mill_design_capacity",
-                                [],
-                                [{ key: "MILL_DESIGN_CAPACITY", label: "Mill Design Capacity" }]
-                              )
-                            : () => setActiveKeypad({
-                                section: "capacity",
-                                param: "millDesignCapacity",
-                                label: "Mill Design Capacity",
-                                unit: "mt/hr"
-                              })
-                        }
-                        style={getDeveloperStyle("settings_capacity_mill_design_capacity", "MILL_DESIGN_CAPACITY")}
-                      />
-                    </div>
-                    <div className="som-capacity-row actual-row">
-                      <span className="som-capacity-label font-bold">Actual Throughput</span>
-                      <ValBox
-                        value={actualThroughput}
-                        decimals={0}
-                        unit="mt/hr"
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_capacity_actual_throughput",
-                                [],
-                                [{ key: "ACTUAL_THROUGHPUT", label: "Actual Throughput" }]
-                              )
-                            : null
-                        }
-                        style={getDeveloperStyle("settings_capacity_actual_throughput", "ACTUAL_THROUGHPUT")}
-                      />
-                    </div>
+                <div className="som-global-params-card" style={{ marginTop: "4px", flexShrink: 0, border: "1px solid #cbd5e1", borderRadius: "6px", background: "#fff", overflow: "hidden" }}>
+                  <div className="som-settings-card-header" style={{ background: "#ffdb3b", padding: "3px 10px", fontSize: "10px", fontWeight: "800", color: "#0f172a" }}>
+                    <span>GLOBAL PARAMETERS</span>
                   </div>
+                  <div className="som-settings-card-body" style={{ padding: "4px" }}>
+                    <div className="som-score-bottom-panels" style={{ display: "flex", gap: "6px" }}>
+                      {/* Capacity Settings Group */}
+                      <div className="som-score-group-box">
+                        <h4 className="som-score-group-title">CAPACITY SETTINGS</h4>
+                        <div className="som-capacity-row">
+                          <span className="som-capacity-label">Sterilizer Design Cap.</span>
+                          <ValBox
+                            value={getLiveSettingVal('designCapacity', designCapacity, 'settings_capacity_design_capacity', 'DESIGN_CAPACITY')}
+                            decimals={0}
+                            unit="ton"
+                            onClick={
+                              configMode
+                                ? () => handleEquipmentClick(
+                                    "settings_capacity_design_capacity",
+                                    [],
+                                    [{ key: "DESIGN_CAPACITY", label: "Sterilizer Design Capacity" }]
+                                  )
+                                : () => setActiveKeypad({
+                                    section: "capacity",
+                                    param: "designCapacity",
+                                    label: "Sterilizer Design Capacity",
+                                    unit: "ton"
+                                  })
+                            }
+                            style={getDeveloperStyle("settings_capacity_design_capacity", "DESIGN_CAPACITY")}
+                          />
+                        </div>
+                        <div className="som-capacity-row">
+                          <span className="som-capacity-label">No. of Sterilizer</span>
+                          <ValBox
+                            value={getLiveSettingVal('numberSterilizer', numberSterilizer, 'settings_capacity_number_sterilizer', 'NUMBER_STERILIZER')}
+                            decimals={0}
+                            unit="unit"
+                            onClick={
+                              configMode
+                                ? () => handleEquipmentClick(
+                                    "settings_capacity_number_sterilizer",
+                                    [],
+                                    [{ key: "NUMBER_STERILIZER", label: "Number of Sterilizers" }]
+                                  )
+                                : () => setActiveKeypad({
+                                    section: "capacity",
+                                    param: "numberSterilizer",
+                                    label: "Number of Sterilizer",
+                                    unit: "unit"
+                                  })
+                            }
+                            style={getDeveloperStyle("settings_capacity_number_sterilizer", "NUMBER_STERILIZER")}
+                          />
+                        </div>
+                        <div className="som-capacity-row">
+                          <span className="som-capacity-label">Mill Design Cap.</span>
+                          <ValBox
+                            value={getLiveSettingVal('millDesignCapacity', millDesignCapacity, 'settings_capacity_mill_design_capacity', 'MILL_DESIGN_CAPACITY')}
+                            decimals={1}
+                            unit="mt/hr"
+                            onClick={
+                              configMode
+                                ? () => handleEquipmentClick(
+                                    "settings_capacity_mill_design_capacity",
+                                    [],
+                                    [{ key: "MILL_DESIGN_CAPACITY", label: "Mill Design Capacity" }]
+                                  )
+                                : () => setActiveKeypad({
+                                    section: "capacity",
+                                    param: "millDesignCapacity",
+                                    label: "Mill Design Capacity",
+                                    unit: "mt/hr"
+                                  })
+                            }
+                            style={getDeveloperStyle("settings_capacity_mill_design_capacity", "MILL_DESIGN_CAPACITY")}
+                          />
+                        </div>
+                        <div className="som-capacity-row actual-row">
+                          <span className="som-capacity-label font-bold">Actual Throughput</span>
+                          <ValBox
+                            value={getLiveSettingVal('actualThroughput', actualThroughput, 'settings_capacity_actual_throughput', 'ACTUAL_THROUGHPUT')}
+                            decimals={0}
+                            unit="mt/hr"
+                            onClick={
+                              configMode
+                                ? () => handleEquipmentClick(
+                                    "settings_capacity_actual_throughput",
+                                    [],
+                                    [{ key: "ACTUAL_THROUGHPUT", label: "Actual Throughput" }]
+                                  )
+                                : null
+                            }
+                            style={{
+                              background: "#f1f5f9",
+                              border: "1px solid #cbd5e1",
+                              color: "#334155",
+                              ...getDeveloperStyle("settings_capacity_actual_throughput", "ACTUAL_THROUGHPUT")
+                            }}
+                          />
+                        </div>
+                      </div>
 
-                  {/* Score Telemetry Panel */}
-                  <div className="som-score-panel-card">
-                    <h4 className="som-score-group-title">Score Performance</h4>
-                    <div className="som-score-row">
-                      <span className="som-score-label">Sterilization Score</span>
-                      <span
-                        className={configMode ? "som-score-val som-val-box--editable" : "som-score-val"}
-                        style={getDeveloperStyle("settings_score_perf_steril", "SCORE")}
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_score_perf_steril",
-                                [],
-                                [{ key: "SCORE", label: "Sterilization Score" }]
-                              )
-                            : null
-                        }
-                      >
-                        {sterilScore}%
-                      </span>
-                    </div>
-                    <div className="som-score-row">
-                      <span className="som-score-label">Lead time Score</span>
-                      <span
-                        className={configMode ? "som-score-val som-val-box--editable" : "som-score-val"}
-                        style={getDeveloperStyle("settings_score_perf_lead_time", "SCORE")}
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_score_perf_lead_time",
-                                [],
-                                [{ key: "SCORE", label: "Lead Time Score" }]
-                              )
-                            : null
-                        }
-                      >
-                        {leadTimeScore}%
-                      </span>
-                    </div>
-                    <div className="som-score-row">
-                      <span className="som-score-label">Throughput Score</span>
-                      <span
-                        className={configMode ? "som-score-val som-val-box--editable" : "som-score-val"}
-                        style={getDeveloperStyle("settings_score_perf_throughput", "SCORE")}
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_score_perf_throughput",
-                                [],
-                                [{ key: "SCORE", label: "Throughput Score" }]
-                              )
-                            : null
-                        }
-                      >
-                        {throughputScore}%
-                      </span>
-                    </div>
-                  </div>
+                      {/* Score Telemetry Panel */}
+                      <div className="som-score-panel-card" style={{ background: "#fffbef", border: "1px solid #ffe082" }}>
+                        <h4 className="som-score-group-title">SCORE PERFORMANCE</h4>
+                        <div className="som-score-row">
+                          <span className="som-score-label">Sterilization Score</span>
+                          <span
+                            className={configMode ? "som-score-val som-val-box--editable" : "som-score-val"}
+                            style={{ color: "#d97706", fontWeight: "900", ...getDeveloperStyle("settings_score_perf_steril", "SCORE") }}
+                            onClick={
+                              configMode
+                                ? () => handleEquipmentClick(
+                                    "settings_score_perf_steril",
+                                    [],
+                                    [{ key: "SCORE", label: "Sterilization Score" }]
+                                  )
+                                : null
+                            }
+                          >
+                            {(() => {
+                              const v = getLiveSettingVal('sterilScore', sterilScore, 'settings_score_perf_steril', 'SCORE');
+                              const num = Number(v);
+                              const display = !isNaN(num) ? num : (typeof sterilScore === 'number' ? sterilScore : 215);
+                              return `${display}%`;
+                            })()}
+                          </span>
+                        </div>
+                        <div className="som-score-row">
+                          <span className="som-score-label">Lead time Score</span>
+                          <span
+                            className={configMode ? "som-score-val som-val-box--editable" : "som-score-val"}
+                            style={{ color: "#d97706", fontWeight: "900", ...getDeveloperStyle("settings_score_perf_lead_time", "SCORE") }}
+                            onClick={
+                              configMode
+                                ? () => handleEquipmentClick(
+                                    "settings_score_perf_lead_time",
+                                    [],
+                                    [{ key: "SCORE", label: "Lead Time Score" }]
+                                  )
+                                : null
+                            }
+                          >
+                            {(() => {
+                              const v = getLiveSettingVal('leadTimeScore', leadTimeScore, 'settings_score_perf_lead_time', 'SCORE');
+                              const num = Number(v);
+                              const display = !isNaN(num) ? num : (typeof leadTimeScore === 'number' ? leadTimeScore : 194);
+                              return `${display}%`;
+                            })()}
+                          </span>
+                        </div>
+                        <div className="som-score-row">
+                          <span className="som-score-label">Throughput Score</span>
+                          <span
+                            className={configMode ? "som-score-val som-val-box--editable" : "som-score-val"}
+                            style={{ color: "#d97706", fontWeight: "900", ...getDeveloperStyle("settings_score_perf_throughput", "SCORE") }}
+                            onClick={
+                              configMode
+                                ? () => handleEquipmentClick(
+                                    "settings_score_perf_throughput",
+                                    [],
+                                    [{ key: "SCORE", label: "Throughput Score" }]
+                                  )
+                                : null
+                            }
+                          >
+                            {(() => {
+                              const v = getLiveSettingVal('throughputScore', throughputScore, 'settings_score_perf_throughput', 'SCORE');
+                              const num = Number(v);
+                              const display = !isNaN(num) ? num : (typeof throughputScore === 'number' ? throughputScore : 100);
+                              return `${display}%`;
+                            })()}
+                          </span>
+                        </div>
+                      </div>
 
-                  {/* Over Limit Tolerances Group */}
-                  <div className="som-score-group-box">
-                    <h4 className="som-score-group-title">Over Limit Tolerances</h4>
-                    <div className="som-capacity-row">
-                      <span className="som-capacity-label">Over Limit (Time)</span>
-                      <ValBox
-                        value={overLimitTime}
-                        decimals={0}
-                        unit="s"
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_tolerance_over_limit_time",
-                                [],
-                                [{ key: "TIME", label: "Over Limit Tolerance (Time)" }]
-                              )
-                            : () => setActiveKeypad({
-                                section: "capacity",
-                                param: "overLimitTime",
-                                label: "Over Limit Tolerance (Time)",
-                                unit: "s"
-                              })
-                        }
-                        style={getDeveloperStyle("settings_tolerance_over_limit_time", "TIME")}
-                      />
-                    </div>
-                    <div className="som-capacity-row">
-                      <span className="som-capacity-label">Over Limit (Score)</span>
-                      <ValBox
-                        value={overLimitScore}
-                        decimals={0}
-                        unit="s"
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_tolerance_over_limit_score",
-                                [],
-                                [{ key: "SCORE", label: "Over Limit Tolerance (Score)" }]
-                              )
-                            : () => setActiveKeypad({
-                                section: "capacity",
-                                param: "overLimitScore",
-                                label: "Over Limit Tolerance (Score)",
-                                unit: "s"
-                              })
-                        }
-                        style={getDeveloperStyle("settings_tolerance_over_limit_score", "SCORE")}
-                      />
+                      {/* Over Limit Tolerances Group */}
+                      <div className="som-score-group-box">
+                        <h4 className="som-score-group-title">OVER LIMIT TOLERANCES</h4>
+                        <div className="som-capacity-row">
+                          <span className="som-capacity-label">Over Limit (Time)</span>
+                          <ValBox
+                            value={getLiveSettingVal('overLimitTime', overLimitTime, 'settings_tolerance_over_limit_time', 'TIME')}
+                            decimals={0}
+                            unit="s"
+                            onClick={
+                              configMode
+                                ? () => handleEquipmentClick(
+                                    "settings_tolerance_over_limit_time",
+                                    [],
+                                    [{ key: "TIME", label: "Over Limit Tolerance (Time)" }]
+                                  )
+                                : () => setActiveKeypad({
+                                    section: "capacity",
+                                    param: "overLimitTime",
+                                    label: "Over Limit Tolerance (Time)",
+                                    unit: "s"
+                                  })
+                            }
+                            style={getDeveloperStyle("settings_tolerance_over_limit_time", "TIME")}
+                          />
+                        </div>
+                        <div className="som-capacity-row">
+                          <span className="som-capacity-label">Over Limit (Score)</span>
+                          <ValBox
+                            value={getLiveSettingVal('overLimitScore', overLimitScore, 'settings_tolerance_over_limit_score', 'SCORE')}
+                            decimals={0}
+                            unit="%"
+                            onClick={
+                              configMode
+                                ? () => handleEquipmentClick(
+                                    "settings_tolerance_over_limit_score",
+                                    [],
+                                    [{ key: "SCORE", label: "Over Limit Tolerance (Score)" }]
+                                  )
+                                : () => setActiveKeypad({
+                                    section: "capacity",
+                                    param: "overLimitScore",
+                                    label: "Over Limit Tolerance (Score)",
+                                    unit: "%"
+                                  })
+                            }
+                            style={getDeveloperStyle("settings_tolerance_over_limit_score", "SCORE")}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2476,500 +2613,304 @@ const handleRestoreDefault = () => {
               </div>
               <div className="som-settings-card-body som-logic-body">
                 <div className="som-control-logics-layout">
-                  <div className="som-logic-top-row">
-                    {/* Sterilizer Sequencing */}
-                    <div className="som-logic-section">
-                      <h4 className="som-logic-section-title">Sterilizer Sequencing</h4>
-                      <div className="som-logic-row">
-                        <span className="som-logic-label">Step</span>
-                        <div className="som-logic-counter">
-                          <button className="som-counter-btn" onClick={() => setSequencingStep(Math.max(1, sequencingStep - 1))}>-</button>
+                  {/* CONTROL LOGICS TOP PANEL */}
+                  <div className="som-logic-section">
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+                        <div className="som-logic-row" style={{ justifyContent: 'space-between', paddingRight: '12px' }}>
+                          <span className="som-logic-label">Safety Door</span>
                           <ValBox
-                            value={sequencingStep}
-                            decimals={0}
-                            onClick={
-                              configMode
-                                ? () => handleEquipmentClick(
-                                    "settings_logic_sequencing_step",
-                                    [],
-                                    [{ key: "STEP", label: "Sequencing Step" }]
-                                  )
-                                : () => setActiveKeypad({
-                                    section: "sequencing",
-                                    param: "sequencingStep",
-                                    label: "Sequencing Step"
-                                  })
-                            }
-                            style={getDeveloperStyle("settings_logic_sequencing_step", "STEP")}
+                            value={getLiveSettingVal('safetyDoor', safetyDoor, 'settings_logic_safety_door', 'SETPOINT')}
+                            decimals={2}
+                            unit="bar"
+                            onClick={configMode ? () => handleEquipmentClick("settings_logic_safety_door", [], [{ key: "SETPOINT", label: "Safety Door" }]) : () => setActiveKeypad({ section: "controlLogics", param: "safetyDoor", label: "Safety Door", unit: "bar" })}
+                            style={{ ...getDeveloperStyle("settings_logic_safety_door", "SETPOINT"), border: '1.5px solid #fcd34d' }}
                           />
-                          <button className="som-counter-btn" onClick={() => setSequencingStep(sequencingStep + 1)}>+</button>
+                        </div>
+                        <div className="som-logic-row" style={{ justifyContent: 'space-between', paddingRight: '12px' }}>
+                          <span className="som-logic-label">Auto Blowdown</span>
+                          <ValBox
+                            value={getLiveSettingVal('autoBlowdown', autoBlowdown, 'settings_logic_auto_blowdown', 'SETPOINT')}
+                            decimals={2}
+                            unit="bar"
+                            onClick={configMode ? () => handleEquipmentClick("settings_logic_auto_blowdown", [], [{ key: "SETPOINT", label: "Auto Blowdown" }]) : () => setActiveKeypad({ section: "controlLogics", param: "autoBlowdown", label: "Auto Blowdown", unit: "bar" })}
+                            style={{ ...getDeveloperStyle("settings_logic_auto_blowdown", "SETPOINT"), border: '1.5px solid #fcd34d' }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, paddingLeft: '12px' }}>
+                        <div className="som-logic-row" style={{ justifyContent: 'space-between' }}>
+                          <span className="som-logic-label">Holding Pressure</span>
+                          <ValBox
+                            value={getLiveSettingVal('holdingPressure', holdingPressure, 'settings_logic_holding_pressure', 'SETPOINT')}
+                            decimals={2}
+                            unit="bar"
+                            onClick={configMode ? () => handleEquipmentClick("settings_logic_holding_pressure", [], [{ key: "SETPOINT", label: "Holding Pressure" }]) : () => setActiveKeypad({ section: "controlLogics", param: "holdingPressure", label: "Holding Pressure", unit: "bar" })}
+                            style={{ ...getDeveloperStyle("settings_logic_holding_pressure", "SETPOINT"), border: '1.5px solid #fcd34d' }}
+                          />
+                        </div>
+                        <div className="som-logic-row" style={{ justifyContent: 'space-between' }}>
+                          <span className="som-logic-label">Start to Step Cycle</span>
+                          <ValBox
+                            value={getLiveSettingVal('startToStepCycle', startToStepCycle, 'settings_logic_start_to_step_cycle', 'SETPOINT')}
+                            decimals={0}
+                            onClick={configMode ? () => handleEquipmentClick("settings_logic_start_to_step_cycle", [], [{ key: "STEP", label: "Start to Step Cycle" }]) : () => setActiveKeypad({ section: "controlLogics", param: "startToStepCycle", label: "Start to Step Cycle" })}
+                            style={{ ...getDeveloperStyle("settings_logic_start_to_step_cycle", "STEP"), border: '1.5px solid #fcd34d' }}
+                          />
+                        </div>
+                        <div className="som-logic-row" style={{ justifyContent: 'space-between' }}>
+                          <span className="som-logic-label">Safety Pressure</span>
+                          <ValBox
+                            value={getLiveSettingVal('safetyPressure', safetyPressure, 'settings_logic_safety_pressure', 'SETPOINT')}
+                            decimals={1}
+                            unit="bar"
+                            onClick={configMode ? () => handleEquipmentClick("settings_logic_safety_pressure", [], [{ key: "SETPOINT", label: "Safety Pressure" }]) : () => setActiveKeypad({ section: "controlLogics", param: "safetyPressure", label: "Safety Pressure", unit: "bar" })}
+                            style={{ ...getDeveloperStyle("settings_logic_safety_pressure", "SETPOINT"), border: '1.5px solid #fcd34d' }}
+                          />
                         </div>
                       </div>
                     </div>
-
-                    {/* Sterilizer Safety */}
-                    <div className="som-logic-section">
-                      <h4 className="som-logic-section-title">Sterilizer Safety</h4>
-                      <div className="som-logic-row">
-                        <span className="som-logic-label">Exhaust Valve Open</span>
-                        <ValBox
-                          value={safetyExhaustValveOpen}
-                          decimals={2}
-                          unit="bar"
-                          onClick={
-                            configMode
-                              ? () => handleEquipmentClick(
-                                  "settings_logic_safety_exhaust_open",
-                                  [],
-                                  [{ key: "SETPOINT", label: "Safety Exhaust Valve Open Setpoint" }]
-                                )
-                              : () => setActiveKeypad({
-                                  section: "safety",
-                                  param: "exhaustValveOpen",
-                                  label: "Exhaust Valve Open",
-                                  unit: "bar"
-                                })
-                          }
-                          style={getDeveloperStyle("settings_logic_safety_exhaust_open", "SETPOINT")}
-                        />
-                      </div>
-                      <div className="som-logic-row">
-                        <span className="som-logic-label">Exhaust Valve Close</span>
-                        <ValBox
-                          value={safetyExhaustValveClose}
-                          decimals={2}
-                          unit="bar"
-                          onClick={
-                            configMode
-                              ? () => handleEquipmentClick(
-                                  "settings_logic_safety_exhaust_close",
-                                  [],
-                                  [{ key: "SETPOINT", label: "Safety Exhaust Valve Close Setpoint" }]
-                                )
-                              : () => setActiveKeypad({
-                                  section: "safety",
-                                  param: "exhaustValveClose",
-                                  label: "Exhaust Valve Close",
-                                  unit: "bar"
-                                })
-                          }
-                          style={getDeveloperStyle("settings_logic_safety_exhaust_close", "SETPOINT")}
-                        />
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Continuous Blow-down */}
-                  <div className="som-logic-section">
-                    <h4 className="som-logic-section-title">Continuous Blow-down</h4>
-                    <div className="som-logic-row">
-                      <span className="som-logic-label">Condensate Valve Open</span>
-                      <ValBox
-                        value={cbdCondensateValveOpen}
-                        decimals={2}
-                        unit="bar"
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_logic_cbd_condensate_open",
-                                [],
-                                [{ key: "SETPOINT", label: "CBD Condensate Valve Open Setpoint" }]
-                              )
-                            : () => setActiveKeypad({
-                                section: "cbd",
-                                param: "condensateValveOpen",
-                                label: "Condensate Valve Open",
-                                unit: "bar"
-                              })
-                        }
-                        style={getDeveloperStyle("settings_logic_cbd_condensate_open", "SETPOINT")}
-                      />
-                    </div>
-                    <div className="som-logic-row">
-                      <span className="som-logic-label">Condensate Valve Close</span>
-                      <ValBox
-                        value={cbdCondensateValveClose}
-                        decimals={2}
-                        unit="bar"
-                        onClick={
-                          configMode
-                            ? () => handleEquipmentClick(
-                                "settings_logic_cbd_condensate_close",
-                                [],
-                                [{ key: "SETPOINT", label: "CBD Condensate Valve Close Setpoint" }]
-                              )
-                            : () => setActiveKeypad({
-                                section: "cbd",
-                                param: "condensateValveClose",
-                                label: "Condensate Valve Close",
-                                unit: "bar"
-                              })
-                        }
-                        style={getDeveloperStyle("settings_logic_cbd_condensate_close", "SETPOINT")}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Temperature Overriding during Holding */}
-                  <div className="som-logic-section">
-                    <h4 className="som-logic-section-title">Temperature Overriding during Holding</h4>
-                    <div className="som-logic-grid-2x2">
-                      <div className="som-logic-row-compact">
-                        <span className="som-logic-label">Start - Step</span>
+                  {/* STERILIZER SEQUENCING */}
+                  <div className="som-logic-section" style={{ marginTop: '4px' }}>
+                    <h4 className="som-logic-section-title" style={{ color: '#ea580c', textTransform: 'uppercase' }}>Sterilizer Sequencing</h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div className="som-logic-row" style={{ flex: 1, paddingRight: '12px', justifyContent: 'flex-start', gap: '40px' }}>
+                        <span className="som-logic-label">On Step</span>
                         <ValBox
-                          value={tempStartStep}
+                          value={getLiveSettingVal('sequencingOnStep', sequencingOnStep, 'settings_sequencing_on_step', 'STEP')}
                           decimals={0}
-                          onClick={
-                            configMode
-                              ? () => handleEquipmentClick(
-                                  "settings_logic_temp_override_start",
-                                  [],
-                                  [{ key: "STEP", label: "Temperature Override Start Step" }]
-                                )
-                              : () => setActiveKeypad({
-                                  section: "tempOverriding",
-                                  param: "startStep",
-                                  label: "Temperature Start Step"
-                                })
-                          }
-                          style={getDeveloperStyle("settings_logic_temp_override_start", "STEP")}
+                          onClick={configMode ? () => handleEquipmentClick("settings_sequencing_on_step", [], [{ key: "STEP", label: "Sequencing On Step" }]) : () => setActiveKeypad({ section: "sequencing", param: "sequencingOnStep", label: "Sequencing On Step" })}
+                          style={{ ...getDeveloperStyle("settings_sequencing_on_step", "STEP"), border: '1.5px solid #fcd34d' }}
                         />
                       </div>
-                      <div className="som-logic-row-compact">
+                      <div className="som-logic-row" style={{ flex: 1, paddingLeft: '12px', justifyContent: 'flex-start', gap: '20px' }}>
                         <span className="som-logic-label">Stop - Step</span>
                         <ValBox
-                          value={tempStopStep}
+                          value={getLiveSettingVal('sequencingStopStep', sequencingStopStep, 'settings_sequencing_stop_step', 'STEP')}
                           decimals={0}
-                          onClick={
-                            configMode
-                              ? () => handleEquipmentClick(
-                                  "settings_logic_temp_override_stop",
-                                  [],
-                                  [{ key: "STEP", label: "Temperature Override Stop Step" }]
-                                )
-                              : () => setActiveKeypad({
-                                  section: "tempOverriding",
-                                  param: "stopStep",
-                                  label: "Temperature Stop Step"
-                                })
-                          }
-                          style={getDeveloperStyle("settings_logic_temp_override_stop", "STEP")}
+                          onClick={configMode ? () => handleEquipmentClick("settings_sequencing_stop_step", [], [{ key: "STEP", label: "Sequencing Stop Step" }]) : () => setActiveKeypad({ section: "sequencing", param: "sequencingStopStep", label: "Sequencing Stop Step" })}
+                          style={{ ...getDeveloperStyle("settings_sequencing_stop_step", "STEP"), border: '1.5px solid #fcd34d' }}
                         />
                       </div>
                     </div>
-                    <div className="som-logic-row">
-                      <span className="som-logic-label">Condensate Relief Open</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <ValBox
-                          value={tempReliefValveOpen}
-                          decimals={0}
-                          unit="Â°C"
-                          onClick={
-                            configMode
-                              ? () => handleEquipmentClick(
-                                  "settings_logic_temp_override_relief_open",
-                                  [],
-                                  [{ key: "SETPOINT", label: "Relief Valve Open Setpoint" }]
-                                )
-                              : () => setActiveKeypad({
-                                  section: "tempOverriding",
-                                  param: "reliefValveOpen",
-                                  label: "Relief Valve Open",
-                                  unit: "Â°C"
-                                })
-                          }
-                          style={getDeveloperStyle("settings_logic_temp_override_relief_open", "SETPOINT")}
-                        />
-                        <span className="som-logic-inline-note">if P &gt; 2.8 bar</span>
-                      </div>
-                    </div>
-                    <div className="som-logic-row">
-                      <span className="som-logic-label">Condensate Relief Close</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <ValBox
-                          value={tempReliefValveClose}
-                          decimals={0}
-                          unit="Â°C"
-                          onClick={
-                            configMode
-                              ? () => handleEquipmentClick(
-                                  "settings_logic_temp_override_relief_close",
-                                  [],
-                                  [{ key: "SETPOINT", label: "Relief Valve Close Setpoint" }]
-                                )
-                              : () => setActiveKeypad({
-                                  section: "tempOverriding",
-                                  param: "reliefValveClose",
-                                  label: "Relief Valve Close",
-                                  unit: "Â°C"
-                                })
-                          }
-                          style={getDeveloperStyle("settings_logic_temp_override_relief_close", "SETPOINT")}
-                        />
-                        <span className="som-logic-inline-note">if P &gt; 2.8 bar</span>
-                      </div>
-                    </div>
-                  </div>
-                  {/* BPV Settings */}
-                  <div className="som-logic-section">
-                    <h4 className="som-logic-section-title">BPV Settings</h4>
-                    <table className="som-bpv-settings-table">
-                      <thead>
-                        <tr>
-                          <th>BPV Pressure</th>
-                          <th>Make-up Valve</th>
-                          <th>Surplus Valve</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td className="som-logic-label font-bold" style={{ textAlign: 'center', color: '#475569', verticalAlign: 'middle' }}>Set</td>
-                          <td style={{ padding: '3px 6px' }}>
-                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'space-between' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1 }}>
-                                <span style={{ fontSize: '8.5px', color: '#475569', fontWeight: '700' }}>High</span>
-                                <ValBox
-                                  value={bpvMakeupHigh}
-                                  decimals={2}
-                                  onClick={
-                                    configMode
-                                      ? () => handleEquipmentClick("settings_bpv_makeup_high", [], [{ key: "SETPOINT", label: "Make-up Valve Set High" }])
-                                      : () => setActiveKeypad({ section: "bpvValves", param: "makeupHigh", label: "Make-up Valve Set High", unit: "bar" })
-                                  }
-                                  style={getDeveloperStyle("settings_bpv_makeup_high", "SETPOINT")}
-                                />
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1 }}>
-                                <span style={{ fontSize: '8.5px', color: '#475569', fontWeight: '700' }}>Low</span>
-                                <ValBox
-                                  value={bpvMakeupLow}
-                                  decimals={2}
-                                  onClick={
-                                    configMode
-                                      ? () => handleEquipmentClick("settings_bpv_makeup_low", [], [{ key: "SETPOINT", label: "Make-up Valve Set Low" }])
-                                      : () => setActiveKeypad({ section: "bpvValves", param: "makeupLow", label: "Make-up Valve Set Low", unit: "bar" })
-                                  }
-                                  style={getDeveloperStyle("settings_bpv_makeup_low", "SETPOINT")}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                          <td style={{ padding: '3px 6px' }}>
-                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'space-between' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1 }}>
-                                <span style={{ fontSize: '8.5px', color: '#475569', fontWeight: '700' }}>High</span>
-                                <ValBox
-                                  value={bpvSurplusHigh}
-                                  decimals={2}
-                                  onClick={
-                                    configMode
-                                      ? () => handleEquipmentClick("settings_bpv_surplus_high", [], [{ key: "SETPOINT", label: "Surplus Valve Set High" }])
-                                      : () => setActiveKeypad({ section: "bpvValves", param: "surplusHigh", label: "Surplus Valve Set High", unit: "bar" })
-                                  }
-                                  style={getDeveloperStyle("settings_bpv_surplus_high", "SETPOINT")}
-                                />
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', flex: 1 }}>
-                                <span style={{ fontSize: '8.5px', color: '#475569', fontWeight: '700' }}>Low</span>
-                                <ValBox
-                                  value={bpvSurplusLow}
-                                  decimals={2}
-                                  onClick={
-                                    configMode
-                                      ? () => handleEquipmentClick("settings_bpv_surplus_low", [], [{ key: "SETPOINT", label: "Surplus Valve Set Low" }])
-                                      : () => setActiveKeypad({ section: "bpvValves", param: "surplusLow", label: "Surplus Valve Set Low", unit: "bar" })
-                                  }
-                                  style={getDeveloperStyle("settings_bpv_surplus_low", "SETPOINT")}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="som-logic-label font-bold" style={{ textAlign: 'center', color: '#475569', verticalAlign: 'middle' }}>Actual</td>
-                          <td style={{ padding: '3px 6px' }}>
-                            <div
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick("settings_bpv_makeup_actual", [], [{ key: "PRESSURE", label: "Make-up Valve Actual Pressure" }])
-                                  : null
-                              }
-                              style={{
-                                width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
-                                fontSize: '9.5px', fontWeight: '900', color: '#0f172a',
-                                cursor: configMode ? 'pointer' : 'default',
-                                ...getDeveloperStyle("settings_bpv_makeup_actual", "PRESSURE")
-                              }}
-                            >
-                              {(() => {
-                                const val = getMappedValue ? getMappedValue("settings_bpv_makeup_actual", "PRESSURE") : null;
-                                return (val === "No Tag" || val === "--" || val === null || val === undefined) ? "-- --" : Number(val).toFixed(2);
-                              })()}
-                              <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>bar</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '3px 6px' }}>
-                            <div
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick("settings_bpv_surplus_actual", [], [{ key: "PRESSURE", label: "Surplus Valve Actual Pressure" }])
-                                  : null
-                              }
-                              style={{
-                                width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
-                                fontSize: '9.5px', fontWeight: '900', color: '#0f172a',
-                                cursor: configMode ? 'pointer' : 'default',
-                                ...getDeveloperStyle("settings_bpv_surplus_actual", "PRESSURE")
-                              }}
-                            >
-                              {(() => {
-                                const val = getMappedValue ? getMappedValue("settings_bpv_surplus_actual", "PRESSURE") : null;
-                                return (val === "No Tag" || val === "--" || val === null || val === undefined) ? "-- --" : Number(val).toFixed(2);
-                              })()}
-                              <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>bar</span>
-                            </div>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="som-logic-label font-bold" style={{ textAlign: 'center', color: '#475569', verticalAlign: 'middle' }}>Position</td>
-                          <td style={{ padding: '3px 6px' }}>
-                            <div
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick("settings_bpv_makeup_position", [], [{ key: "POSITION", label: "Make-up Valve Actual Position" }])
-                                  : null
-                              }
-                              style={{
-                                width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
-                                fontSize: '9.5px', fontWeight: '900', color: '#0f172a',
-                                cursor: configMode ? 'pointer' : 'default',
-                                ...getDeveloperStyle("settings_bpv_makeup_position", "POSITION")
-                              }}
-                            >
-                              {(() => {
-                                const val = getMappedValue ? getMappedValue("settings_bpv_makeup_position", "POSITION") : null;
-                                return (val === "No Tag" || val === "--" || val === null || val === undefined) ? "-- --" : Number(val).toFixed(1);
-                              })()}
-                              <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>%</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '3px 6px' }}>
-                            <div
-                              onClick={
-                                configMode
-                                  ? () => handleEquipmentClick("settings_bpv_surplus_position", [], [{ key: "POSITION", label: "Surplus Valve Actual Position" }])
-                                  : null
-                              }
-                              style={{
-                                width: '100%', height: '17px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '3px',
-                                fontSize: '9.5px', fontWeight: '900', color: '#0f172a',
-                                cursor: configMode ? 'pointer' : 'default',
-                                ...getDeveloperStyle("settings_bpv_surplus_position", "POSITION")
-                              }}
-                            >
-                              {(() => {
-                                const val = getMappedValue ? getMappedValue("settings_bpv_surplus_position", "POSITION") : null;
-                                return (val === "No Tag" || val === "--" || val === null || val === undefined) ? "-- --" : Number(val).toFixed(1);
-                              })()}
-                              <span style={{ fontSize: '7.5px', color: '#94a3b8', marginLeft: '3px', fontWeight: '700' }}>%</span>
-                            </div>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
                   </div>
 
-                  {/* Main Steam Overriding */}
-                  <div className="som-logic-section">
-                    <h4 className="som-logic-section-title">Main Steam Overriding</h4>
-                    <div className="som-logic-row flow-direction-row">
-                      <div className="som-row-left-aligned">
+                  {/* TEMPERATURE OVERRIDING */}
+                  <div className="som-logic-section" style={{ marginTop: '4px' }}>
+                    <h4 className="som-logic-section-title" style={{ color: '#ea580c', textTransform: 'uppercase' }}>Temperature Overriding</h4>
+                    
+                    {/* Row 1: Holding Step */}
+                    <div className="som-logic-row" style={{ justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #e2e8f0', marginBottom: '6px' }}>
+                      <span className="som-logic-label">Holding Step</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <ValBox
+                          value={getLiveSettingVal('tempHoldingStepStart', tempHoldingStepStart, 'settings_temp_holding_step_start', 'STEP')}
+                          decimals={0}
+                          onClick={configMode ? () => handleEquipmentClick("settings_temp_holding_step_start", [], [{ key: "STEP", label: "Holding Step Start" }]) : () => setActiveKeypad({ section: "tempOverriding", param: "tempHoldingStepStart", label: "Holding Step Start" })}
+                          style={{ ...getDeveloperStyle("settings_temp_holding_step_start", "STEP"), border: '1.5px solid #fcd34d' }}
+                        />
+                        <span style={{ fontWeight: '800', color: '#64748b' }}>-</span>
+                        <ValBox
+                          value={getLiveSettingVal('tempHoldingStepStop', tempHoldingStepStop, 'settings_temp_holding_step_stop', 'STEP')}
+                          decimals={0}
+                          onClick={configMode ? () => handleEquipmentClick("settings_temp_holding_step_stop", [], [{ key: "STEP", label: "Holding Step Stop" }]) : () => setActiveKeypad({ section: "tempOverriding", param: "tempHoldingStepStop", label: "Holding Step Stop" })}
+                          style={{ ...getDeveloperStyle("settings_temp_holding_step_stop", "STEP"), border: '1.5px solid #fcd34d' }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Row 2: Temp Idle/Low & Time CON */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid #e2e8f0', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, paddingRight: '12px' }}>
+                        <div className="som-logic-row" style={{ justifyContent: 'space-between' }}>
+                          <span className="som-logic-label">Temp Idle</span>
+                          <ValBox
+                            value={getLiveSettingVal('tempIdle', tempIdle, 'settings_temp_idle', 'SETPOINT')}
+                            decimals={1}
+                            unit="°C"
+                            onClick={configMode ? () => handleEquipmentClick("settings_temp_idle", [], [{ key: "SETPOINT", label: "Temp Idle" }]) : () => setActiveKeypad({ section: "tempOverriding", param: "tempIdle", label: "Temp Idle", unit: "°C" })}
+                            style={{ ...getDeveloperStyle("settings_temp_idle", "SETPOINT"), border: '1.5px solid #fcd34d' }}
+                          />
+                        </div>
+                        <div className="som-logic-row" style={{ justifyContent: 'space-between' }}>
+                          <span className="som-logic-label">Temp Low</span>
+                          <ValBox
+                            value={getLiveSettingVal('tempLow', tempLow, 'settings_temp_low', 'SETPOINT')}
+                            decimals={1}
+                            unit="°C"
+                            onClick={configMode ? () => handleEquipmentClick("settings_temp_low", [], [{ key: "SETPOINT", label: "Temp Low" }]) : () => setActiveKeypad({ section: "tempOverriding", param: "tempLow", label: "Temp Low", unit: "°C" })}
+                            style={{ ...getDeveloperStyle("settings_temp_low", "SETPOINT"), border: '1.5px solid #fcd34d' }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div style={{ width: '1px', backgroundColor: '#cbd5e1', alignSelf: 'stretch' }}></div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, paddingLeft: '12px' }}>
+                        <div className="som-logic-row" style={{ justifyContent: 'space-between' }}>
+                          <span className="som-logic-label">Time Open CON</span>
+                          <ValBox
+                            value={getLiveSettingVal('timeOpenCon', timeOpenCon, 'settings_temp_time_open_con', 'TIME')}
+                            decimals={0}
+                            unit="s"
+                            onClick={configMode ? () => handleEquipmentClick("settings_temp_time_open_con", [], [{ key: "TIME", label: "Time Open CON" }]) : () => setActiveKeypad({ section: "tempOverriding", param: "timeOpenCon", label: "Time Open CON", unit: "s" })}
+                            style={{ ...getDeveloperStyle("settings_temp_time_open_con", "TIME"), border: '1.5px solid #fcd34d' }}
+                          />
+                        </div>
+                        <div className="som-logic-row" style={{ justifyContent: 'space-between' }}>
+                          <span className="som-logic-label">Time Close CON</span>
+                          <ValBox
+                            value={getLiveSettingVal('timeCloseCon', timeCloseCon, 'settings_temp_time_close_con', 'TIME')}
+                            decimals={0}
+                            unit="s"
+                            onClick={configMode ? () => handleEquipmentClick("settings_temp_time_close_con", [], [{ key: "TIME", label: "Time Close CON" }]) : () => setActiveKeypad({ section: "tempOverriding", param: "timeCloseCon", label: "Time Close CON", unit: "s" })}
+                            style={{ ...getDeveloperStyle("settings_temp_time_close_con", "TIME"), border: '1.5px solid #fcd34d' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Row 3: High Temp */}
+                    <div className="som-logic-row" style={{ justifyContent: 'space-between' }}>
+                      <span className="som-logic-label">High Temp</span>
+                      <ValBox
+                        value={getLiveSettingVal('highTemp', highTemp, 'settings_temp_high', 'SETPOINT')}
+                        decimals={1}
+                        unit="°C"
+                        onClick={configMode ? () => handleEquipmentClick("settings_temp_high", [], [{ key: "SETPOINT", label: "High Temp" }]) : () => setActiveKeypad({ section: "tempOverriding", param: "highTemp", label: "High Temp", unit: "°C" })}
+                        style={{ ...getDeveloperStyle("settings_temp_high", "SETPOINT"), border: '1.5px solid #fcd34d' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* MAIN STEAM OVERRIDING */}
+                  <div className="som-logic-section" style={{ marginTop: '4px' }}>
+                    <h4 className="som-logic-section-title" style={{ color: '#ea580c', textTransform: 'uppercase' }}>Main Steam Overriding</h4>
+                    <div className="som-logic-row" style={{ justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <span className="som-logic-label">Main Steam &lt;</span>
                         <ValBox
-                          value={mainSteamMin}
+                          value={getLiveSettingVal('mainSteam', mainSteam, 'settings_main_steam', 'SETPOINT')}
                           decimals={1}
                           unit="bar"
-                          onClick={
-                            configMode
-                              ? () => handleEquipmentClick(
-                                  "settings_logic_main_steam_min",
-                                  [],
-                                  [{ key: "SETPOINT", label: "Main Steam Min Setpoint" }]
-                                )
-                              : () => setActiveKeypad({
-                                  section: "mainSteam",
-                                  param: "mainSteamMin",
-                                  label: "Main Steam Min",
-                                  unit: "bar"
-                                })
-                          }
-                          style={getDeveloperStyle("settings_logic_main_steam_min", "SETPOINT")}
+                          onClick={configMode ? () => handleEquipmentClick("settings_main_steam", [], [{ key: "SETPOINT", label: "Main Steam <" }]) : () => setActiveKeypad({ section: "mainSteam", param: "mainSteam", label: "Main Steam <", unit: "bar" })}
+                          style={{ ...getDeveloperStyle("settings_main_steam", "SETPOINT"), border: '1.5px solid #fcd34d' }}
                         />
                       </div>
-                      <span className="som-logic-result-label">âž” Make-up Close</span>
+                      <span className="som-logic-result-label" style={{ fontWeight: '800', color: '#1e293b' }}>➔ Make-up Valve CLOSE</span>
                     </div>
                   </div>
 
-                  {/* BPV Safety */}
-                  <div className="som-logic-section">
-                    <h4 className="som-logic-section-title">BPV Safety</h4>
-                    <div className="som-logic-row flow-direction-row">
-                      <div className="som-row-left-aligned">
-                        <span className="som-logic-label">Max Pressure</span>
-                        <ValBox
-                          value={bpvSafetyMaxOpen}
-                          decimals={1}
-                          unit="bar"
-                          onClick={
-                            configMode
-                              ? () => handleEquipmentClick(
-                                  "settings_logic_bpv_safety_max_open",
-                                  [],
-                                  [{ key: "SETPOINT", label: "BPV Safety Max Open Setpoint" }]
-                                )
-                              : () => setActiveKeypad({
-                                  section: "bpvSafety",
-                                  param: "maxOpen",
-                                  label: "BPV Safety Max Open",
-                                  unit: "bar"
-                                })
-                          }
-                          style={getDeveloperStyle("settings_logic_bpv_safety_max_open", "SETPOINT")}
-                        />
+                  {/* BPV SETTINGS (PID) */}
+                  <div className="som-logic-section" style={{ marginTop: '4px' }}>
+                    <h4 className="som-logic-section-title" style={{ color: '#ea580c', textTransform: 'uppercase' }}>BPV Settings</h4>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {/* Make-up Valve Position */}
+                      <div style={{ flex: 1, border: '1px solid #cbd5e1', padding: '0', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ textAlign: 'center', fontSize: '9px', fontWeight: '800', color: '#475569', padding: '4px 0', borderBottom: '1px solid #cbd5e1' }}>MAKE-UP VALVE POSITION</div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+                          <tbody>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center', width: '45%' }}>Set Point</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvMakeupSetPoint', bpvMakeupSetPoint, 'settings_bpv_makeup_setpoint', 'SETPOINT')} decimals={2} unit="bar" onClick={configMode ? () => handleEquipmentClick("settings_bpv_makeup_setpoint", [], [{ key: "SETPOINT", label: "Make-up Set Point" }]) : () => setActiveKeypad({ section: "bpvValves", param: "makeupSetPoint", label: "Make-up Set Point", unit: "bar" })} style={{ ...getDeveloperStyle("settings_bpv_makeup_setpoint", "SETPOINT"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>P</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvMakeupP', bpvMakeupP, 'settings_bpv_makeup_p', 'SETPOINT')} decimals={1} onClick={configMode ? () => handleEquipmentClick("settings_bpv_makeup_p", [], [{ key: "SETPOINT", label: "Make-up P" }]) : () => setActiveKeypad({ section: "bpvValves", param: "makeupP", label: "Make-up P" })} style={{ ...getDeveloperStyle("settings_bpv_makeup_p", "SETPOINT"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>I</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvMakeupI', bpvMakeupI, 'settings_bpv_makeup_i', 'SETPOINT')} decimals={1} onClick={configMode ? () => handleEquipmentClick("settings_bpv_makeup_i", [], [{ key: "SETPOINT", label: "Make-up I" }]) : () => setActiveKeypad({ section: "bpvValves", param: "makeupI", label: "Make-up I" })} style={{ ...getDeveloperStyle("settings_bpv_makeup_i", "SETPOINT"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>D</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvMakeupD', bpvMakeupD, 'settings_bpv_makeup_d', 'SETPOINT')} decimals={1} onClick={configMode ? () => handleEquipmentClick("settings_bpv_makeup_d", [], [{ key: "SETPOINT", label: "Make-up D" }]) : () => setActiveKeypad({ section: "bpvValves", param: "makeupD", label: "Make-up D" })} style={{ ...getDeveloperStyle("settings_bpv_makeup_d", "SETPOINT"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>POSITION</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvMakeupPosition', bpvMakeupPosition, 'settings_bpv_makeup_position', 'POSITION')} decimals={0} unit="%" onClick={configMode ? () => handleEquipmentClick("settings_bpv_makeup_position", [], [{ key: "POSITION", label: "Make-up Position" }]) : () => setActiveKeypad({ section: "bpvValves", param: "makeupPosition", label: "Make-up Position", unit: "%" })} style={{ ...getDeveloperStyle("settings_bpv_makeup_position", "POSITION"), width: '100%', border: '1.5px solid #fcd34d', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>MAX</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvMakeupMax', bpvMakeupMax, 'settings_bpv_makeup_max', 'MAX', true)} onClick={configMode ? () => handleEquipmentClick("settings_bpv_makeup_max", [], [{ key: "MAX", label: "Make-up Max" }]) : null} style={{ ...getDeveloperStyle("settings_bpv_makeup_max", "MAX"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>MIN</td>
+                              <td style={{ padding: '2px 4px' }}>
+                                <ValBox value={getLiveSettingVal('bpvMakeupMin', bpvMakeupMin, 'settings_bpv_makeup_min', 'MIN', true)} onClick={configMode ? () => handleEquipmentClick("settings_bpv_makeup_min", [], [{ key: "MIN", label: "Make-up Min" }]) : null} style={{ ...getDeveloperStyle("settings_bpv_makeup_min", "MIN"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
-                      <span className="som-logic-result-label">âž” Surplus Open</span>
-                    </div>
-                    <div className="som-logic-row flow-direction-row">
-                      <div className="som-row-left-aligned">
-                        <span className="som-logic-label">Max Pressure</span>
-                        <ValBox
-                          value={bpvSafetyMaxClose}
-                          decimals={1}
-                          unit="bar"
-                          onClick={
-                            configMode
-                              ? () => handleEquipmentClick(
-                                  "settings_logic_bpv_safety_max_close",
-                                  [],
-                                  [{ key: "SETPOINT", label: "BPV Safety Max Close Setpoint" }]
-                                )
-                              : () => setActiveKeypad({
-                                  section: "bpvSafety",
-                                  param: "maxClose",
-                                  label: "BPV Safety Max Close",
-                                  unit: "bar"
-                                })
-                          }
-                          style={getDeveloperStyle("settings_logic_bpv_safety_max_close", "SETPOINT")}
-                        />
+                      
+                      {/* Surplus Valve Position */}
+                      <div style={{ flex: 1, border: '1px solid #cbd5e1', padding: '0', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ textAlign: 'center', fontSize: '9px', fontWeight: '800', color: '#475569', padding: '4px 0', borderBottom: '1px solid #cbd5e1' }}>SURPLUS VALVE POSITION</div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+                          <tbody>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center', width: '45%' }}>Set Point</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvSurplusSetPoint', bpvSurplusSetPoint, 'settings_bpv_surplus_setpoint', 'SETPOINT')} decimals={2} unit="bar" onClick={configMode ? () => handleEquipmentClick("settings_bpv_surplus_setpoint", [], [{ key: "SETPOINT", label: "Surplus Set Point" }]) : () => setActiveKeypad({ section: "bpvValves", param: "surplusSetPoint", label: "Surplus Set Point", unit: "bar" })} style={{ ...getDeveloperStyle("settings_bpv_surplus_setpoint", "SETPOINT"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>P</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvSurplusP', bpvSurplusP, 'settings_bpv_surplus_p', 'SETPOINT')} decimals={1} onClick={configMode ? () => handleEquipmentClick("settings_bpv_surplus_p", [], [{ key: "SETPOINT", label: "Surplus P" }]) : () => setActiveKeypad({ section: "bpvValves", param: "surplusP", label: "Surplus P" })} style={{ ...getDeveloperStyle("settings_bpv_surplus_p", "SETPOINT"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>I</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvSurplusI', bpvSurplusI, 'settings_bpv_surplus_i', 'SETPOINT')} decimals={1} onClick={configMode ? () => handleEquipmentClick("settings_bpv_surplus_i", [], [{ key: "SETPOINT", label: "Surplus I" }]) : () => setActiveKeypad({ section: "bpvValves", param: "surplusI", label: "Surplus I" })} style={{ ...getDeveloperStyle("settings_bpv_surplus_i", "SETPOINT"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>D</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvSurplusD', bpvSurplusD, 'settings_bpv_surplus_d', 'SETPOINT')} decimals={1} onClick={configMode ? () => handleEquipmentClick("settings_bpv_surplus_d", [], [{ key: "SETPOINT", label: "Surplus D" }]) : () => setActiveKeypad({ section: "bpvValves", param: "surplusD", label: "Surplus D" })} style={{ ...getDeveloperStyle("settings_bpv_surplus_d", "SETPOINT"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>POSITION</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvSurplusPosition', bpvSurplusPosition, 'settings_bpv_surplus_position', 'POSITION')} decimals={0} unit="%" onClick={configMode ? () => handleEquipmentClick("settings_bpv_surplus_position", [], [{ key: "POSITION", label: "Surplus Position" }]) : () => setActiveKeypad({ section: "bpvValves", param: "surplusPosition", label: "Surplus Position", unit: "%" })} style={{ ...getDeveloperStyle("settings_bpv_surplus_position", "POSITION"), width: '100%', border: '1.5px solid #fcd34d', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>MAX</td>
+                              <td style={{ padding: '2px 4px', borderBottom: '1px solid #e2e8f0' }}>
+                                <ValBox value={getLiveSettingVal('bpvSurplusMax', bpvSurplusMax, 'settings_bpv_surplus_max', 'MAX', true)} onClick={configMode ? () => handleEquipmentClick("settings_bpv_surplus_max", [], [{ key: "MAX", label: "Surplus Max" }]) : null} style={{ ...getDeveloperStyle("settings_bpv_surplus_max", "MAX"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '3px 8px', borderRight: '1px solid #cbd5e1', color: '#475569', fontWeight: '700', textAlign: 'center' }}>MIN</td>
+                              <td style={{ padding: '2px 4px' }}>
+                                <ValBox value={getLiveSettingVal('bpvSurplusMin', bpvSurplusMin, 'settings_bpv_surplus_min', 'MIN', true)} onClick={configMode ? () => handleEquipmentClick("settings_bpv_surplus_min", [], [{ key: "MIN", label: "Surplus Min" }]) : null} style={{ ...getDeveloperStyle("settings_bpv_surplus_min", "MIN"), width: '100%', height: '16px' }} />
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
-                      <span className="som-logic-result-label">âž” Surplus Close</span>
                     </div>
                   </div>
+
                 </div>
               </div>
             </div>
@@ -3025,7 +2966,13 @@ const handleRestoreDefault = () => {
               const live = getLiveRecipeVal(selectedLine, stepNum, kp.param);
               return live !== null ? live : currentLineSteps[kp.stepIdx][kp.param];
             }
-            if (kp.section === 'scoreLogic') return scoreLogics[kp.idx].target;
+            if (kp.section === 'scoreLogic') {
+              const activeScoreLine = scoreLine || selectedLine || 1;
+              const list = (scoreLogics && typeof scoreLogics === "object" && !Array.isArray(scoreLogics))
+                ? scoreLogics[activeScoreLine]
+                : scoreLogics;
+              return list?.[kp.idx]?.target;
+            }
             if (kp.section === 'capacity') {
               if (kp.param === 'designCapacity') return designCapacity;
               if (kp.param === 'numberSterilizer') return numberSterilizer;
@@ -3033,28 +2980,40 @@ const handleRestoreDefault = () => {
               if (kp.param === 'overLimitTime') return overLimitTime;
               if (kp.param === 'overLimitScore') return overLimitScore;
             }
-            if (kp.section === 'sequencing') return sequencingStep;
-            if (kp.section === 'safety') {
-              if (kp.param === 'maxPressure') return safetyMaxPressure;
-              if (kp.param === 'exhaustValveOpen') return safetyExhaustValveOpen;
-              if (kp.param === 'exhaustValveClose') return safetyExhaustValveClose;
+            if (kp.section === 'controlLogics') {
+              if (kp.param === 'safetyDoor') return safetyDoor;
+              if (kp.param === 'autoBlowdown') return autoBlowdown;
+              if (kp.param === 'holdingPressure') return holdingPressure;
+              if (kp.param === 'startToStepCycle') return startToStepCycle;
+              if (kp.param === 'safetyPressure') return safetyPressure;
             }
-            if (kp.section === 'cbd') {
-              if (kp.param === 'maxPressure') return cbdMaxPressure;
-              if (kp.param === 'condensateValveOpen') return cbdCondensateValveOpen;
-              if (kp.param === 'condensateValveClose') return cbdCondensateValveClose;
+            if (kp.section === 'sequencing') {
+              if (kp.param === 'sequencingOnStep') return sequencingOnStep;
+              if (kp.param === 'sequencingStopStep') return sequencingStopStep;
             }
             if (kp.section === 'tempOverriding') {
-              if (kp.param === 'startStep') return tempStartStep;
-              if (kp.param === 'stopStep') return tempStopStep;
-              if (kp.param === 'reliefValveOpen') return tempReliefValveOpen;
-              if (kp.param === 'reliefValveClose') return tempReliefValveClose;
+              if (kp.param === 'tempHoldingStepStart') return tempHoldingStepStart;
+              if (kp.param === 'tempHoldingStepStop') return tempHoldingStepStop;
+              if (kp.param === 'tempIdle') return tempIdle;
+              if (kp.param === 'tempLow') return tempLow;
+              if (kp.param === 'timeOpenCon') return timeOpenCon;
+              if (kp.param === 'timeCloseCon') return timeCloseCon;
+              if (kp.param === 'highTemp') return highTemp;
             }
-            if (kp.section === 'bpvRow') return bpvSettings[kp.idx][kp.param];
-            if (kp.section === 'mainSteam') return mainSteamMin;
-            if (kp.section === 'bpvSafety') {
-              if (kp.param === 'maxOpen') return bpvSafetyMaxOpen;
-              if (kp.param === 'maxClose') return bpvSafetyMaxClose;
+            if (kp.section === 'mainSteam') {
+              return mainSteam;
+            }
+            if (kp.section === 'bpvValves') {
+              if (kp.param === 'makeupSetPoint') return bpvMakeupSetPoint;
+              if (kp.param === 'makeupP') return bpvMakeupP;
+              if (kp.param === 'makeupI') return bpvMakeupI;
+              if (kp.param === 'makeupD') return bpvMakeupD;
+              if (kp.param === 'makeupPosition') return bpvMakeupPosition;
+              if (kp.param === 'surplusSetPoint') return bpvSurplusSetPoint;
+              if (kp.param === 'surplusP') return bpvSurplusP;
+              if (kp.param === 'surplusI') return bpvSurplusI;
+              if (kp.param === 'surplusD') return bpvSurplusD;
+              if (kp.param === 'surplusPosition') return bpvSurplusPosition;
             }
             return 0;
           })()}
@@ -3093,7 +3052,7 @@ function NumericKeypad({ value, onConfirm, onClose, label, unit }) {
       <div className="som-numeric-keypad" onClick={e => e.stopPropagation()}>
         <div className="som-numeric-keypad-header">
           <span className="som-numeric-keypad-label">{label}</span>
-          <button style={{ background: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#64748b' }} onClick={onClose}>âœ•</button>
+          <button style={{ background: 'transparent', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#64748b' }} onClick={onClose}>✕</button>
         </div>
         <div className="som-numeric-keypad-display">
           <span className="som-numeric-keypad-value">{displayValue}</span>
@@ -3105,7 +3064,7 @@ function NumericKeypad({ value, onConfirm, onClose, label, unit }) {
           ))}
           <button onClick={handleDecimal} style={btnStyle}>.</button>
           <button onClick={() => handleNumber(0)} style={btnStyle}>0</button>
-          <button onClick={handleBack} style={{ ...btnStyle, background: '#f1f5f9' }}>âŒ«</button>
+          <button onClick={handleBack} style={{ ...btnStyle, background: '#f1f5f9' }}>⌫</button>
           <button onClick={() => setDisplayValue('0')} style={{ gridColumn: 'span 1', padding: '12px', background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>CLEAR</button>
           <button onClick={handleEnter} style={{ gridColumn: 'span 2', padding: '12px', background: '#F59E0B', border: 'none', color: 'white', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>ENTER</button>
         </div>
@@ -3115,8 +3074,8 @@ function NumericKeypad({ value, onConfirm, onClose, label, unit }) {
   );
 }
 
-
 // Calculations helper
+
 function getTotals(localRecipes, lineNum) {
   const lineSteps = localRecipes[lineNum] || [];
   let unfSter = 0, nrmSter = 0, wetSter = 0;

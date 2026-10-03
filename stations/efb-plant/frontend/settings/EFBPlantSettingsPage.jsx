@@ -1,5 +1,5 @@
 import SettingsView from '../SettingsView.jsx';
 
-export default function EFBPlantSettingsPage({ onSelectSubmenu }) {
-  return <SettingsView onSelectSubmenu={onSelectSubmenu} />;
+export default function EFBPlantSettingsPage(props) {
+  return <SettingsView {...props} />;
 }

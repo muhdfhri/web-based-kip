@@ -44,7 +44,7 @@ import EngineRoomPage from "@stations/engine-room/EngineRoomPage.jsx";
 import SecurityStationPage from "@stations/security/SecurityStationPage.jsx";
 import WeighbridgePage from "@stations/weighbridge/WeighbridgePage.jsx";
 // import LoadingRampPage from "@stations/loading-ramp/LoadingRampPage.jsx";
-// import OilClarificationPage from "@stations/oil-clarification/OilClarificationPage.jsx";
+import OilClarificationPage from "@stations/oil-clarification/OilClarificationPage.jsx";
 // import RawWaterPage from "@stations/raw-water/RawWaterPage.jsx";
 // import EffluentPage from "@stations/effluent-treatment/EffluentPage.jsx";
 // import DafOsrPage from "@stations/daf-osr/DafOsrPage.jsx";
@@ -70,7 +70,7 @@ import EFBPlantPlcConfig from "@stations/efb-plant/PlcConfigView.jsx";
 import EngineRoomPlcConfig from "@stations/engine-room/PlcConfigView.jsx";
 import WeighbridgePlcConfig from "@stations/weighbridge/PlcConfigView.jsx";
 // import LoadingRampPlcConfig from "@stations/loading-ramp/PlcConfigView.jsx";
-// import OilClarificationPlcConfig from "@stations/oil-clarification/PlcConfigView.jsx";
+import OilClarificationPlcConfig from "@stations/oil-clarification/PlcConfigView.jsx";
 // import RawWaterPlcConfig from "@stations/raw-water/PlcConfigView.jsx";
 // import EffluentPlcConfig from "@stations/effluent-treatment/PlcConfigView.jsx";
 // import DafOsrPlcConfig from "@stations/daf-osr/PlcConfigView.jsx";
@@ -94,7 +94,7 @@ const STATION_PAGE_MAP = {
   "Security": SecurityStationPage,
   Weighbridge: WeighbridgePage,
   "Loading Ramp": ComingSoonPage, // Locked/inactive
-  "Oil Clarification Room": ComingSoonPage, // Locked/inactive
+  "Oil Clarification Room": OilClarificationPage,
   "Raw Water Treatment": ComingSoonPage, // Locked/inactive
   "Effluent Treatment": ComingSoonPage, // Locked/inactive
   "DAF / OSR": ComingSoonPage, // Locked/inactive
@@ -112,7 +112,7 @@ const STATION_PLC_CONFIG_MAP = {
   "Security": CamConfigView,
   Weighbridge: WeighbridgePlcConfig,
   "Loading Ramp": ComingSoonPage,
-  "Oil Clarification Room": ComingSoonPage,
+  "Oil Clarification Room": OilClarificationPlcConfig,
   "Raw Water Treatment": ComingSoonPage,
   "Effluent Treatment": ComingSoonPage,
   "DAF / OSR": ComingSoonPage,

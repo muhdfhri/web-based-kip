@@ -256,9 +256,9 @@ export default function TrendTab({
               style={{
                 left: `${hoverData.left}px`,
                 transform:
-                  hoverData.index > getResolution(trendPeriod) * 0.7
-                    ? "translateX(-105%)"
-                    : "translateX(5%)",
+                  hoverData.left < 210
+                    ? "translateX(15px)"
+                    : "translateX(calc(-100% - 15px))",
               }}
             >
               <div className="tooltip-header">

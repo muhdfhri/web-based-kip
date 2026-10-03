@@ -10,8 +10,8 @@ import { startPlcCollector } from "./plcCollector.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3100;
-const STATION_SLUG = process.env.STATION_SLUG || "template";
+const PORT = process.env.PORT || 3105;
+const STATION_SLUG = process.env.STATION_SLUG || "sterilizer";
 
 // ── Middleware ──
 const corsOrigins = process.env.CORS_ORIGINS

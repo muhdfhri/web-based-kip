@@ -1,0 +1,296 @@
+/* ==========================================
+   OIL CLARIFICATION ROOM - SCADA MASTER THEME
+   ========================================== */
+.som-clarification-page {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+}
+
+/* Master Header */
+.som-clarification-page .som-station-header {
+  padding: 0.4rem 1.75rem;
+  background: #ffffff;
+  backdrop-filter: blur(10px);
+  border-bottom: 2px solid #ffdb3b;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.som-clarification-page .som-header-left {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 1.5rem !important;
+}
+
+.som-oc-station-heading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.som-clarification-page .som-station-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 950;
+  color: #0f172a;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #0f172a 0%, #ffdb3b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  border-right: 2px solid #e2e8f0;
+  padding-right: 1.5rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Sub-Nav Tabs */
+.som-clarification-page .som-station-tabs {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.som-clarification-page .som-station-tab {
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.som-clarification-page .som-station-tabs button.som-station-tab:hover {
+  background: #ffdb3b !important;
+  color: #0f172a !important;
+}
+
+.som-clarification-page .som-station-tab.active {
+  background: #ffdb3b !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  font-weight: 900 !important;
+}
+
+/* View Mode Buttons */
+.som-clarification-page .som-view-toggle-container {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.som-clarification-page .som-view-toggle-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.som-clarification-page .som-view-btn {
+  padding: 6px 14px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.som-clarification-page .som-view-btn.active {
+  background: #ffdb3b;
+  color: #0f172a;
+  box-shadow: 0 4px 10px rgba(255, 219, 59, 0.3);
+}
+
+.som-clarification-page .som-view-btn:hover:not(.active) {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.som-clarification-page .som-view-toggle-select {
+  display: none;
+}
+
+/* SCADA Canvas Container */
+.som-oc-content-modern {
+  flex: 1;
+  display: flex;
+  padding: 0.5rem;
+  overflow: hidden;
+  position: relative;
+  background: #f8fafc;
+}
+
+.som-oc-scada-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.som-oc-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.som-oc-scada-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.station-svg-canvas {
+  position: absolute;
+  pointer-events: auto;
+}
+
+/* Equipment Cards (Golden SCADA Style) */
+.som-oc-mini-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-family: 'Inter', system-ui, sans-serif;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  pointer-events: auto;
+}
+
+.som-oc-mini-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  border-color: #ffdb3b;
+}
+
+.som-oc-mini-header {
+  background: #ffdb3b;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.som-oc-mini-label {
+  font-size: 10px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.som-oc-gear-icon {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  min-height: 12px !important;
+  flex-shrink: 0 !important;
+  color: #0f172a;
+  stroke-width: 2.5px;
+}
+
+.som-oc-mini-body {
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: #ffffff;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+.som-oc-param-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.som-oc-param-label {
+  font-size: 9px;
+  font-weight: 800;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.som-oc-mini-value {
+  font-size: 12px;
+  font-weight: 950;
+  color: #0f172a;
+}
+
+.som-oc-mini-value.temp {
+  color: #ea580c;
+}
+
+.som-oc-mini-status {
+  font-size: 8.5px;
+  font-weight: 950;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-align: center;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.som-oc-mini-status.status-running {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.som-oc-mini-status.status-stop {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+/* Diagnostic Banner */
+.som-diagnostic-banner {
+  background: rgba(255, 219, 59, 0.1);
+  border: 2px solid #ffdb3b;
+  color: #0f172a;
+  font-weight: 900;
+  text-align: center;
+  padding: 12px 30px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 28px;
+  box-shadow: 0 0 20px rgba(255, 219, 59, 0.2);
+}

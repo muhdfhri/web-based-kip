@@ -470,7 +470,8 @@
 .som-score-table-panel {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   border: 1px solid #cbd5e1;
   border-radius: 4px;
 }
@@ -577,7 +578,9 @@
   display: flex;
   gap: 6px;
   flex-shrink: 0;
-  height: 120px !important;
+  height: auto !important;
+  min-height: 105px;
+  max-height: 130px;
 }
 
 /* Group boxes for capacity / tolerance */

@@ -374,6 +374,7 @@ module.exports = {
       env: {
         NODE_ENV: "development",
         PORT: 3200,
+        DB_NAME: "mewah_operator",
       },
       log_date_format: "YYYY-MM-DD HH:mm:ss",
       error_file: "./logs/maintenance-service.err.log",

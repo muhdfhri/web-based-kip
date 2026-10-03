@@ -8,7 +8,7 @@ const dbHost = process.env.DB_HOST || 'localhost';
 const dbPort = parseInt(process.env.DB_PORT || '5432', 10);
 const dbUser = process.env.DB_USER && process.env.DB_USER !== 'root' ? process.env.DB_USER : 'postgres';
 const dbPassword = process.env.DB_PASSWORD !== undefined && process.env.DB_PASSWORD !== '' ? process.env.DB_PASSWORD : 'kip2026';
-const dbName = process.env.DB_NAME || 'mewah_main';
+const dbName = process.env.DB_NAME || 'mewah_operator';
 
 export const pool = new Pool({
   host: dbHost,

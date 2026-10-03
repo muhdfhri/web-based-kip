@@ -32,8 +32,9 @@ class Snap7ClientWrapper {
     } else {
       this.client = new S7ClientClass();
 
-      // Gunakan port 1102 untuk koneksi ke PLC Simulator (p_u16_RemotePort = 2)
-      this.client.SetParam(2, 1102);
+      // Gunakan port dari deviceConfig atau environment variable (default 1102 untuk simulator / 102 untuk hardware)
+      const remotePort = parseInt(this.deviceConfig?.port || process.env.PLC_PORT || "1102", 10);
+      this.client.SetParam(2, remotePort);
 
       // Set timeout socket agar cepat mendeteksi disconnect fisik
       this.client.SetParam(3, 1000); // p_i32_PingTimeout = 3
@@ -48,7 +49,7 @@ class Snap7ClientWrapper {
   /**
    * Fast TCP socket probe to avoid blocking Winsock ConnectTo 25-second OS timeout
    */
-  async isPortReachable(ip, port = 1102, timeout = 1000) {
+  async isPortReachable(ip, port = parseInt(this.deviceConfig?.port || process.env.PLC_PORT || "1102", 10), timeout = 1000) {
     return new Promise((resolve) => {
       const socket = new net.Socket();
       let status = false;
@@ -75,12 +76,16 @@ class Snap7ClientWrapper {
   async connect() {
     if (!this.client) return;
     const { ip_address, rack, slot } = this.deviceConfig;
+    const remotePort = parseInt(this.deviceConfig?.port || process.env.PLC_PORT || "1102", 10);
+
+    // Pastikan parameter remote port ter-set pada client
+    this.client.SetParam(2, remotePort);
 
     // Fast TCP Probe (1.0s timeout): Avoid 25s blocking Winsock ConnectTo delay when endpoint is dead
-    const reachable = await this.isPortReachable(ip_address, 1102, 1000);
+    const reachable = await this.isPortReachable(ip_address, remotePort, 1000);
     if (!reachable) {
       this.connected = false;
-      this.lastError = "PLC TCP Endpoint unreachable (port 1102 timeout)";
+      this.lastError = `PLC TCP Endpoint unreachable (${ip_address}:${remotePort} timeout)`;
       throw new Error(this.lastError);
     }
 
@@ -112,26 +117,56 @@ class Snap7ClientWrapper {
 
   async readTag(tag) {
     await this.ensureConnected();
-    const { db_number, byte_offset, bit_offset, data_type } = tag;
+    const { db_number, byte_offset, bit_offset, data_type, node_id } = tag;
+    const area =
+      node_id && ["M", "I", "Q", "DB"].includes(node_id.toUpperCase())
+        ? node_id.toUpperCase()
+        : "DB";
+    const dbNum = area === "DB" ? db_number : 0;
+
     return new Promise((resolve, reject) => {
       const size = DATA_TYPE_SIZE[data_type] || 4;
-      this.client.DBRead(db_number, byte_offset, size, (err, res) => {
-        if (err) {
-          const text = this.handleReadError(err);
-          this.connected = false;
-          return reject(new Error(text));
-        }
-        if (!res) {
-          this.lastError = "PLC read returned null";
-          return reject(new Error(this.lastError));
-        }
-        try {
-          const value = this.parseBuffer(res, data_type, bit_offset, 0);
-          resolve(value);
-        } catch (e) {
-          reject(e);
-        }
-      });
+      if (area === "DB") {
+        this.client.DBRead(dbNum, byte_offset, size, (err, res) => {
+          if (err) {
+            const text = this.handleReadError(err);
+            this.connected = false;
+            return reject(new Error(text));
+          }
+          if (!res) {
+            this.lastError = "PLC read returned null";
+            return reject(new Error(this.lastError));
+          }
+          try {
+            const value = this.parseBuffer(res, data_type, bit_offset, 0);
+            resolve(value);
+          } catch (e) {
+            reject(e);
+          }
+        });
+      } else {
+        let s7Area = this.client.S7AreaMK;
+        if (area === "I") s7Area = this.client.S7AreaPE;
+        else if (area === "Q") s7Area = this.client.S7AreaPA;
+
+        this.client.ReadArea(s7Area, 0, byte_offset, size, this.client.S7WLByte, (err, res) => {
+          if (err) {
+            const text = this.handleReadError(err);
+            this.connected = false;
+            return reject(new Error(text));
+          }
+          if (!res) {
+            this.lastError = "PLC read returned null";
+            return reject(new Error(this.lastError));
+          }
+          try {
+            const value = this.parseBuffer(res, data_type, bit_offset, 0);
+            resolve(value);
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }
     });
   }
 

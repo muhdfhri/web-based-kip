@@ -4,3 +4,5 @@ export { default as LogsheetView } from './LogsheetView.jsx';
 export { default as SettingsView } from './SettingsView.jsx';
 export { default as PlcConfigView } from './PlcConfigView.jsx';
 export { default as OverviewPage } from './EFBPlantPage.jsx';
+export { default as EFBCalibrationView } from './calibration/EFBCalibrationView.jsx';
+

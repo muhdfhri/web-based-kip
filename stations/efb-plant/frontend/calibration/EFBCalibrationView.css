@@ -1,0 +1,239 @@
+/* ==========================================================================
+   EFB PLANT INSTRUMENT CALIBRATION - EXACT STERILIZER CALIBRATION STYLE
+   ========================================================================== */
+
+.som-efb-calib-page {
+  width: 100%;
+  height: calc(100vh - 64px);
+  background-color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden;
+  color: #0f172a;
+  box-sizing: border-box;
+}
+
+.som-efb-calib-container {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.som-efb-calib-card-main {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1100px) {
+  .som-efb-calib-card-main {
+    flex-direction: column;
+  }
+}
+
+.som-efb-logic-section {
+  flex: 1;
+  width: 100%;
+}
+
+.som-efb-logic-section-title {
+  margin: 0 0 10px 0;
+  font-size: 11px;
+  font-weight: 850;
+  color: #d97706;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.som-efb-calib-table {
+  width: 100%;
+  border-collapse: collapse !important;
+  font-size: 11px;
+}
+
+.som-efb-calib-table th,
+.som-efb-calib-table td {
+  border: 1px solid #cbd5e1 !important;
+  padding: 3px 6px !important;
+  text-align: center !important;
+  height: 28px !important;
+  box-sizing: border-box !important;
+  vertical-align: middle;
+}
+
+.som-efb-calib-table th {
+  background-color: #ffffff !important;
+  color: #1e3a8a !important;
+  font-weight: 850 !important;
+  text-transform: uppercase !important;
+  font-size: 9.5px !important;
+  letter-spacing: 0.03em;
+}
+
+.som-efb-calib-table td.som-device-name {
+  color: #1e293b !important;
+  font-weight: 750 !important;
+  text-align: center !important;
+  font-size: 10.5px !important;
+  white-space: nowrap;
+  background-color: #ffffff;
+}
+
+.som-efb-calib-table td.som-unit-cell {
+  font-size: 9.5px !important;
+  color: #64748b !important;
+  font-weight: 700 !important;
+  border-left: none !important;
+  width: 32px !important;
+  padding: 0 4px !important;
+  background-color: #ffffff;
+}
+
+/* Value Boxes matching Sterilizer Style */
+.som-calib-val-box {
+  width: 100%;
+  height: 22px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+/* Editable Box (Max Sensor, Calibration Value) -> White with Yellow/Amber Border */
+.som-calib-val-box--editable {
+  background: #ffffff;
+  border: 1.5px solid #facc15;
+  color: #0f172a;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.som-calib-val-box--editable:hover {
+  background: #fffdf0;
+  border-color: #eab308;
+  box-shadow: 0 0 6px rgba(234, 179, 8, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Read-only Box (Raw Value, Out/Amp/Ton/Temp) -> Light Grayish Blue Background with Gray Border */
+.som-calib-val-box--readonly {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  cursor: default;
+}
+
+/* Staged Edit Glow */
+.som-calib-val-box.som-edited-field {
+  background: #fef3c7 !important;
+  border-color: #f59e0b !important;
+  color: #92400e !important;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6) !important;
+}
+
+/* Numeric Keypad Backdrop & Modal */
+.som-numeric-keypad-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(2px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.som-numeric-keypad {
+  background: #ffffff;
+  border: 1px solid #ffdb3b;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+  width: 320px;
+  overflow: hidden;
+}
+
+.som-numeric-keypad-header {
+  background: #f8fafc;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.som-numeric-keypad-label {
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.som-numeric-keypad-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #f1f5f9;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0;
+}
+
+.som-numeric-keypad-close-btn:hover {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border-color: #fca5a5 !important;
+  transform: scale(1.06);
+}
+
+.som-numeric-keypad-close-btn:active {
+  transform: scale(0.95);
+}
+
+.som-numeric-keypad-display {
+  background: #ffffff;
+  margin: 16px;
+  border: 1px solid #ffdb3b;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.som-numeric-keypad-value {
+  font-size: 32px;
+  font-weight: bold;
+  color: #0f172a;
+}
+
+.som-numeric-keypad-unit {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 700;
+}

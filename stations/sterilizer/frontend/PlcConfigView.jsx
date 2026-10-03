@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import usePlcStore from "@core/store";
 import "./PlcConfigView.css";
 
 // Auth header helper — accessible by all components in this file
@@ -16,6 +17,14 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("devices");
   const [liveValues, setLiveValues] = useState({});
+
+  // ⚡ Real-time WebSocket store for ultra-fast live PLC stream (<50ms)
+  const plcTags = usePlcStore((state) => state.tags);
+  const initSocket = usePlcStore((state) => state.initSocket);
+
+  useEffect(() => {
+    if (initSocket) initSocket();
+  }, [initSocket]);
 
   // Modal state
   const [showDeviceModal, setShowDeviceModal] = useState(false);
@@ -106,6 +115,7 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
     data.enabled = data.enabled === "on" ? 1 : 0;
     data.rack = parseInt(data.rack);
     data.slot = parseInt(data.slot);
+    data.port = parseInt(data.port) || 1102;
 
     const url = currentDevice
       ? `/api/sterilizer/plc-config/devices/${currentDevice.id}`
@@ -293,9 +303,14 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
     const tagId = typeof tag === 'object' ? tag.id : tag;
     const tagName = typeof tag === 'object' ? tag.tag_name : null;
     
-    let liveData = liveValues[tagId];
-    if (liveData === undefined && tagName) {
-      liveData = liveValues[tagName];
+    // ⚡ 1. Check ultra-fast WebSocket stream first (instant real-time from PLC)
+    const wsTag = tagName && plcTags ? plcTags[tagName] : null;
+    let liveData = undefined;
+    if (wsTag && wsTag.value !== undefined && wsTag.value !== null) {
+      const ageSec = wsTag.timestamp ? Math.max(0, Math.round((Date.now() - wsTag.timestamp) / 1000)) : 0;
+      liveData = { value: wsTag.value, age_seconds: ageSec, stale: ageSec > 10 };
+    } else {
+      liveData = liveValues[tagId] !== undefined ? liveValues[tagId] : (tagName ? liveValues[tagName] : undefined);
     }
 
     if (liveData === undefined || liveData === null) {
@@ -866,6 +881,17 @@ const PlcConfigView = ({ user, stationSlug = "sterilizer" }) => {
                       className="som-input"
                       defaultValue={currentDevice?.slot || 1}
                       required
+                    />
+                  </div>
+                  <div className="form-group-full">
+                    <label className="som-label">Port (102: Hardware PLC, 1102: Simulator)</label>
+                    <input
+                      type="number"
+                      name="port"
+                      className="som-input"
+                      defaultValue={currentDevice?.port || 1102}
+                      required
+                      placeholder="1102 or 102"
                     />
                   </div>
                 </div>

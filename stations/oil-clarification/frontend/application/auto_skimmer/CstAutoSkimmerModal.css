@@ -1,0 +1,809 @@
+/* Overlay & Modal Container */
+.auto-skimmer-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 95px;
+  padding-bottom: 30px;
+  overflow-y: auto;
+  animation: modalFadeIn 0.25s ease-out;
+}
+
+.auto-skimmer-modal-container {
+  width: 960px;
+  max-width: 95vw;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.3);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  margin-top: 0;
+}
+
+/* Header */
+.auto-skimmer-modal-header {
+  background: #ffdb3b;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #eab308;
+}
+
+.auto-skimmer-modal-title h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.02em;
+}
+
+.auto-skimmer-subtitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.auto-skimmer-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.auto-skimmer-modal-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Body */
+.auto-skimmer-modal-body {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  background: #f8fafc;
+}
+
+/* Left Column: Multi-Layer Assembly Viewport */
+.cst-skimmer-visual-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cst-tank-assembly-viewport {
+  background: linear-gradient(180deg, #0b1329 0%, #1e293b 100%);
+  border-radius: 12px;
+  height: 440px;
+  border: 2px solid #334155;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.7);
+}
+
+/* Shared Layer Positioning */
+.cst-layer-asset {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+}
+
+/* Layer 1: Background Tank & Pipes */
+.layer-tank-bg {
+  z-index: 1;
+  width: 100% !important;
+  height: 100% !important;
+  transform: scale(2.5) translateY(2%);
+  transform-origin: center center;
+}
+
+/* Layer 2: Live Fluid Container Stack (Fits perfectly inside CST Tank cylinder + Conical Hopper) */
+.cst-fluids-stack {
+  position: absolute;
+  /* Kontrol Finetuning X, Y, dan Ukuran Lebar/Tinggi (Ubah nilai pixel / persen di variabel ini) */
+  --fluid-offset-x: 2px;    /* Geser Kiri (-) / Kanan (+) */
+  --fluid-offset-y: 0px;    /* Geser Atas (-) / Bawah (+) */
+  --fluid-scale-x: 0.98;     /* Skala Lebar Kanan-Kiri (1 = 100%, 0.9 = 90%, dsb) */
+  --fluid-scale-y: 1.050;     /* Skala Tinggi Atas-Bawah */
+
+  top: 31%;
+  left: 18%;
+  width: 50%;
+  height: 64.5%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0.95;
+  background: transparent;
+
+  /* Terapkan Kontrol X, Y & Scale */
+  transform: translate(var(--fluid-offset-x), var(--fluid-offset-y)) scale(var(--fluid-scale-x), var(--fluid-scale-y));
+  transform-origin: top center;
+
+  /* Clip path untuk membentuk silinder lurus di atas dan menguncup kerucut V-bottom di bagian bawah */
+  clip-path: polygon(
+    0% 0%, 
+    100% 0%, 
+    100% 72%, 
+    50% 100%, 
+    0% 72%
+  );
+}
+
+.cst-fluid-layer {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.cst-fluid-layer img {
+  position: absolute;
+  left: -2%;
+  width: 104%;
+  object-fit: cover;
+  display: block;
+  filter: contrast(1.05) brightness(1.05);
+}
+
+.cpo-layer {
+  height: 30%;
+  margin-top: 32px;
+}
+
+.cpo-layer img {
+  top: -15%;
+  height: 130%;
+}
+
+.water-layer {
+  height: 15%;
+}
+
+.water-layer img {
+  top: -18%;
+  height: 136%;
+}
+
+.sludge-layer {
+  height: 50%;
+}
+
+.sludge-layer img {
+  top: -10%;
+  height: 125%;
+}
+
+.fluid-tag {
+  position: absolute;
+  right: 6px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.8);
+  letter-spacing: 0.04em;
+}
+
+.cpo-tag {
+  top: 4px;
+  color: #fde047;
+}
+
+.water-tag {
+  top: 4px;
+  color: #38bdf8;
+}
+
+.sludge-tag {
+  bottom: 4px;
+  color: #d97706;
+}
+
+/* Layer 3: Sensor Rods (Double Floating Rod on Left) */
+.layer-sensor-rods {
+  z-index: 3;
+  --rod-offset-x: -10px;    /* Geser Kiri (-) / Kanan (+) */
+  --rod-offset-y: 30px;    /* Geser Atas (-) / Bawah (+) */
+  --rod-scale: 0.94;      /* Skala ukuran keseluruhan (1 = 100%, 0.85 = 85%) */
+
+  width: 20% !important;
+  height: 68% !important;
+  left: 19% !important;
+  top: 15% !important;
+  object-fit: contain;
+  transform: translate(var(--rod-offset-x), var(--rod-offset-y)) scale(var(--rod-scale));
+  transform-origin: top center;
+}
+
+/* Layer 4: Top Frame & Guardrail (Di Belakang Corong & Pelampung) */
+.layer-top-frame {
+  z-index: 4;
+}
+
+/* Layer 5: Moving Skimmer Funnel Assembly (PALING DEPAN) */
+.layer-skimmer-funnel {
+  z-index: 50 !important;
+  --funnel-offset-x: -0.5px;   /* Geser Kiri (-) / Kanan (+) */
+  --funnel-offset-y: -25px;   /* Fine-tune offset Y tambahan (-) / (+) */
+  --funnel-scale: 1.0;      /* Skala ukuran corong (1 = 100%, 0.9 = 90%, dsb) */
+
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Layer 6: Float Balls A & B (Double Floating Ball on Left Guide Rod) */
+.layer-float-ball {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 22px !important;
+  height: 22px !important;
+  left: 26.5% !important;
+  top: 0 !important;
+  object-fit: contain;
+}
+
+.layer-float-ball.float-a {
+  z-index: 50 !important;
+  --float-a-offset-x: -10px;   /* Geser Kiri (-) / Kanan (+) Float A (Atas) */
+  --float-a-offset-y: 277px;   /* Setting Y Float A pilihan user */
+  --float-a-scale: 1.0;      /* Skala Float A */
+}
+
+.layer-float-ball.float-b {
+  z-index: 50 !important;
+  --float-b-offset-x: -10px;   /* Geser Kiri (-) / Kanan (+) Float B (Bawah) */
+  --float-b-offset-y: 153px;   /* Setting Y Float B pilihan user */
+  --float-b-scale: 1.0;      /* Skala Float B */
+}
+
+/* Sensor Fault Indicators inside Viewport */
+.sensor-fault-indicator {
+  position: absolute;
+  z-index: 55;
+  background: rgba(220, 38, 38, 0.9);
+  color: #ffffff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid #fca5a5;
+}
+
+.sensor-fault-indicator.float-a-fault {
+  left: 20%;
+  top: 35%;
+}
+
+.sensor-fault-indicator.float-b-fault {
+  left: 20%;
+  top: 55%;
+}
+
+/* Skimmer Position Live Badge */
+.skimmer-position-badge {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.status-indicator-lamp {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-indicator-lamp.active {
+  background: #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
+}
+
+.status-indicator-lamp.idle {
+  background: #94a3b8;
+}
+
+/* SCADA Telemetry Right Column */
+.scada-telemetry-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scada-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+}
+
+.focal-status-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.focal-status-card.active-glow {
+  border-color: #bbf7d0;
+  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.12);
+}
+
+.indicator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-subtitle-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+  animation: pulseLamp 1.6s infinite;
+}
+
+.card-subtitle {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.status-pill {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.status-pill.active {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.status-pill.idle {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+.indicator-status-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.indicator-lamp-3d {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  border: 2px solid #cbd5e1;
+}
+
+.indicator-lamp-3d.glowing-green {
+  border-color: #86efac;
+  background: radial-gradient(circle at 35% 35%, #86efac 0%, #22c55e 55%, #15803d 100%);
+  box-shadow: 0 0 22px rgba(34, 197, 94, 0.7);
+  animation: pulseLamp 1.8s infinite;
+}
+
+.indicator-lamp-3d.idle-grey {
+  border-color: #94a3b8;
+  background: radial-gradient(circle at 35% 35%, #e2e8f0 0%, #94a3b8 60%, #475569 100%);
+}
+
+.lamp-bezel {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.indicator-status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.indicator-title {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.indicator-desc {
+  font-size: 0.73rem;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+/* Focal Box */
+.disch-focal-box {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.disch-focal-box.discharging {
+  border-color: #fde68a;
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+}
+
+.focal-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.focal-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.focal-value {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #b45309;
+  font-variant-numeric: tabular-nums;
+}
+
+.focal-value small {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.focal-progress-track {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.focal-progress-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.focal-progress-bar.active-amber {
+  background: linear-gradient(90deg, #fde047 0%, #d97706 100%);
+}
+
+.focal-progress-bar.idle-grey {
+  background: #cbd5e1;
+}
+
+/* Telemetry Grid */
+.card-header-row {
+  margin-bottom: 12px;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.05em;
+}
+
+.scada-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.scada-metric-tile {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scada-metric-tile.full-width {
+  grid-column: 1 / -1;
+}
+
+.tile-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.tile-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.tile-value {
+  font-size: 1.2rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile-value small {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.tile-value.blue {
+  color: #0284c7;
+}
+
+.tile-value.teal {
+  color: #0d9488;
+}
+
+.tile-value.orange {
+  color: #ea580c;
+}
+
+.tile-track {
+  width: 100%;
+  height: 5px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.tile-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.tile-bar.blue {
+  background: linear-gradient(90deg, #38bdf8, #0284c7);
+}
+
+.tile-bar.teal {
+  background: linear-gradient(90deg, #2dd4bf, #0d9488);
+}
+
+.tile-bar.orange {
+  background: linear-gradient(90deg, #fb923c, #ea580c);
+}
+
+/* Header Actions & Mode Toggles */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mode-toggle-group {
+  display: flex;
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+}
+
+.mode-btn {
+  border: none;
+  background: transparent;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.03em;
+}
+
+.mode-btn.active.live {
+  background: #0f172a;
+  color: #38bdf8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.mode-btn.active.demo {
+  background: #ea580c;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Alert Banners */
+.system-alert-banner {
+  padding: 8px 16px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.02em;
+}
+
+.system-alert-banner.emergency {
+  background: #fef2f2;
+  color: #dc2626;
+  border-bottom: 1px solid #fca5a5;
+}
+
+.system-alert-banner.fault {
+  background: #fffbe6;
+  color: #d97706;
+  border-bottom: 1px solid #fde68a;
+}
+
+.system-alert-banner.anomaly {
+  background: #eff6ff;
+  color: #2563eb;
+  border-bottom: 1px solid #bfdbfe;
+}
+
+/* Indicator Lamps Extra Colors */
+.indicator-lamp-3d.emergency-red {
+  border-color: #fca5a5;
+  background: radial-gradient(circle at 35% 35%, #fca5a5 0%, #ef4444 55%, #991b1b 100%);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
+  animation: pulseLamp 1.2s infinite;
+}
+
+.indicator-lamp-3d.fault-yellow {
+  border-color: #fde68a;
+  background: radial-gradient(circle at 35% 35%, #fef08a 0%, #eab308 55%, #854d0e 100%);
+  box-shadow: 0 0 18px rgba(234, 179, 8 0.7);
+}
+
+.live-pulse-dot.demo-dot {
+  background: #ea580c;
+  box-shadow: 0 0 8px rgba(234, 88, 12, 0.8);
+}
+
+/* Sensor Fault Indicators inside Viewport */
+.sensor-fault-indicator {
+  position: absolute;
+  z-index: 55;
+  background: rgba(220, 38, 38, 0.9);
+  color: #ffffff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid #fca5a5;
+}
+
+.sensor-fault-indicator.float-a-fault {
+  left: 28%;
+  top: 40%;
+}
+
+.sensor-fault-indicator.float-b-fault {
+  right: 28%;
+  top: 40%;
+}
+
+/* Header & Tile Extras */
+.tile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tile-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.tile-tag.ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tile-tag.err {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.tile-sub-info {
+  font-size: 0.63rem;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.tile-value.red {
+  color: #dc2626;
+}
+
+.tile-value.green {
+  color: #16a34a;
+}
+
+.focal-footer-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* Responsive CSS Layout Adaptations */
+@media (max-width: 1024px) {
+  .auto-skimmer-modal-container {
+    width: 90vw;
+  }
+
+  .auto-skimmer-modal-body {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .cst-tank-assembly-viewport {
+    height: 380px;
+  }
+}
+
+@media (max-width: 640px) {
+  .auto-skimmer-modal-overlay {
+    padding-top: 20px;
+  }
+
+  .auto-skimmer-modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .scada-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}

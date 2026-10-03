@@ -12,6 +12,16 @@ export function requireAuth(req, res, next) {
   }
 }
 
+export function optionalAuth(req, _res, next) {
+  const token = req.headers.authorization?.split(' ')[1] || req.cookies?.kip_token;
+  if (token) {
+    try {
+      req.user = jwt.verify(token, JWT_SECRET);
+    } catch (_) {}
+  }
+  next();
+}
+
 export function authorize(roles = []) {
   const allowed = (typeof roles === 'string' ? [roles] : roles).map(r => r.toLowerCase());
   return (req, res, next) => {

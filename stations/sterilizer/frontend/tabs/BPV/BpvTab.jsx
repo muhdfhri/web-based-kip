@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
 import "./BpvTab.css";
-import bpvImageUrl from "../../assets/BPV-PT-KIP.webp";
+import bpvImageUrl from "../../assets/BPV-PT-KIP.jpeg";
 import valvePositionerSvg from "../../assets/item/valve_positioner.svg";
 import { EquipmentIconSVG, IpomasMonitorCardSVG } from "../../components/SharedComponents.jsx";
 import { WTFlowOverlay } from "../../components/WTFlowBuilder.jsx";
@@ -352,7 +352,7 @@ export default function BpvTab({
                           0     0     0     1 0"/>
               </filter>
             </defs>
-            <image href={bpvImageUrl} width="2600" x="-230" />
+            <image href={bpvImageUrl} width="2600" x="-230" y="171" />
 
             {viewMode === "maintenance" && (
               <foreignObject x="650" y="20" width="600" height="60" style={{ overflow: "visible" }}>
@@ -387,7 +387,7 @@ export default function BpvTab({
               )}
               {/* Flow 1 */}
               <SteamFlowSVG
-                d="M 1118,706 L 1116,542 Q 1116,522 1096,522 L -189,522 Q -209,522 -209,502 L -208,1"
+                d="M 1118,711 L 1120,214 Q 1120,194 1140,194 L 2367,193"
                 active={true}
                 mode="flowing"
                 color="#38bdf8"
@@ -395,7 +395,7 @@ export default function BpvTab({
               />
               {/* Flow 2 */}
               <SteamFlowSVG
-                d="M 1205,709 L 1205,508 Q 1205,488 1185,488 L -150,488 Q -170,488 -170,468 L -173,3"
+                d="M 1204,705 L 1206,247 Q 1206,227 1226,227 L 2367,224"
                 active={true}
                 mode="flowing"
                 color="#38bdf8"

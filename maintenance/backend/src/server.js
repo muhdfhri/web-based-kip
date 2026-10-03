@@ -58,6 +58,7 @@ app.post('/api/maintenance/notify-ticket', (req, res) => {
 });
 
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/operator', maintenanceRoutes);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'maintenance-service', mill: 'KIP', wsClients: wsClients.size }));
 

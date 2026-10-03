@@ -315,26 +315,27 @@ export function SterilizerStatusPanelSVG({
   y,
   title = "STERILIZER 1",
   status = "EMERGENCY",
+  mode = "AUTO",
   recipe = "NORMAL",
-  actualStep = "1",
   totalTime = "0.0",
-  doorIn = "OPEN",
-  doorOut = "OPEN",
-  pressure = "0.0",
-  temp = "0",
+  stepTime = "0.0",
+  cycleTime = "0 : 0",
+  totalCycleTime = "0 : 0",
+  actualStep = "0",
+  pressure = "0.00",
   width = 190,
   scale = 1,
   onClick,
   style = {},
 }) {
-  const cardHeight = 240;
+  const cardHeight = 265;
 
   const Row = ({ label, value, unit, valueColor = "#0f172a" }) => {
     const isNoTag = !value || String(value).trim().toLowerCase() === "no tag" || String(value).trim() === "--";
     const finalColor = isNoTag ? "#94a3b8" : valueColor;
     return (
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 0", borderBottom: "1px solid #f1f5f9" }}>
-        <span style={{ color: "#475569", fontSize: "11px", fontWeight: 700 }}>{label}</span>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "2.5px 0", borderBottom: "1px solid #f1f5f9" }}>
+        <span style={{ color: "#475569", fontSize: "10.5px", fontWeight: 700 }}>{label}</span>
         <div style={{ textAlign: "right", display: "flex", alignItems: "baseline", gap: "3px" }}>
           <span style={{ color: finalColor, fontSize: "11px", fontWeight: 900, fontStyle: isNoTag ? "italic" : "normal" }}>{value}</span>
           {unit && !isNoTag && <span style={{ color: "#475569", fontSize: "10px", fontWeight: 700 }}>{unit}</span>}
@@ -391,15 +392,16 @@ export function SterilizerStatusPanelSVG({
           </div>
           
           {/* Body */}
-          <div style={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <div style={{ padding: "5px 8px", display: "flex", flexDirection: "column", gap: "1px" }}>
             <Row label="STATUS" value={status} valueColor={status === "EMERGENCY" ? "#ef4444" : "#0f172a"} />
-            <Row label="RECIPE" value={recipe} />
-            <Row label="ACTUAL STEP" value={actualStep} valueColor="#ef4444" />
+            <Row label="MODE" value={mode} />
+            <Row label="SET. RECIPE TIME" value={recipe} />
             <Row label="TOTAL TIME" value={totalTime} unit="min" valueColor="#ef4444" />
-            <Row label="DOOR (IN)" value={doorIn} />
-            <Row label="DOOR (OUT)" value={doorOut} />
-            <Row label="PRESSURE" value={pressure} unit="Bar" valueColor="#ef4444" />
-            <Row label="TEMP" value={temp} unit="°C" valueColor="#ef4444" />
+            <Row label="STEP TIME" value={stepTime} unit="min" valueColor="#ef4444" />
+            <Row label="CYCLE TIME" value={cycleTime} valueColor="#ef4444" />
+            <Row label="TOTAL CYCLE TIME" value={totalCycleTime} valueColor="#ef4444" />
+            <Row label="ACTUAL STEP" value={actualStep} valueColor="#ef4444" />
+            <Row label="PRESSURE" value={pressure} unit="bar" valueColor="#ef4444" />
           </div>
         </div>
       </foreignObject>

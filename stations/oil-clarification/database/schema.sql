@@ -1,28 +1,28 @@
--- DATABASE FOR STATION: mewah_kip_efb_plant
--- Domain: EFB Plant Station - Monitoring & Logsheets
+-- DATABASE FOR STATION: mewah_kip_oil_clarification
+-- Domain: Oil Clarification Station - Monitoring & Logsheets
 
 SET NAMES utf8mb4;
 SET time_zone = "+00:00";
 SET FOREIGN_KEY_CHECKS = 0;
 
-CREATE DATABASE IF NOT EXISTS `mewah_kip_efb_plant`
+CREATE DATABASE IF NOT EXISTS `mewah_kip_oil_clarification`
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-USE `mewah_kip_efb_plant`;
+USE `mewah_kip_oil_clarification`;
 
 -- ── DB Users (Application-Level access) ──
 CREATE USER IF NOT EXISTS 'kip_station_user'@'localhost' IDENTIFIED BY 'CHANGE_THIS_PASSWORD';
-GRANT ALL PRIVILEGES ON mewah_kip_efb_plant.* TO 'kip_station_user'@'localhost';
+GRANT ALL PRIVILEGES ON mewah_kip_oil_clarification.* TO 'kip_station_user'@'localhost';
 
 -- User untuk plc-collector (Snap7) membaca device & tag
 CREATE USER IF NOT EXISTS 'kip_snap7'@'localhost' IDENTIFIED BY 'CHANGE_THIS_PASSWORD';
-GRANT SELECT ON mewah_kip_efb_plant.plc_devices TO 'kip_snap7'@'localhost';
-GRANT SELECT ON mewah_kip_efb_plant.plc_tags TO 'kip_snap7'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON mewah_kip_efb_plant.plc_tag_values TO 'kip_snap7'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON mewah_kip_efb_plant.plc_tag_latest TO 'kip_snap7'@'localhost';
-GRANT SELECT, UPDATE ON mewah_kip_efb_plant.plc_commands TO 'kip_snap7'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON mewah_kip_efb_plant.plc_desired_state TO 'kip_snap7'@'localhost';
+GRANT SELECT ON mewah_kip_oil_clarification.plc_devices TO 'kip_snap7'@'localhost';
+GRANT SELECT ON mewah_kip_oil_clarification.plc_tags TO 'kip_snap7'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON mewah_kip_oil_clarification.plc_tag_values TO 'kip_snap7'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON mewah_kip_oil_clarification.plc_tag_latest TO 'kip_snap7'@'localhost';
+GRANT SELECT, UPDATE ON mewah_kip_oil_clarification.plc_commands TO 'kip_snap7'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON mewah_kip_oil_clarification.plc_desired_state TO 'kip_snap7'@'localhost';
 FLUSH PRIVILEGES;
 
 -- ─────────────────────────────────────────────────────────────

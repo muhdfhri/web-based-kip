@@ -407,6 +407,15 @@ function DashboardTab() {
     return !isNaN(incDate.getTime()) && incDate >= shiftStart && incDate <= shiftEnd;
   });
 
+  // Filter checkpoints scanned today
+  const checkpointsToday = checkpoints.filter(cp => {
+    const rawDate = cp.verified_at || cp.created_at || cp.createdAt;
+    if (!rawDate) return false;
+    const formatted = typeof rawDate === 'string' ? rawDate.replace(' ', 'T') : rawDate;
+    const cpDate = new Date(formatted);
+    return !isNaN(cpDate.getTime()) && cpDate >= shiftStart && cpDate <= shiftEnd;
+  });
+
   // Filter Queues according to Selected Time Filter (Daily, Weekly, Monthly)
   const filteredQueuesForChart = queues.filter(q => {
     const rawDate = q.created_at || q.check_in_at || q.checkInAt || q.registered_at || q.timestamp || q.createdAt;
@@ -871,12 +880,10 @@ function DashboardTab() {
           />
           <MetricCard
             style={{ flex: 1, minHeight: 0 }}
-            icon={<FaExclamationTriangle size={14} />}
-            label="Open Incidents"
-            value={summary.openIncidents}
-            valueColor={summary.openIncidents > 0 ? colors.danger : colors.textStrong}
-            iconColor={summary.openIncidents > 0 ? colors.danger : colors.textMuted}
-            trendLabel={summary.openIncidents > 0 ? `${incidentsToday.length} reported today` : `${incidents.length} total logged, none open`}
+            icon={<FaMapMarkerAlt size={14} />}
+            label="Total Checkpoints"
+            value={checkpointsToday.length}
+            trendLabel="scanned today"
           />
           <MetricCard
             style={{ flex: 1, minHeight: 0 }}

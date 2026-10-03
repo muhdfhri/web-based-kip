@@ -26,7 +26,29 @@ const TagEditorModal = ({
   availableTags = [],
   saving,
 }) => {
-  const [localTags, setLocalTags] = useState({});
+  const [localTags, setLocalTags] = useState(() => {
+    if (!data) return {};
+    const initial = {};
+    if (data.signals && data.signals.length > 0) {
+      data.signals.forEach((sig) => {
+        const key = `${data.targetId}__${sig.key}`;
+        initial[key] = tagMap[key] || "";
+      });
+    } else {
+      const targets = data.subs.length > 0 ? data.subs : [data.targetId];
+      targets.forEach((t) => {
+        initial[`${t}__STATUS`] = tagMap[`${t}__STATUS`] || "";
+        initial[`${t}__START`] = tagMap[`${t}__START`] || "";
+        initial[`${t}__STOP`] = tagMap[`${t}__STOP`] || "";
+      });
+
+      if (data.subs.length === 0) {
+        initial[`${data.targetId}__MONITOR`] =
+          tagMap[`${data.targetId}__MONITOR`] || "";
+      }
+    }
+    return initial;
+  });
 
   useEffect(() => {
     if (data) {
@@ -53,7 +75,7 @@ const TagEditorModal = ({
 
       setLocalTags(initial);
     }
-  }, [data, tagMap]);
+  }, [data?.targetId]);
 
   if (!data) return null;
 
@@ -498,7 +520,17 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
               );
             }
           });
-          setTagMap(restored);
+          setTagMap((prev) => {
+            const prevKeys = Object.keys(prev);
+            const restoredKeys = Object.keys(restored);
+            if (
+              prevKeys.length === restoredKeys.length &&
+              restoredKeys.every((k) => prev[k] === restored[k])
+            ) {
+              return prev;
+            }
+            return restored;
+          });
         }
       } catch (err) {
         console.error("Failed to load station mappings", err);
@@ -554,9 +586,26 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
 
       setTagMap((prev) => ({ ...prev, ...updatedTags }));
       setTagEdit(null);
+
+      // Refresh mappings immediately from backend
+      try {
+        const checkRes = await fetch("/api/sterilizer/plc-config/station-mappings", { headers: authHeaders() });
+        const checkData = await checkRes.json();
+        if (checkData.success && Array.isArray(checkData.data)) {
+          const restored = {};
+          checkData.data.forEach((mapping) => {
+            if (mapping.tag_id !== null && mapping.tag_id !== undefined && String(mapping.tag_id) !== "null" && String(mapping.tag_id) !== "") {
+              restored[`${mapping.equipment}__${mapping.signal_key}`] = String(mapping.tag_id);
+            }
+          });
+          setTagMap(restored);
+        }
+      } catch {
+        /* ignore */
+      }
     } catch (err) {
       console.error("Failed to save tag mappings", err);
-      alert("Failed to save PLC tag configuration.");
+      alert("Failed to save PLC tag configuration: " + err.message);
     } finally {
       setSavingTags(false);
     }
@@ -815,20 +864,20 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
     const index = Math.round(
       (relativeX / plotWidth) * (trendData.resolution - 1),
     );
-    const labels = getXAxisLabels(trendPeriod);
 
-    // Format timestamp with Date
-    const now = new Date();
-    const dateStr = now.toLocaleDateString("id-ID", {
+    // Format timestamp accurately based on trend time range
+    const { start, end } = getTrendTimeRange();
+    const fraction = trendData.resolution > 1 ? index / (trendData.resolution - 1) : 0;
+    const pointTime = new Date(start + fraction * (end - start));
+
+    const dateStr = pointTime.toLocaleDateString("id-ID", {
       day: "2-digit",
       month: "short",
     });
-    let timeLabel = "";
-
-    if (trendPeriod === "H")
-      timeLabel = `${now.getHours().toString().padStart(2, "0")}:${labels[index]}`;
-    else if (trendPeriod === "D") timeLabel = `${labels[index]}:00`;
-    else timeLabel = `Tgl ${labels[index]}`;
+    const timeLabel = pointTime.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).replace(/\./g, ":");
 
     setHoverData({
       index,
@@ -931,12 +980,14 @@ function SterilizerStationPage({ user, onSelectSubmenu, configMode: propConfigMo
         } else if (id.endsWith("_status")) {
           signals = [
             { key: "STATUS", label: "Status" },
+            { key: "MODE", label: "Mode (Auto/Manual)" },
+            { key: "RECIPE", label: "Set. Recipe Time" },
+            { key: "TOTAL_TIME", label: "Total Time (min)" },
+            { key: "STEP_TIME", label: "Step Time (min)" },
+            { key: "CYCLE_TIME", label: "Cycle Time" },
+            { key: "TOTAL_CYCLE_TIME", label: "Total Cycle Time" },
             { key: "STEP", label: "Actual Step" },
-            { key: "TOTAL_TIME", label: "Total Time" },
-            { key: "DOOR_IN", label: "Door (In)" },
-            { key: "DOOR_OUT", label: "Door (Out)" },
-            { key: "PRESSURE", label: "Pressure" },
-            { key: "TEMP", label: "Temperature" },
+            { key: "PRESSURE", label: "Pressure (Bar)" },
           ];
         } else if (id.endsWith("_valve_auto")) {
           signals = [

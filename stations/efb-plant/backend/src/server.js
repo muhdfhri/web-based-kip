@@ -6,19 +6,21 @@ import logsheetRoutes from './routes/logsheetRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import plcConfigRoutes from './routes/plcConfigRoutes.js';
 import { startAlarmWorker } from './workers/alarmWorker.js';
+import { startPlcCollector } from './plcCollector.js';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3100;
-const STATION_SLUG = process.env.STATION_SLUG || 'template';
+const PORT = process.env.PORT || 3107;
+const STATION_SLUG = process.env.STATION_SLUG || 'efb-plant';
 
 // ── Middleware ──
 const corsOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
   : true;
 app.use(cors({ origin: corsOrigins, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // ── Routes (Dynamic based on STATION_SLUG) ──
 app.use(`/api/${STATION_SLUG}/monitor`, monitorRoutes);
@@ -31,10 +33,15 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', station: STATION_SLUG, mill: 'KIP' });
 });
 
-// ── Start Server & Redis Alarm Worker ──
+// ── Start Server & PLC Collector / Redis Worker ──
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[station-${STATION_SLUG}] listening on port ${PORT}`);
   
+  // Start the PLC collector (Snap7 polling + Redis pub/sub)
+  startPlcCollector().catch(err => {
+    console.error(`[station-${STATION_SLUG}] Failed to start PLC collector:`, err.message);
+  });
+
   // Start the Redis alarm subscriber
   startAlarmWorker().catch(err => {
     console.error(`[station-${STATION_SLUG} worker] Failed to start alarm worker:`, err.message);

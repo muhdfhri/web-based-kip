@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FaExclamationTriangle, FaSearch, FaFilter, FaCheckCircle, FaTools, FaClock, FaEye, FaExternalLinkAlt, FaShieldAlt } from 'react-icons/fa';
+import { FaExclamationTriangle, FaSearch, FaFilter, FaCheckCircle, FaTools, FaClock, FaEye, FaExternalLinkAlt, FaShieldAlt, FaLock } from 'react-icons/fa';
 
 function IncidentsTab() {
   const [incidents, setIncidents] = useState([]);
@@ -85,8 +85,10 @@ function IncidentsTab() {
     );
   }
 
+  const isUnderDevelopment = true;
+
   return (
-    <div className="som-view-container" style={{ padding: '0', background: '#f8fafc', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+    <div className="som-view-container" style={{ position: 'relative', padding: '0', background: '#f8fafc', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
 
       {/* ── TOP METRICS PIPELINE BAR (FLUSH FULL-WIDTH ALIGNMENT) ── */}
       <div style={{
@@ -544,6 +546,27 @@ function IncidentsTab() {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* ── COMING SOON OVERLAY ── */}
+      {isUnderDevelopment && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(3px)',
+          zIndex: 999,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          color: '#ffffff'
+        }}>
+          <div style={{ background: 'rgba(255,255,255,0.1)', padding: '24px', borderRadius: '50%', marginBottom: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <FaLock style={{ fontSize: '42px', color: '#FFDB3B' }} />
+          </div>
+          <span style={{ fontSize: '14px', fontWeight: '500', color: '#cbd5e1', marginTop: '8px' }}>The Incident Anomaly module is currently locked for development.</span>
+        </div>
       )}
 
     </div>

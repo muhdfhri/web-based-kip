@@ -44,18 +44,17 @@ router.get('/devices', async (_req, res) => {
 
 // POST /api/{station}/plc-config/devices
 router.post('/devices', requireAuth, authorize(['developer', 'admin']), async (req, res) => {
-  const { name, ip_address, rack, slot, enabled } = req.body;
+  const { name, ip_address, rack, slot, enabled, port } = req.body;
+  const devPort = parseInt(port || process.env.PLC_PORT || '1102', 10);
   try {
     const [result] = await dbPoolPlc.query(
-      `INSERT INTO plc_devices (name, ip_address, rack, slot, enabled)
-       VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT (name) DO UPDATE SET ip_address = EXCLUDED.ip_address, rack = EXCLUDED.rack, slot = EXCLUDED.slot, enabled = EXCLUDED.enabled
-       RETURNING id`,
-      [name, ip_address, rack, slot, enabled !== undefined ? (enabled ? true : false) : true]
+      `INSERT INTO plc_devices (name, ip_address, rack, slot, enabled, port)
+       VALUES (?,?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE ip_address=?, rack=?, slot=?, enabled=?, port=?`,
+      [name, ip_address, rack, slot, enabled ?? 1, devPort, ip_address, rack, slot, enabled ?? 1, devPort]
     );
-    const id = (result[0] && result[0].id) || result.insertId;
-    if (id) resetDeviceBackoff(id);
-    res.json({ success: true, id });
+    if (result.insertId) resetDeviceBackoff(result.insertId);
+    res.json({ success: true, id: result.insertId });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -63,11 +62,12 @@ router.post('/devices', requireAuth, authorize(['developer', 'admin']), async (r
 
 // PUT /api/{station}/plc-config/devices/:id
 router.put('/devices/:id', requireAuth, authorize(['developer', 'admin']), async (req, res) => {
-  const { name, ip_address, rack, slot, enabled } = req.body;
+  const { name, ip_address, rack, slot, enabled, port } = req.body;
+  const devPort = parseInt(port || process.env.PLC_PORT || '1102', 10);
   try {
     await dbPoolPlc.query(
-      `UPDATE plc_devices SET name=?, ip_address=?, rack=?, slot=?, enabled=? WHERE id=?`,
-      [name, ip_address, rack, slot, enabled, req.params.id]
+      `UPDATE plc_devices SET name=?, ip_address=?, rack=?, slot=?, enabled=?, port=? WHERE id=?`,
+      [name, ip_address, rack, slot, enabled, devPort, req.params.id]
     );
     resetDeviceBackoff(req.params.id);
     res.json({ success: true });
@@ -126,13 +126,12 @@ router.post('/tags', requireAuth, authorize(['developer', 'admin']), async (req,
   try {
     const [result] = await dbPoolPlc.query(
       `INSERT INTO plc_tags (plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled, node_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (tag_name) DO UPDATE SET plc_id = EXCLUDED.plc_id, db_number = EXCLUDED.db_number, byte_offset = EXCLUDED.byte_offset, bit_offset = EXCLUDED.bit_offset, data_type = EXCLUDED.data_type, access = EXCLUDED.access, enabled = EXCLUDED.enabled, node_id = EXCLUDED.node_id
-       RETURNING id`,
-      [plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled !== undefined ? (enabled ? true : false) : true, node_id || 'DB']
+       VALUES (?,?,?,?,?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE db_number=?, byte_offset=?, bit_offset=?, data_type=?, access=?, enabled=?, node_id=?`,
+      [plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled, node_id || 'DB',
+        db_number, byte_offset, bit_offset, data_type, access, enabled, node_id || 'DB']
     );
-    const id = (result[0] && result[0].id) || result.insertId;
-    res.json({ success: true, id });
+    res.json({ success: true, id: result.insertId });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -145,7 +144,7 @@ router.put('/tags/:id', requireAuth, authorize(['developer', 'admin']), async (r
   try {
     await dbPoolPlc.query(
       `UPDATE plc_tags SET plc_id=?, db_number=?, byte_offset=?, bit_offset=?, data_type=?, tag_name=?, access=?, enabled=?, node_id=? WHERE id=?`,
-      [plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled !== undefined ? (enabled ? true : false) : true, node_id || 'DB', req.params.id]
+      [plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled, node_id || 'DB', req.params.id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -180,14 +179,14 @@ router.post('/tags/import', requireAuth, authorize(['developer', 'admin']), uplo
       r.data_type,
       r.tag_name,
       r.access,
-      r.enabled ? true : false,
+      r.enabled ? 1 : 0,
     ]);
     if (values.length === 0) {
       return res.status(400).json({ success: false, error: 'Empty Excel data' });
     }
     const placeholders = values.map(() => '(?,?,?,?,?,?,?,?)').join(',');
     const sql = `INSERT INTO plc_tags (plc_id, db_number, byte_offset, bit_offset, data_type, tag_name, access, enabled) VALUES ${placeholders}
-      ON CONFLICT (tag_name) DO UPDATE SET plc_id = EXCLUDED.plc_id, db_number = EXCLUDED.db_number, byte_offset = EXCLUDED.byte_offset, bit_offset = EXCLUDED.bit_offset, data_type = EXCLUDED.data_type, access = EXCLUDED.access, enabled = EXCLUDED.enabled`;
+      ON DUPLICATE KEY UPDATE db_number=VALUES(db_number), byte_offset=VALUES(byte_offset), bit_offset=VALUES(bit_offset), data_type=VALUES(data_type), access=VALUES(access), enabled=VALUES(enabled)`;
     const flatValues = values.flat();
     await dbPoolPlc.query(sql, flatValues);
     res.json({ success: true, imported: values.length });
@@ -234,7 +233,7 @@ router.post('/station-mappings', async (req, res) => {
         await dbPoolPlc.query(
           `INSERT INTO station_tag_mappings (station, equipment, signal_key, tag_id)
            VALUES (?, ?, ?, ?)
-           ON CONFLICT (station, equipment, signal_key) DO UPDATE SET tag_id = EXCLUDED.tag_id, updated_at = CURRENT_TIMESTAMP`,
+           ON DUPLICATE KEY UPDATE tag_id = VALUES(tag_id), updated_at = NOW()`,
           [station, equipment, signal_key, tag_id]
         );
       }

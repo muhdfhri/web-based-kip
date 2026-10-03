@@ -37,10 +37,7 @@ export default defineConfig({
         new URL("../../stations/kernel-plant/frontend", import.meta.url),
       ),
       "@stations/oil-clarification": fileURLToPath(
-        new URL(
-          "../../stations/oil-clarification/frontend/src",
-          import.meta.url,
-        ),
+        new URL("../../stations/oil-clarification/frontend", import.meta.url),
       ),
       "@stations/boiler-house": fileURLToPath(
         new URL("../../stations/boiler-house/frontend/src", import.meta.url),

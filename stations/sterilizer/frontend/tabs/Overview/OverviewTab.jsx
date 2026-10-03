@@ -23,8 +23,8 @@ import valvePositionerSvg from "../../assets/item/valve_positioner.svg";
 import valvePneumaticActuatorSvg from "../../assets/item/valve_pneumatic_actuator.svg";
 import topOpenPng from "../../assets/TOP_OPEN-removebg-up.png";
 import topClosePng from "../../assets/TOP_CLOSE-removebg-up.png";
-import botOpenPng from "../../assets/BOT_OPEN-removebg-up.png";
-import botClosePng from "../../assets/BOT_CLOSE-removebg-up.png";
+import botOpenPng from "../../assets/BOT_OPEN.png";
+import botClosePng from "../../assets/BOT_CLOSE.png";
 
 import {
   IpomasMonitorCardSVG,
@@ -85,8 +85,8 @@ const TOP_DOORS_CONFIG = [
     n: 1,
     openX: -135,
     openY: -17,
-    openW: 173,
-    openH: 173,
+    openW: 100,
+    openH: 160,
     closeX: -100,
     closeY: 15,
     closeW: 164,
@@ -97,8 +97,8 @@ const TOP_DOORS_CONFIG = [
     n: 2,
     openX: 510,
     openY: -17,
-    openW: 173,
-    openH: 173,
+    openW: 120,
+    openH: 160,
     closeX: 560,
     closeY: 15,
     closeW: 164,
@@ -109,8 +109,8 @@ const TOP_DOORS_CONFIG = [
     n: 3,
     openX: 1193,
     openY: -17,
-    openW: 173,
-    openH: 173,
+    openW: 100,
+    openH: 160,
     closeX: 1225,
     closeY: 15,
     closeW: 164,
@@ -121,8 +121,8 @@ const TOP_DOORS_CONFIG = [
     n: 4,
     openX: 1860,
     openY: -17,
-    openW: 173,
-    openH: 173,
+    openW: 90,
+    openH: 160,
     closeX: 1885,
     closeY: 15,
     closeW: 164,
@@ -134,52 +134,87 @@ const BOT_DOORS_CONFIG = [
   // --- STERILIZER 1 (ST1) OUTLET DOOR ---
   {
     n: 1,
-    openX: 122,
-    openY: 580,
+    openX: -434,
+    openY: 668,
     openW: 190,
     openH: 190,
-    closeX: 127,
-    closeY: 609,
-    closeW: 150,
-    closeH: 150,
+    openRotation: -5,
+    closeX: -345,
+    closeY: 730,
+    closeW: 164,
+    closeH: 188,
+    closeRotation: 0,
   },
   // --- STERILIZER 2 (ST2) OUTLET DOOR ---
   {
     n: 2,
-    openX: 768,
-    openY: 589,
+    openX: 224,
+    openY: 668,
     openW: 190,
     openH: 190,
-    closeX: 767,
-    closeY: 609,
-    closeW: 150,
-    closeH: 150,
+    openRotation: -5,
+    closeX: 317,
+    closeY: 730,
+    closeW: 164,
+    closeH: 188,
+    closeRotation: 0,
   },
   // --- STERILIZER 3 (ST3) OUTLET DOOR ---
   {
     n: 3,
-    openX: 1444,
-    openY: 582,
+    openX: 890,
+    openY: 668,
     openW: 190,
     openH: 190,
-    closeX: 1447,
-    closeY: 609,
-    closeW: 150,
-    closeH: 150,
+    openRotation: -5,
+    closeX: 980,
+    closeY: 730,
+    closeW: 164,
+    closeH: 188,
+    closeRotation: 0,
   },
   // --- STERILIZER 4 (ST4) OUTLET DOOR ---
   {
     n: 4,
-    openX: 2115,
-    openY: 589,
+    openX: 1554,
+    openY: 668,
     openW: 190,
     openH: 190,
-    closeX: 2115,
-    closeY: 609,
-    closeW: 150,
-    closeH: 150,
+    openRotation: -5,
+    closeX: 1640,
+    closeY: 730,
+    closeW: 164,
+    closeH: 188,
+    closeRotation: 0,
   },
 ];
+
+// Individual Line View (line1, line2, line3, line4) Doors Config
+const LINE_TOP_DOOR_CONFIG = {
+  openX: 630,
+  openY: -30,
+  openW: 130,
+  openH: 190,
+  openRotation: 0,
+  closeX: 682,
+  closeY: 22,
+  closeW: 170,
+  closeH: 195,
+  closeRotation: 0,
+};
+
+const LINE_BOT_DOOR_CONFIG = {
+  openX: 345,
+  openY: 680,
+  openW: 190,
+  openH: 190,
+  openRotation: -5,
+  closeX: 435,
+  closeY: 740,
+  closeW: 170,
+  closeH: 195,
+  closeRotation: 0,
+};
 
 // Overview Tag Monitor Cards (Grouped by Station)
 const TAG_MONITOR_CARDS = [
@@ -189,13 +224,13 @@ const TAG_MONITOR_CARDS = [
 
   // --- STERILIZER 1 (ST1) ---
   { id: "card_exhaust_steam_st1", x: 190, y: 170, title: "EXHAUST STEAM ST1", defaultVal: "0", unit: "%", status: "red", width: 150 },
-  { id: "card_inlet_steam_1_st1", x: -185, y: 50, title: "INLET STEAM 1 ST1", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_1_st1", x: -185, y: 50, title: "INLET STEAM 1 ST1", defaultVal: "CLOSE", unit: "", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_steam_2_st1", x: -240, y: 210, title: "INLET STEAM 2 ST1", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_steam_3_st1", x: -240, y: 430, title: "INLET STEAM 3 ST1", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_steam_4_st1", x: -240, y: 550, title: "INLET STEAM 4 ST1", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_flashing_st1", x: -400, y: 690, title: "FLASHING ST1", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_flashing_st1", x: -400, y: 690, title: "FLASHING ST1", defaultVal: "CLOSE", unit: "", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_door_st1", x: -20, y: 235, title: "INLET DOOR ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_outlet_door_st1", x: -80, y: 780, title: "OUTLET DOOR ST1", defaultVal: TEST_OUTLET_DOOR_ST1, unit: "", status: "grey", width: 150 },
+  { id: "card_outlet_door_st1", x: -80, y: 780, title: "OUTLET DOOR ST1", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "overview_pressure_1", x: -20, y: 340, title: "PRESSURE 1", defaultVal: "0.0", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "overview_temp_1", x: -20, y: 700, title: "TEMPERATURE 1", defaultVal: "0.0", unit: "°C", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "d_cond_st1", x: -440, y: 975, title: "D. COND ST1", defaultVal: "0", unit: "%", status: "red", width: 150, scale: 1 },
@@ -204,13 +239,13 @@ const TAG_MONITOR_CARDS = [
 
   // --- STERILIZER 2 (ST2) ---
   { id: "card_exhaust_steam_st2", x: 850, y: 170, title: "EXHAUST STEAM ST2", defaultVal: "0", unit: "%", status: "red", width: 150 },
-  { id: "card_inlet_steam_1_st2", x: 500, y: 50, title: "INLET STEAM 1 ST2", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_2_st2", x: 420, y: 210, title: "INLET STEAM 2 ST2", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_3_st2", x: 420, y: 430, title: "INLET STEAM 3 ST2", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_4_st2", x: 420, y: 550, title: "INLET STEAM 4 ST2", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_flashing_st2", x: 260, y: 690, title: "FLASHING ST2", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_1_st2", x: 500, y: 50, title: "INLET STEAM 1 ST2", defaultVal: "CLOSE", unit: "", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_2_st2", x: 420, y: 210, title: "INLET STEAM 2 ST2", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_3_st2", x: 420, y: 430, title: "INLET STEAM 3 ST2", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_4_st2", x: 420, y: 550, title: "INLET STEAM 4 ST2", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_flashing_st2", x: 260, y: 690, title: "FLASHING ST2", defaultVal: "CLOSE", unit: "", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_door_st2", x: 645, y: 235, title: "INLET DOOR ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_outlet_door_st2", x: 582, y: 780, title: "OUTLET DOOR ST2", defaultVal: TEST_OUTLET_DOOR_ST2, unit: "", status: "grey", width: 150 },
+  { id: "card_outlet_door_st2", x: 648, y: 780, title: "OUTLET DOOR ST2", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "overview_pressure_2", x: 645, y: 340, title: "PRESSURE 2", defaultVal: "0.0", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "overview_temp_2", x: 645, y: 700, title: "TEMPERATURE 2", defaultVal: "0.0", unit: "°C", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "d_cond_st2", x: 220, y: 975, title: "D. COND ST2", defaultVal: "0", unit: "%", status: "red", width: 150, scale: 1 },
@@ -225,7 +260,7 @@ const TAG_MONITOR_CARDS = [
   { id: "card_inlet_steam_4_st3", x: 1085, y: 550, title: "INLET STEAM 4 ST3", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_flashing_st3", x: 925, y: 690, title: "FLASHING ST3", defaultVal: "CLOSE", unit: "", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_door_st3", x: 1310, y: 235, title: "INLET DOOR ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_outlet_door_st3", x: 1245, y: 780, title: "OUTLET DOOR ST3", defaultVal: TEST_OUTLET_DOOR_ST3, unit: "", status: "grey", width: 150 },
+  { id: "card_outlet_door_st3", x: 1245, y: 780, title: "OUTLET DOOR ST3", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "overview_pressure_3", x: 1310, y: 340, title: "PRESSURE 3", defaultVal: "0.0", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "overview_temp_3", x: 1310, y: 700, title: "TEMPERATURE 3", defaultVal: "0.0", unit: "°C", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "d_cond_st3", x: 885, y: 975, title: "D. COND ST3", defaultVal: "0", unit: "%", status: "red", width: 150, scale: 1 },
@@ -233,19 +268,19 @@ const TAG_MONITOR_CARDS = [
   { id: "card_condensate_1_st3", x: 885, y: 1120, title: "CONDENSATE ST3", defaultVal: "0", unit: "%", status: "red", width: 150 },
 
   // --- STERILIZER 4 (ST4) ---
-  { id: "card_exhaust_steam_st4", x: 2175, y: 170, title: "EXHAUST STEAM ST4", defaultVal: "20", unit: "%", status: "green", width: 150 },
-  { id: "card_inlet_steam_1_st4", x: 1830, y: 50, title: "INLET STEAM 1 ST4", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_2_st4", x: 1745, y: 210, title: "INLET STEAM 2 ST4", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_3_st4", x: 1745, y: 430, title: "INLET STEAM 3 ST4", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_inlet_steam_4_st4", x: 1745, y: 550, title: "INLET STEAM 4 ST4", defaultVal: "20", unit: "%", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
-  { id: "card_flashing_st4", x: 1585, y: 690, title: "FLASHING ST4", defaultVal: "OPEN", unit: "", status: "green", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_exhaust_steam_st4", x: 2175, y: 170, title: "EXHAUST STEAM ST4", defaultVal: "0", unit: "%", status: "red", width: 150 },
+  { id: "card_inlet_steam_1_st4", x: 1830, y: 50, title: "INLET STEAM 1 ST4", defaultVal: "CLOSE", unit: "", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_2_st4", x: 1745, y: 210, title: "INLET STEAM 2 ST4", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_3_st4", x: 1745, y: 430, title: "INLET STEAM 3 ST4", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_inlet_steam_4_st4", x: 1745, y: 550, title: "INLET STEAM 4 ST4", defaultVal: "0", unit: "%", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
+  { id: "card_flashing_st4", x: 1585, y: 690, title: "FLASHING ST4", defaultVal: "CLOSE", unit: "", status: "red", width: 120, headerPadding: "2px 4px", bodyPadding: "3px 4px" },
   { id: "card_inlet_door_st4", x: 1970, y: 235, title: "INLET DOOR ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
-  { id: "card_outlet_door_st4", x: 1905, y: 780, title: "OUTLET DOOR ST4", defaultVal: TEST_OUTLET_DOOR_ST4, unit: "", status: "grey", width: 150 },
+  { id: "card_outlet_door_st4", x: 1905, y: 780, title: "OUTLET DOOR ST4", defaultVal: "no tag", unit: "", status: "grey", width: 150 },
   { id: "overview_pressure_4", x: 1970, y: 340, title: "PRESSURE 4", defaultVal: "0.0", unit: "Bar", status: "grey", width: 150, valueColor: "#ef4444" },
   { id: "overview_temp_4", x: 1965, y: 700, title: "TEMPERATURE 4", defaultVal: "0.0", unit: "°C", status: "grey", width: 150, valueColor: "#ef4444" },
-  { id: "d_cond_st4", x: 1545, y: 975, title: "D. COND ST4", defaultVal: "20", unit: "%", status: "green", width: 150, scale: 1 },
-  { id: "card_relief_condensate_st4", x: 1545, y: 1050, title: "RELIEF CONDENSATE VALVE ST4", defaultVal: "20", unit: "%", status: "green", width: 150 },
-  { id: "card_condensate_1_st4", x: 1545, y: 1120, title: "CONDENSATE ST4", defaultVal: "20", unit: "%", status: "green", width: 150 },
+  { id: "d_cond_st4", x: 1545, y: 975, title: "D. COND ST4", defaultVal: "0", unit: "%", status: "red", width: 150, scale: 1 },
+  { id: "card_relief_condensate_st4", x: 1545, y: 1050, title: "RELIEF CONDENSATE VALVE ST4", defaultVal: "0", unit: "%", status: "red", width: 150 },
+  { id: "card_condensate_1_st4", x: 1545, y: 1120, title: "CONDENSATE ST4", defaultVal: "0", unit: "%", status: "red", width: 150 },
 ];
 
 // Overview Equipment Icons (Grouped by Station)
@@ -299,19 +334,28 @@ const OVERVIEW_EQUIPMENT_ICONS = [
 // ==========================================
 // 2. FORMATTERS & VALUE PARSERS
 // ==========================================
+const isValValid = (v) => {
+  if (v === undefined || v === null) return false;
+  const s = String(v).trim().toLowerCase();
+  return s !== "" && s !== "no tag" && s !== "--";
+};
+
 const formatDoorStatus = (rawVal) => {
   if (rawVal === undefined || rawVal === null) return "--";
   if (rawVal === "No Tag" || String(rawVal).trim().toLowerCase() === "no tag") return "No Tag";
   if (rawVal === "--") return "--";
   if (typeof rawVal === "boolean") {
-    return rawVal ? "CLOSE" : "OPEN";
+    return rawVal ? "OPEN" : "CLOSE";
   }
   const str = String(rawVal).toLowerCase().trim();
   if (str === "no tag") return "No Tag";
   if (str === "--") return "--";
-  if (str === "true" || str === "1") return "CLOSE";
-  if (str === "false" || str === "0") return "OPEN";
-  if (str === "open" || str === "close") return str.toUpperCase();
+  if (str === "true" || str === "open") return "OPEN";
+  if (str === "false" || str === "close") return "CLOSE";
+  const num = parseFloat(rawVal);
+  if (!isNaN(num)) {
+    return num > 0 ? "OPEN" : "CLOSE";
+  }
   return "CLOSE";
 };
 
@@ -339,7 +383,7 @@ const resolveSterilizerValves = (stNum, getMappedValue) => {
     const card = TAG_MONITOR_CARDS.find((c) => c.id === id);
     const def = card ? (card.defaultVal || "0") : "0";
     const v = getMappedValue ? getMappedValue(id, "MONITOR", def) : def;
-    if (!v || String(v).trim().toLowerCase() === "no tag" || String(v).trim() === "--") {
+    if (!isValValid(v)) {
       return def;
     }
     return String(v);
@@ -347,7 +391,7 @@ const resolveSterilizerValves = (stNum, getMappedValue) => {
   const isOpen = (id) => {
     const v = getVal(id);
     const num = parseFloat(v);
-    const str = v.trim().toLowerCase();
+    const str = String(v).trim().toLowerCase();
     return !isNaN(num) ? num > 0 : (str === "open" || str === "true" || str === "1");
   };
   const inlet1 = isOpen(`card_inlet_steam_1_st${stNum}`);
@@ -1934,8 +1978,8 @@ function LineEquipmentBlocks({
   const n = line;
 
   // Interlock Master Inlet Steam 1: Jika Inlet Steam 1 = 0 / CLOSE, valve cabang (Inlet 2, 3, 4 & Flashing) menjadi MERAH / nonaktif
-  const rawInlet1 = getMappedValue ? getMappedValue(`card_inlet_steam_1_st${n}`, "MONITOR", n === 3 ? "CLOSE" : "OPEN") : (n === 3 ? "CLOSE" : "OPEN");
-  const strInlet1 = (!rawInlet1 || String(rawInlet1).trim().toLowerCase() === "no tag" || String(rawInlet1).trim() === "--") ? (n === 3 ? "CLOSE" : "OPEN") : String(rawInlet1);
+  const rawInlet1 = getMappedValue ? getMappedValue(`card_inlet_steam_1_st${n}`, "MONITOR", "CLOSE") : "CLOSE";
+  const strInlet1 = !isValValid(rawInlet1) ? "CLOSE" : String(rawInlet1);
   const numInlet1 = parseFloat(strInlet1);
   const isInlet1Open = !isNaN(numInlet1) ? numInlet1 > 0 : (strInlet1.trim().toLowerCase() === "open" || strInlet1 === "true" || strInlet1 === "1");
 
@@ -1944,7 +1988,7 @@ function LineEquipmentBlocks({
       {/* 1. EXHAUST STEAM (VALVE POSITIONER + CARD) */}
       {(() => {
         const rawTagVal = getMappedValue ? getMappedValue(`card_exhaust_steam_st${n}`, "MONITOR", "0") : "0";
-        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 ? "20" : "0") : String(rawTagVal);
+        const tagVal = !isValValid(rawTagVal) ? "0" : String(rawTagVal);
         const numericVal = parseFloat(tagVal);
         const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
         return (
@@ -1961,7 +2005,7 @@ function LineEquipmentBlocks({
               style={getDeveloperStyle(`card_exhaust_steam_st${n}`)}
             />
             <TagMonitorCardSVG
-              x={1020}
+              x={1030}
               y={80}
               title={`EXHAUST STEAM ST${n}`}
               value={tagVal}
@@ -1977,10 +2021,10 @@ function LineEquipmentBlocks({
 
       {/* 2. INLET STEAM 1 (VALVE PNEUMATIC ACTUATOR + CARD) */}
       {(() => {
-        const rawTagVal = getMappedValue ? getMappedValue(`card_inlet_steam_1_st${n}`, "MONITOR", n === 3 ? "CLOSE" : "OPEN") : (n === 3 ? "CLOSE" : "OPEN");
-        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 3 ? "CLOSE" : "OPEN") : String(rawTagVal);
-        const numericVal = parseFloat(tagVal);
-        const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
+        const rawTagVal = getMappedValue ? getMappedValue(`card_inlet_steam_1_st${n}`, "MONITOR", "CLOSE") : "CLOSE";
+        const isNoTag = !isValValid(rawTagVal);
+        const tagVal = isNoTag ? "CLOSE" : formatValveStatus(rawTagVal);
+        const isOpen = tagVal === "OPEN";
         return (
           <g id={`block_inlet_steam_1_st${n}`}>
             <EquipmentIconSVG
@@ -2014,10 +2058,9 @@ function LineEquipmentBlocks({
       {/* 3. INLET STEAM 2 (VALVE POSITIONER + CARD) */}
       {(() => {
         const rawTagVal = getMappedValue ? getMappedValue(`card_inlet_steam_2_st${n}`, "MONITOR", "0") : "0";
-        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 || n === 2 ? "20" : "0") : String(rawTagVal);
+        const tagVal = !isValValid(rawTagVal) ? "0" : String(rawTagVal);
         const numericVal = parseFloat(tagVal);
-        const rawOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
-        const isOpen = rawOpen && isInlet1Open;
+        const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
         return (
           <g id={`block_inlet_steam_2_st${n}`}>
             <EquipmentIconSVG
@@ -2051,10 +2094,9 @@ function LineEquipmentBlocks({
       {/* 4. INLET STEAM 3 (VALVE POSITIONER + CARD) */}
       {(() => {
         const rawTagVal = getMappedValue ? getMappedValue(`card_inlet_steam_3_st${n}`, "MONITOR", "0") : "0";
-        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 || n === 2 ? "20" : "0") : String(rawTagVal);
+        const tagVal = !isValValid(rawTagVal) ? "0" : String(rawTagVal);
         const numericVal = parseFloat(tagVal);
-        const rawOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
-        const isOpen = rawOpen && isInlet1Open;
+        const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
         return (
           <g id={`block_inlet_steam_3_st${n}`}>
             <EquipmentIconSVG
@@ -2088,10 +2130,9 @@ function LineEquipmentBlocks({
       {/* 5. INLET STEAM 4 (VALVE POSITIONER + CARD) */}
       {(() => {
         const rawTagVal = getMappedValue ? getMappedValue(`card_inlet_steam_4_st${n}`, "MONITOR", "0") : "0";
-        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 || n === 2 ? "20" : "0") : String(rawTagVal);
+        const tagVal = !isValValid(rawTagVal) ? "0" : String(rawTagVal);
         const numericVal = parseFloat(tagVal);
-        const rawOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
-        const isOpen = rawOpen && isInlet1Open;
+        const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
         return (
           <g id={`block_inlet_steam_4_st${n}`}>
             <EquipmentIconSVG
@@ -2124,11 +2165,10 @@ function LineEquipmentBlocks({
 
       {/* 6. FLASHING (VALVE POSITIONER + CARD) */}
       {(() => {
-        const rawTagVal = getMappedValue ? getMappedValue(`card_flashing_st${n}`, "MONITOR", "0") : "0";
-        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? "OPEN" : String(rawTagVal);
-        const numericVal = parseFloat(tagVal);
-        const rawOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
-        const isOpen = rawOpen && isInlet1Open;
+        const rawTagVal = getMappedValue ? getMappedValue(`card_flashing_st${n}`, "MONITOR", "CLOSE") : "CLOSE";
+        const isNoTag = !isValValid(rawTagVal);
+        const tagVal = isNoTag ? "CLOSE" : formatValveStatus(rawTagVal);
+        const isOpen = tagVal === "OPEN";
         return (
           <g id={`block_flashing_st${n}`}>
             <EquipmentIconSVG
@@ -2143,8 +2183,8 @@ function LineEquipmentBlocks({
               style={getDeveloperStyle(`card_flashing_st${n}`)}
             />
             <TagMonitorCardSVG
-              x={455}
-              y={765}
+              x={369}
+              y={700}
               title={`FLASHING ST${n}`}
               value={tagVal}
               unit=""
@@ -2162,7 +2202,7 @@ function LineEquipmentBlocks({
       {/* 7. D. CONDENSATE (VALVE POSITIONER + CARD) */}
       {(() => {
         const rawTagVal = getMappedValue ? getMappedValue(`d_cond_st${n}`, "MONITOR", "0") : "0";
-        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 ? "20" : "0") : String(rawTagVal);
+        const tagVal = !isValValid(rawTagVal) ? "0" : String(rawTagVal);
         const numericVal = parseFloat(tagVal);
         const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
         return (
@@ -2197,7 +2237,7 @@ function LineEquipmentBlocks({
       {/* 8. RELIEF CONDENSATE (VALVE POSITIONER + CARD) */}
       {(() => {
         const rawTagVal = getMappedValue ? getMappedValue(`card_relief_condensate_st${n}`, "MONITOR", "0") : "0";
-        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 ? "20" : "0") : String(rawTagVal);
+        const tagVal = !isValValid(rawTagVal) ? "0" : String(rawTagVal);
         const numericVal = parseFloat(tagVal);
         const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
         return (
@@ -2231,7 +2271,7 @@ function LineEquipmentBlocks({
       {/* 9. CONDENSATE 1 (VALVE POSITIONER + CARD) */}
       {(() => {
         const rawTagVal = getMappedValue ? getMappedValue(`card_condensate_1_st${n}`, "MONITOR", "0") : "0";
-        const tagVal = (!rawTagVal || String(rawTagVal).trim().toLowerCase() === "no tag" || String(rawTagVal).trim() === "--") ? (n === 4 ? "20" : "0") : String(rawTagVal);
+        const tagVal = !isValValid(rawTagVal) ? "0" : String(rawTagVal);
         const numericVal = parseFloat(tagVal);
         const isOpen = !isNaN(numericVal) ? numericVal > 0 : (tagVal.trim().toLowerCase() === "open" || tagVal === "true" || tagVal === "1");
         return (
@@ -2263,50 +2303,64 @@ function LineEquipmentBlocks({
       })()}
 
       {/* 10. DOORS */}
-      <TagMonitorCardSVG
-        x={980}
-        y={192}
-        title={`INLET DOOR ST${n}`}
-        value={formatDoorStatus(getMappedValue ? getMappedValue(`card_inlet_door_st${n}`, "MONITOR", "no tag") : "no tag")}
-        unit=""
-        status="grey"
-        width={150}
-        onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_door_st${n}`)}
-        style={getDeveloperStyle(`card_inlet_door_st${n}`)}
-      />
-      <TagMonitorCardSVG
-        x={980}
-        y={690}
-        title={`OUTLET DOOR ST${n}`}
-        value={formatDoorStatus(getMappedValue ? getMappedValue(`card_outlet_door_st${n}`, "MONITOR", "OPEN") : "OPEN")}
-        unit=""
-        status="grey"
-        width={150}
-        onClick={() => handleEquipmentClick && handleEquipmentClick(`card_outlet_door_st${n}`)}
-        style={getDeveloperStyle(`card_outlet_door_st${n}`)}
-      />
+      {(() => {
+        const rawInletDoor = getMappedValue ? getMappedValue(`card_inlet_door_st${n}`, "MONITOR", "no tag") : "no tag";
+        const valInletDoor = formatDoorStatus(rawInletDoor);
+        const statusInlet = valInletDoor === "OPEN" ? "green" : valInletDoor === "CLOSE" ? "red" : "grey";
+
+        const rawOutletDoor = getMappedValue ? getMappedValue(`card_outlet_door_st${n}`, "MONITOR", "no tag") : "no tag";
+        const valOutletDoor = formatDoorStatus(rawOutletDoor);
+        const statusOutlet = valOutletDoor === "OPEN" ? "green" : valOutletDoor === "CLOSE" ? "red" : "grey";
+
+        return (
+          <>
+            <TagMonitorCardSVG
+              x={770}
+              y={245}
+              title={`INLET DOOR ST${n}`}
+              value={valInletDoor}
+              unit=""
+              status={statusInlet}
+              width={150}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_inlet_door_st${n}`)}
+              style={getDeveloperStyle(`card_inlet_door_st${n}`)}
+            />
+            <TagMonitorCardSVG
+              x={700}
+              y={790}
+              title={`OUTLET DOOR ST${n}`}
+              value={valOutletDoor}
+              unit=""
+              status={statusOutlet}
+              width={150}
+              onClick={() => handleEquipmentClick && handleEquipmentClick(`card_outlet_door_st${n}`)}
+              style={getDeveloperStyle(`card_outlet_door_st${n}`)}
+            />
+          </>
+        );
+      })()}
 
       {/* 11. PRESSURE & TEMPERATURE CARDS */}
       <TagMonitorCardSVG
-        x={980}
-        y={267}
+        x={770}
+        y={340}
         title={`PRESSURE ${n}`}
         value={getMappedValue ? String(getMappedValue(`overview_pressure_${n}`, "MONITOR", "0.0")) : "0.0"}
         unit="Bar"
         status="grey"
-        width={150}
+        width={170}
         valueColor="#ef4444"
         onClick={() => handleEquipmentClick && handleEquipmentClick(`overview_pressure_${n}`)}
         style={getDeveloperStyle(`overview_pressure_${n}`)}
       />
       <TagMonitorCardSVG
-        x={980}
-        y={578}
+        x={770}
+        y={708}
         title={`TEMPERATURE ${n}`}
         value={getMappedValue ? String(getMappedValue(`overview_temp_${n}`, "MONITOR", "0.0")) : "0.0"}
         unit="°C"
         status="grey"
-        width={150}
+        width={170}
         valueColor="#ef4444"
         onClick={() => handleEquipmentClick && handleEquipmentClick(`overview_temp_${n}`)}
         style={getDeveloperStyle(`overview_temp_${n}`)}
@@ -2315,18 +2369,19 @@ function LineEquipmentBlocks({
       {/* 12. STERILIZER STATUS PANEL */}
       <SterilizerStatusPanelSVG
         key={`st${n}_status_panel_line`}
-        x={980}
-        y={360}
+        x={770}
+        y={540}
         title={`STERILIZER ${n}`}
         status={getMappedValue ? String(getMappedValue(`st${n}_status`, "STATUS", "EMERGENCY")) : "EMERGENCY"}
-        recipe={getMappedValue ? String(getMappedValue(`st${n}_recipe`, "STATUS", "NORMAL")) : "NORMAL"}
-        actualStep={getMappedValue ? String(getMappedValue(`st${n}_status`, "STEP", "No Tag")) : "No Tag"}
-        totalTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "TOTAL_TIME", "No Tag")) : "No Tag"}
-        doorIn={formatDoorStatus(getMappedValue ? getMappedValue(`st${n}_status`, "DOOR_IN", "No Tag") : "No Tag")}
-        doorOut={formatDoorStatus(getMappedValue ? getMappedValue(`st${n}_status`, "DOOR_OUT", "No Tag") : "No Tag")}
-        pressure={getMappedValue ? String(getMappedValue(`st${n}_status`, "PRESSURE", "No Tag")) : "No Tag"}
-        temp={getMappedValue ? String(getMappedValue(`st${n}_status`, "TEMP", "No Tag")) : "No Tag"}
-        scale={0.78}
+        mode={getMappedValue ? String(getMappedValue(`st${n}_status`, "MODE", "AUTO")) : "AUTO"}
+        recipe={getMappedValue ? String(getMappedValue(`st${n}_status`, "RECIPE", getMappedValue(`st${n}_recipe`, "STATUS", "NORMAL"))) : "NORMAL"}
+        totalTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "TOTAL_TIME", "0.0")) : "0.0"}
+        stepTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "STEP_TIME", "0.0")) : "0.0"}
+        cycleTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "CYCLE_TIME", "0 : 0")) : "0 : 0"}
+        totalCycleTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "TOTAL_CYCLE_TIME", "0 : 0")) : "0 : 0"}
+        actualStep={getMappedValue ? String(getMappedValue(`st${n}_status`, "STEP", "0")) : "0"}
+        pressure={getMappedValue ? String(getMappedValue(`st${n}_status`, "PRESSURE", "0.00")) : "0.00"}
+        scale={1.0}
         onClick={() => handleEquipmentClick && handleEquipmentClick(`st${n}_status`)}
         style={getDeveloperStyle(`st${n}_status`)}
       />
@@ -2356,7 +2411,29 @@ const TagEditorModal = ({
   availableTags = [],
   saving,
 }) => {
-  const [localTags, setLocalTags] = useState({});
+  const [localTags, setLocalTags] = useState(() => {
+    if (!data) return {};
+    const initial = {};
+    if (data.signals && data.signals.length > 0) {
+      data.signals.forEach((sig) => {
+        const key = `${data.targetId}__${sig.key}`;
+        initial[key] = tagMap[key] || "";
+      });
+    } else {
+      const targets = data.subs.length > 0 ? data.subs : [data.targetId];
+      targets.forEach((t) => {
+        initial[`${t}__STATUS`] = tagMap[`${t}__STATUS`] || "";
+        initial[`${t}__START`] = tagMap[`${t}__START`] || "";
+        initial[`${t}__STOP`] = tagMap[`${t}__STOP`] || "";
+      });
+
+      if (data.subs.length === 0) {
+        initial[`${data.targetId}__MONITOR`] =
+          tagMap[`${data.targetId}__MONITOR`] || "";
+      }
+    }
+    return initial;
+  });
 
   useEffect(() => {
     if (data) {
@@ -2383,7 +2460,7 @@ const TagEditorModal = ({
 
       setLocalTags(initial);
     }
-  }, [data, tagMap]);
+  }, [data?.targetId]);
 
   if (!data) return null;
 
@@ -2807,6 +2884,9 @@ export default function OverviewTab({
                     const y = isOpen ? doorConfig.openY : doorConfig.closeY;
                     const w = isOpen ? doorConfig.openW : doorConfig.closeW;
                     const h = isOpen ? doorConfig.openH : doorConfig.closeH;
+                    const rot = isOpen
+                      ? (doorConfig.openRotation ?? doorConfig.rotation ?? 0)
+                      : (doorConfig.closeRotation ?? doorConfig.rotation ?? 0);
 
                     return (
                       <image
@@ -2817,6 +2897,7 @@ export default function OverviewTab({
                         width={w}
                         height={h}
                         preserveAspectRatio="none"
+                        transform={rot ? `rotate(${rot}, ${x + w / 2}, ${y + h / 2})` : undefined}
                         style={{
                           cursor: configMode ? "pointer" : "default",
                           filter: configMode ? getDeveloperStyle ? getDeveloperStyle(cardId)?.filter : undefined : undefined,
@@ -2842,6 +2923,9 @@ export default function OverviewTab({
                     const y = isOpen ? doorConfig.openY : doorConfig.closeY;
                     const w = isOpen ? doorConfig.openW : doorConfig.closeW;
                     const h = isOpen ? doorConfig.openH : doorConfig.closeH;
+                    const rot = isOpen
+                      ? (doorConfig.openRotation ?? doorConfig.rotation ?? 0)
+                      : (doorConfig.closeRotation ?? doorConfig.rotation ?? 0);
 
                     return (
                       <image
@@ -2852,6 +2936,7 @@ export default function OverviewTab({
                         width={w}
                         height={h}
                         preserveAspectRatio="none"
+                        transform={rot ? `rotate(${rot}, ${x + w / 2}, ${y + h / 2})` : undefined}
                         style={{
                           cursor: configMode ? "pointer" : "default",
                           filter: configMode ? getDeveloperStyle ? getDeveloperStyle(cardId)?.filter : undefined : undefined,
@@ -2864,13 +2949,107 @@ export default function OverviewTab({
                 </g>
               </>
             ) : (
-              <image
-                href={sterilizerLineImageUrl}
-                width="2650"
-                x="-200"
-                y="-30"
-                style={{ mixBlendMode: "multiply" }}
-              />
+              <>
+                <image
+                  href={sterilizerLineImageUrl}
+                  width="2650"
+                  x="-200"
+                  y="-30"
+                  style={{ mixBlendMode: "multiply" }}
+                />
+
+                {/* DYNAMIC TOP DOOR (INLET DOOR) FOR LINE VIEW */}
+                {(() => {
+                  const lineNum =
+                    activeTab === "line1"
+                      ? 1
+                      : activeTab === "line2"
+                        ? 2
+                        : activeTab === "line3"
+                          ? 3
+                          : activeTab === "line4"
+                            ? 4
+                            : 1;
+                  const cardId = `card_inlet_door_st${lineNum}`;
+                  const rawVal = getMappedValue ? getMappedValue(cardId, "MONITOR", "CLOSE") : "CLOSE";
+                  const doorStatus = formatDoorStatus(rawVal);
+                  const isOpen = doorStatus === "OPEN";
+
+                  const imageSrc = isOpen ? topOpenPng : topClosePng;
+                  const x = isOpen ? LINE_TOP_DOOR_CONFIG.openX : LINE_TOP_DOOR_CONFIG.closeX;
+                  const y = isOpen ? LINE_TOP_DOOR_CONFIG.openY : LINE_TOP_DOOR_CONFIG.closeY;
+                  const w = isOpen ? LINE_TOP_DOOR_CONFIG.openW : LINE_TOP_DOOR_CONFIG.closeW;
+                  const h = isOpen ? LINE_TOP_DOOR_CONFIG.openH : LINE_TOP_DOOR_CONFIG.closeH;
+                  const rot = isOpen
+                    ? (LINE_TOP_DOOR_CONFIG.openRotation ?? LINE_TOP_DOOR_CONFIG.rotation ?? 0)
+                    : (LINE_TOP_DOOR_CONFIG.closeRotation ?? LINE_TOP_DOOR_CONFIG.rotation ?? 0);
+
+                  return (
+                    <image
+                      key={`line_top_door_st${lineNum}`}
+                      href={imageSrc}
+                      x={x}
+                      y={y}
+                      width={w}
+                      height={h}
+                      preserveAspectRatio="none"
+                      transform={rot ? `rotate(${rot}, ${x + w / 2}, ${y + h / 2})` : undefined}
+                      style={{
+                        cursor: configMode ? "pointer" : "default",
+                        filter: configMode ? getDeveloperStyle ? getDeveloperStyle(cardId)?.filter : undefined : undefined,
+                        transition: "all 0.3s ease",
+                      }}
+                      onClick={() => configMode && handleEquipmentClick && handleEquipmentClick(cardId)}
+                    />
+                  );
+                })()}
+
+                {/* DYNAMIC BOTTOM DOOR (OUTLET DOOR) FOR LINE VIEW */}
+                {(() => {
+                  const lineNum =
+                    activeTab === "line1"
+                      ? 1
+                      : activeTab === "line2"
+                        ? 2
+                        : activeTab === "line3"
+                          ? 3
+                          : activeTab === "line4"
+                            ? 4
+                            : 1;
+                  const cardId = `card_outlet_door_st${lineNum}`;
+                  const rawVal = getMappedValue ? getMappedValue(cardId, "MONITOR", "CLOSE") : "CLOSE";
+                  const doorStatus = formatDoorStatus(rawVal);
+                  const isOpen = doorStatus === "OPEN";
+
+                  const imageSrc = isOpen ? botOpenPng : botClosePng;
+                  const x = isOpen ? LINE_BOT_DOOR_CONFIG.openX : LINE_BOT_DOOR_CONFIG.closeX;
+                  const y = isOpen ? LINE_BOT_DOOR_CONFIG.openY : LINE_BOT_DOOR_CONFIG.closeY;
+                  const w = isOpen ? LINE_BOT_DOOR_CONFIG.openW : LINE_BOT_DOOR_CONFIG.closeW;
+                  const h = isOpen ? LINE_BOT_DOOR_CONFIG.openH : LINE_BOT_DOOR_CONFIG.closeH;
+                  const rot = isOpen
+                    ? (LINE_BOT_DOOR_CONFIG.openRotation ?? LINE_BOT_DOOR_CONFIG.rotation ?? 0)
+                    : (LINE_BOT_DOOR_CONFIG.closeRotation ?? LINE_BOT_DOOR_CONFIG.rotation ?? 0);
+
+                  return (
+                    <image
+                      key={`line_bot_door_st${lineNum}`}
+                      href={imageSrc}
+                      x={x}
+                      y={y}
+                      width={w}
+                      height={h}
+                      preserveAspectRatio="none"
+                      transform={rot ? `rotate(${rot}, ${x + w / 2}, ${y + h / 2})` : undefined}
+                      style={{
+                        cursor: configMode ? "pointer" : "default",
+                        filter: configMode ? getDeveloperStyle ? getDeveloperStyle(cardId)?.filter : undefined : undefined,
+                        transition: "all 0.3s ease",
+                      }}
+                      onClick={() => configMode && handleEquipmentClick && handleEquipmentClick(cardId)}
+                    />
+                  );
+                })()}
+              </>
             )}
 
             {/* LAYER 2: PROCESS FLOWS (PIPES & FLOW ANIMATIONS) */}
@@ -4125,7 +4304,7 @@ export default function OverviewTab({
                     const matchedCard = TAG_MONITOR_CARDS.find((c) => c.id === item.cardId);
                     const fallbackVal = matchedCard ? (matchedCard.defaultVal || "0") : "0";
                     const v = getMappedValue ? getMappedValue(item.cardId, "MONITOR", fallbackVal) : fallbackVal;
-                    if (!v || String(v).trim().toLowerCase() === "no tag" || String(v).trim() === "--") {
+                    if (!isValValid(v)) {
                       return fallbackVal;
                     }
                     return v;
@@ -4133,35 +4312,7 @@ export default function OverviewTab({
 
                   const strVal = String(mapped).trim().toLowerCase();
                   const numVal = parseFloat(mapped);
-                  let isOpen = !isNaN(numVal) ? numVal > 0 : (strVal === "open" || strVal === "true" || strVal === "1");
-
-                  // Interlock dengan Master Inlet Steam 1: Jika Inlet Steam 1 bernilai 0 / mati, valve percabangan (Inlet 2, 3, 4, dan Flashing) menjadi MERAH
-                  const stMatch = item.cardId.match(/st(\d+)/);
-                  if (stMatch) {
-                    const stNum = stMatch[1];
-                    const isDependentOnInlet1 =
-                      item.cardId === `card_inlet_steam_2_st${stNum}` ||
-                      item.cardId === `card_inlet_steam_3_st${stNum}` ||
-                      item.cardId === `card_inlet_steam_4_st${stNum}` ||
-                      item.cardId === `card_flashing_st${stNum}`;
-
-                    if (isDependentOnInlet1) {
-                      const inlet1Id = `card_inlet_steam_1_st${stNum}`;
-                      const matchedInlet1 = TAG_MONITOR_CARDS.find((c) => c.id === inlet1Id);
-                      const fallbackInlet1 = matchedInlet1 ? (matchedInlet1.defaultVal || "0") : "0";
-                      const vInlet1 = getMappedValue ? getMappedValue(inlet1Id, "MONITOR", fallbackInlet1) : fallbackInlet1;
-                      const resolvedInlet1 = (!vInlet1 || String(vInlet1).trim().toLowerCase() === "no tag" || String(vInlet1).trim() === "--")
-                        ? fallbackInlet1
-                        : vInlet1;
-                      const numInlet1 = parseFloat(resolvedInlet1);
-                      const strInlet1 = String(resolvedInlet1).trim().toLowerCase();
-                      const isInlet1Open = !isNaN(numInlet1) ? numInlet1 > 0 : (strInlet1 === "open" || strInlet1 === "true" || strInlet1 === "1");
-
-                      if (!isInlet1Open) {
-                        isOpen = false;
-                      }
-                    }
-                  }
+                  const isOpen = !isNaN(numVal) ? numVal > 0 : (strVal === "open" || strVal === "true" || strVal === "1");
 
                   return (
                     <EquipmentIconSVG
@@ -4182,11 +4333,24 @@ export default function OverviewTab({
                 {TAG_MONITOR_CARDS.map((card) => {
                   const defaultFallback = card.defaultVal || "no tag";
                   const rawMapped = getMappedValue ? getMappedValue(card.id, "MONITOR", defaultFallback) : defaultFallback;
-                  const isNoTag = !rawMapped || String(rawMapped).trim().toLowerCase() === "no tag" || String(rawMapped).trim() === "--";
-                  const displayValue = (isNoTag && defaultFallback !== "no tag") ? defaultFallback : (isNoTag ? "No Tag" : rawMapped);
+                  const isNoTag = !isValValid(rawMapped);
+                  let displayValue = isNoTag ? (defaultFallback !== "no tag" ? defaultFallback : "No Tag") : rawMapped;
+
+                  // Formatting for Digital / Valve Actuators & Doors
+                  if (!isNoTag) {
+                    if (card.id.includes("door")) {
+                      displayValue = formatDoorStatus(displayValue);
+                    } else if (
+                      card.id.includes("inlet_steam_1") ||
+                      card.id.includes("flashing") ||
+                      (card.unit === "" && (card.defaultVal === "OPEN" || card.defaultVal === "CLOSE"))
+                    ) {
+                      displayValue = formatValveStatus(displayValue);
+                    }
+                  }
 
                   const statusColor = (() => {
-                    if (!displayValue || String(displayValue).trim().toLowerCase() === "no tag" || String(displayValue).trim() === "--") {
+                    if (displayValue === "No Tag" || displayValue === "--" || !isValValid(displayValue)) {
                       return "grey";
                     }
                     const str = String(displayValue).trim().toLowerCase();
@@ -4228,13 +4392,14 @@ export default function OverviewTab({
                         y={520}
                         title={`STERILIZER ${n}`}
                         status={getMappedValue ? String(getMappedValue(`st${n}_status`, "STATUS", "EMERGENCY")) : "EMERGENCY"}
-                        recipe={getMappedValue ? String(getMappedValue(`st${n}_recipe`, "STATUS", "NORMAL")) : "NORMAL"}
-                        actualStep={getMappedValue ? String(getMappedValue(`st${n}_status`, "STEP", "No Tag")) : "No Tag"}
-                        totalTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "TOTAL_TIME", "No Tag")) : "No Tag"}
-                        doorIn={formatDoorStatus(getMappedValue ? getMappedValue(`st${n}_status`, "DOOR_IN", "No Tag") : "No Tag")}
-                        doorOut={formatDoorStatus(getMappedValue ? getMappedValue(`st${n}_status`, "DOOR_OUT", "No Tag") : "No Tag")}
-                        pressure={getMappedValue ? String(getMappedValue(`st${n}_status`, "PRESSURE", "No Tag")) : "No Tag"}
-                        temp={getMappedValue ? String(getMappedValue(`st${n}_status`, "TEMP", "No Tag")) : "No Tag"}
+                        mode={getMappedValue ? String(getMappedValue(`st${n}_status`, "MODE", "AUTO")) : "AUTO"}
+                        recipe={getMappedValue ? String(getMappedValue(`st${n}_status`, "RECIPE", getMappedValue(`st${n}_recipe`, "STATUS", "NORMAL"))) : "NORMAL"}
+                        totalTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "TOTAL_TIME", "0.0")) : "0.0"}
+                        stepTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "STEP_TIME", "0.0")) : "0.0"}
+                        cycleTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "CYCLE_TIME", "0 : 0")) : "0 : 0"}
+                        totalCycleTime={getMappedValue ? String(getMappedValue(`st${n}_status`, "TOTAL_CYCLE_TIME", "0 : 0")) : "0 : 0"}
+                        actualStep={getMappedValue ? String(getMappedValue(`st${n}_status`, "STEP", "0")) : "0"}
+                        pressure={getMappedValue ? String(getMappedValue(`st${n}_status`, "PRESSURE", "0.00")) : "0.00"}
                         scale={0.95}
                         onClick={() => handleEquipmentClick && handleEquipmentClick(`st${n}_status`)}
                         style={getDeveloperStyle(`st${n}_status`)}

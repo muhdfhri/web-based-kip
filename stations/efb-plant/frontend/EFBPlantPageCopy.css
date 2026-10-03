@@ -1,0 +1,827 @@
+.som-efb-plant {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+}
+
+.som-efb-plant-header {
+  padding: 0.5rem 2rem;
+  background: #ffffff;
+  backdrop-filter: blur(10px);
+  border-bottom: 2px solid #ffdb3b;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.som-efb-plant-header .som-header-left {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 1.5rem !important;
+}
+
+.som-header-titles {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.som-header-divider {
+  width: 3px !important;
+  height: 28px !important;
+  background-color: #ffdb3b !important;
+  border-radius: 2px !important;
+  margin: 0 1rem !important;
+}
+
+.som-efb-plant-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 950;
+  color: #0f172a;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #0f172a 0%, #ffdb3b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  border-right: 2px solid #e2e8f0;
+  padding-right: 1.5rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.som-efb-plant-subtitle {
+  font-size: 9px;
+  font-weight: 800;
+  color: #64748b;
+  margin: 0 0 0 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+.som-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.som-station-tabs {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.som-station-tab {
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.som-station-tab:hover {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.som-station-tab.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.som-coord-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 2px 10px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+.som-efb-plant-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
+.som-efb-plant-layout {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.som-efb-plant-flow-body {
+  width: 100%;
+  height: 100%;
+  background: #f8fafc;
+}
+
+.station-svg-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Press-Station-Matching Cards within SVG */
+.som-station-card,
+.som-boiler-mini-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 4px !important;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-width: 120px !important;
+  width: fit-content;
+  pointer-events: auto;
+  user-select: none;
+  overflow: hidden !important;
+}
+
+.som-station-card:hover,
+.som-boiler-mini-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
+  border-color: #ffdb3b !important;
+}
+
+.som-station-header,
+.som-efb-plant .som-boiler-mini-header {
+  background: #ffdb3b !important;
+  padding: 5px 10px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.som-station-title,
+.som-efb-plant .som-boiler-mini-tag {
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.05em;
+  color: #0f172a !important;
+  text-transform: uppercase;
+}
+
+.som-station-status-dot,
+.som-boiler-status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.8);
+  flex-shrink: 0;
+}
+
+.som-station-status-dot.active,
+.som-boiler-status-indicator.active {
+  background: #22c55e;
+  box-shadow: 0 0 4px rgba(34, 197, 94, 0.8);
+}
+
+.som-station-body,
+.som-boiler-mini-body {
+  padding: 6px 10px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  background: #ffffff !important;
+}
+
+.som-station-data-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.som-station-row,
+.som-boiler-mini-param {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #f1f5f9;
+  gap: 8px;
+}
+
+.som-station-row:last-child,
+.som-boiler-mini-param:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.som-station-label,
+.som-efb-plant .som-boiler-mini-label {
+  font-size: 9.5px !important;
+  color: #000000 !important;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.som-station-value-group {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.som-station-value,
+.som-efb-plant .som-boiler-mini-value {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 13.5px !important;
+  font-weight: 950 !important;
+  color: #0f172a !important;
+  text-align: right;
+  line-height: 1;
+}
+
+.som-station-value.red {
+  color: #ef4444 !important;
+}
+
+.som-station-unit,
+.som-boiler-mini-unit {
+  font-size: 9.5px !important;
+  color: #64748b !important;
+  font-weight: 800 !important;
+  margin-left: 2px;
+}
+
+/* Stats Overlay Card */
+.som-stats-overlay-card {
+  background: #ffffff;
+  border: 1px solid #ffdb3b;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.stats-row:last-child {
+  border-bottom: none;
+}
+
+.stats-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.stats-value {
+  font-size: 10.5px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.stats-row.highlight .stats-label {
+  color: #d4ac0d;
+  font-weight: 900;
+}
+
+.stats-row.highlight .stats-value {
+  color: #d4ac0d;
+  font-size: 1rem;
+}
+
+/* --- POPUP TREND GRAPHS --- */
+.som-amp-popup {
+  position: fixed;
+  z-index: 9999;
+  width: 450px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.1);
+  border: 1px solid #ffdb3b;
+  overflow: hidden;
+}
+
+.som-amp-popup-header {
+  padding: 12px 18px;
+  background: #ffdb3b;
+  border-bottom: 2px solid #ffdb3b;
+}
+
+.som-amp-popup-title {
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #0f172a;
+  letter-spacing: 0.05em;
+}
+
+.som-amp-popup-subtitle {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  margin-top: 6px;
+}
+
+.som-amp-popup-body {
+  padding: 20px;
+}
+
+/* --- VIEW TOGGLE & TABS --- */
+.som-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.som-station-tabs {
+  display: flex;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-left: 1rem;
+}
+
+.som-station-tab {
+  padding: 4px 12px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.som-station-tab.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.som-view-toggle-container {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.som-view-btn {
+  padding: 6px 14px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+  letter-spacing: 0.05em;
+}
+
+.som-view-btn.active {
+  background: #ffdb3b;
+  color: #0f172a;
+  box-shadow: 0 2px 5px rgba(255, 219, 59, 0.4);
+}
+
+/* --- MAINTENANCE VIEW HUD EFFECTS --- */
+.som-efb-plant.som-mode-maintenance .som-efb-plant-flow-body image {
+  filter: grayscale(0.8) brightness(0.7) sepia(0.2);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.som-efb-plant.som-mode-maintenance .som-efb-plant-flow-body::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(245, 158, 11, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 158, 11, 0.03) 1px, transparent 1px);
+  background-size: 100% 4px, 4px 100%;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0.4;
+}
+
+.som-diagnostic-banner {
+  background: #0f172a;
+  color: #ffdb3b;
+  padding: 8px 24px;
+  border: 2px solid #ffdb3b;
+  border-radius: 30px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  box-shadow: 0 0 20px rgba(255, 219, 59, 0.3);
+  text-align: center;
+}
+
+/* --- MAINTENANCE CARD (SVG) --- */
+.som-maintenance-mini-card {
+  background: #ffffff;
+  backdrop-filter: blur(12px);
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #ffdb3b;
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  pointer-events: auto;
+}
+
+.som-maintenance-mini-header {
+  background: #f8fafc;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.som-maintenance-mini-title {
+  font-size: 9px;
+  font-weight: 900;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.som-maintenance-mini-icon {
+  width: 14px;
+  height: 14px;
+  color: #ffdb3b;
+}
+
+.som-maintenance-mini-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.som-maintenance-mini-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.som-maintenance-mini-row-label {
+  font-size: 9px;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.som-maintenance-mini-row-value {
+  font-size: 13px;
+  font-weight: 900;
+  color: #0f172a;
+  font-family: 'Inter', sans-serif;
+}
+
+.som-maintenance-mini-row-value small {
+  font-size: 9px;
+  color: #64748b;
+  margin-left: 1px;
+}
+
+/* --- VISUAL STATUS INDICATORS --- */
+.som-efb-visual-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.som-efb-status-ring {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.som-efb-status-ring.active {
+  border-color: #ffdb3b;
+  box-shadow: 0 0 15px rgba(255, 219, 59, 0.4);
+}
+
+.som-efb-status-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 50%;
+}
+
+.som-efb-status-dot.active {
+  background: #ffdb3b;
+}
+
+.som-efb-press-indicator {
+  width: 12px;
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 2px;
+}
+
+/* --- HYPER-REALISTIC WATER FLOW (PRESS STATION MATCHING) --- */
+.water-path-base {
+  stroke-width: 20px;
+  stroke-linecap: round;
+  fill: none;
+  opacity: 0.15;
+  filter: blur(2px);
+}
+
+.water-path-stream {
+  stroke-width: 12px;
+  stroke-linecap: round;
+  fill: none;
+  opacity: 0.8;
+}
+
+.water-path-highlight {
+  stroke-width: 2px;
+  stroke-linecap: round;
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.4);
+  animation: water-glide 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.water-path-dotted {
+  stroke-width: 4px;
+  stroke-linecap: round;
+  fill: none;
+  stroke: #ffffff;
+  stroke-dasharray: 2, 60;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.9));
+  animation: water-glide-dotted 2s linear infinite;
+}
+
+@keyframes water-glide {
+  from { stroke-dashoffset: 600; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes water-glide-dotted {
+  from {
+    stroke-dashoffset: 128;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ── WATER PATH FLOW STYLES (Adapted from Press Station) ── */
+.oc-water-path-base {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.oc-water-path-stream {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: none;
+  animation: none;
+}
+
+.oc-water-path-highlight {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 3 50;
+  animation: oc-flow-highlight var(--flow-duration, 0.45s) linear infinite;
+}
+
+.oc-water-path-dotted {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 4 18;
+  animation: oc-flow-dotted var(--flow-duration, 0.35s) linear infinite;
+}
+
+@keyframes oc-flow-highlight {
+  from {
+    stroke-dashoffset: 53;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes oc-flow-dotted {
+  from {
+    stroke-dashoffset: 22;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* --- NEW STEAM FLOW (PUFFS) MATCHING PRESS STATION --- */
+.steam-flow-glow {
+  display: none;
+}
+
+.steam-flow-aura {
+  stroke-linecap: round;
+  filter: blur(2.5px);
+  stroke-dasharray: 40 60;
+  opacity: 0.95;
+  stroke-width: calc(var(--base-thickness) * 1.8);
+}
+
+.steam-flow--flowing .steam-flow-aura {
+  animation: steam-dash-move 0.15s linear infinite;
+}
+
+@keyframes steam-dash-move {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+/* PLC Configuration Mode Editable Outline */
+.som-efb-plant .som-station-card.som-editable {
+  outline: 2px dashed #ef4444;
+  cursor: pointer;
+}
+
+/* ==========================================
+   INTERACTIVE CARD HOVER & CLICK EFFECTS (EFB PLANT)
+   ========================================== */
+.som-efb-plant .som-press-data-card,
+.som-efb-plant .som-status-panel-card,
+.som-efb-plant .som-total-load-card,
+.som-efb-plant .som-reset-runtime-card,
+.som-efb-plant .som-motor-status-card,
+.som-efb-plant .som-value-sensor-card,
+.som-efb-plant .som-efb-line-dual-card,
+.som-efb-plant .som-tag-monitor-card,
+.som-efb-plant .som-valve-modern-card,
+.som-efb-plant .som-station-card,
+.som-efb-plant .som-maintenance-mini-card {
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease !important;
+  cursor: pointer;
+  pointer-events: auto !important;
+}
+
+.som-efb-plant .som-press-data-card:hover,
+.som-efb-plant .som-status-panel-card:hover,
+.som-efb-plant .som-total-load-card:hover,
+.som-efb-plant .som-reset-runtime-card:hover,
+.som-efb-plant .som-motor-status-card:hover,
+.som-efb-plant .som-value-sensor-card:hover,
+.som-efb-plant .som-efb-line-dual-card:hover,
+.som-efb-plant .som-tag-monitor-card:hover,
+.som-efb-plant .som-valve-modern-card:hover,
+.som-efb-plant .som-station-card:hover,
+.som-efb-plant .som-maintenance-mini-card:hover,
+.som-efb-plant g.svg-equipment:hover foreignObject > div {
+  transform: translateY(-4px) scale(1.025) !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.22), 0 0 16px rgba(250, 204, 21, 0.5) !important;
+  border-color: #facc15 !important;
+  z-index: 100 !important;
+}
+
+.som-efb-plant .som-press-data-card:active,
+.som-efb-plant .som-status-panel-card:active,
+.som-efb-plant .som-total-load-card:active,
+.som-efb-plant .som-reset-runtime-card:active,
+.som-efb-plant .som-motor-status-card:active,
+.som-efb-plant .som-value-sensor-card:active,
+.som-efb-plant .som-efb-line-dual-card:active,
+.som-efb-plant .som-tag-monitor-card:active,
+.som-efb-plant .som-valve-modern-card:active,
+.som-efb-plant .som-station-card:active,
+.som-efb-plant .som-maintenance-mini-card:active {
+  transform: translateY(-1px) scale(0.99) !important;
+}
+
+/* ==========================================
+   LIQUID NEON GLOW FLOW (STERILIZER MATCHED)
+   ========================================== */
+.liquid-flow-glow {
+  stroke-width: 14px;
+  stroke-linecap: round;
+  filter: blur(3px) drop-shadow(0 0 6px currentColor);
+  opacity: 0.6;
+}
+
+.liquid-flow-aura {
+  stroke-width: 8px;
+  stroke-linecap: round;
+  filter: blur(0.8px) drop-shadow(0 0 3px currentColor);
+  opacity: 0.95;
+}
+
+/* MODE 1: FLOWING */
+.liquid-flow--flowing .liquid-flow-glow {
+  stroke-dasharray: 20, 40;
+  animation: move-liquid var(--flow-duration, 0.6s) linear infinite;
+  opacity: 0.7;
+}
+
+.liquid-flow--flowing .liquid-flow-aura {
+  stroke-dasharray: 15, 45;
+  animation: move-liquid var(--flow-duration, 0.6s) linear infinite;
+  opacity: 1;
+}
+
+/* MODE 2: STANDBY */
+.liquid-flow--standby .liquid-flow-glow {
+  stroke-dasharray: none;
+  opacity: 0.45;
+  animation: flow-pulse-opacity 2s ease-in-out infinite;
+}
+
+.liquid-flow--standby .liquid-flow-aura {
+  stroke-dasharray: none;
+  opacity: 0.9;
+  animation: flow-pulse-opacity 2s ease-in-out infinite;
+}
+
+/* MODE 3: LIQUID (Dilution / Condensate / Liquor) */
+.liquid-flow--liquid .liquid-flow-glow {
+  stroke-dasharray: 20, 40;
+  opacity: 0.5;
+}
+
+.liquid-flow--liquid .liquid-flow-aura {
+  stroke-dasharray: 15, 45;
+  opacity: 1;
+  animation: move-liquid var(--flow-duration, 0.6s) linear infinite;
+}
+
+@keyframes move-liquid {
+  from {
+    stroke-dashoffset: 300;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes flow-pulse-opacity {
+  0%, 100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1.0;
+  }
+}
+
