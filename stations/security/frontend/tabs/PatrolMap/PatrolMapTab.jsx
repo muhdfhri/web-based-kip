@@ -4,7 +4,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-rotate';
 import './PatrolMapModern.css';
-import { FaCog, FaPlay, FaPause, FaStop, FaTachometerAlt } from 'react-icons/fa';
+import { FaCog, FaPlay, FaPause, FaStop, FaTachometerAlt, FaClipboardList, FaMapMarkedAlt } from 'react-icons/fa';
+import PatrolLogsView from './PatrolLogsView.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MOBILE WEBVIEW BRIDGE — window.updateGuardLocation
@@ -122,6 +123,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
     const [bearing, setBearing] = useState(0);
 
     const [showSettings, setShowSettings] = useState(false);
+    const [viewMode, setViewMode] = useState('map'); // 'map' or 'logs'
     const [tempLat, setTempLat] = useState('');
     const [tempLng, setTempLng] = useState('');
     const [tempZoom, setTempZoom] = useState('');
@@ -512,6 +514,10 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
         );
     }
 
+    if (viewMode === 'logs') {
+        return <PatrolLogsView onBack={() => setViewMode('map')} />;
+    }
+
     return (
         <div className="som-view-container overview-grid" style={{ position: 'relative' }}>
             {/* Settings Modal */}
@@ -547,6 +553,26 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                             )}
                             {!isReplayMode && (
                                 <>
+                                    <button
+                                        onClick={() => setViewMode(viewMode === 'map' ? 'logs' : 'map')}
+                                        style={{
+                                            background: '#0f172a',
+                                            border: '1px solid #ffdb3b',
+                                            color: '#ffdb3b',
+                                            padding: '4px 10px',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '11px',
+                                            fontWeight: '800',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            transition: 'all 0.2s',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                        }}
+                                    >
+                                        <FaClipboardList style={{ fontSize: '12px' }} /> Patrol Logs
+                                    </button>
                                     <span className="legend-item"><span className="dot secure"></span> CHECKPOINT</span>
                                     <span className="legend-item"><span className="dot guard"></span> GUARD</span>
                                 </>

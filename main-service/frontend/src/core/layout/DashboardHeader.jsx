@@ -37,22 +37,7 @@ const STATIONS = [
 
 // Stations that are unlocked and accessible
 const UNLOCKED_STATIONS = [
-  // 'Security',
-  'Weighbridge',
-  // 'Grading Ramp',
-  // 'Loading Ramp',
-  'Sterilizer Station',
-  'Threshing Station',
-  // 'EFB Plant',
-  'Press Station',
-  'Kernel Plant',
-  'Oil Clarification Room',
-  'Boiler House',
-  'Engine Room',
-  // 'Raw Water Treatment',
-  // 'DAF / OSR',
-  // 'CMRS',
-  // 'Effluent Treatment',
+  'Security',
 ];
 
 const DROPDOWN_ITEMS = {

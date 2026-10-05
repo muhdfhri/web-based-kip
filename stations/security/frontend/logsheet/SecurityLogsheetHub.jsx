@@ -65,22 +65,22 @@ export default function SecurityLogsheetHub() {
                 setStations([
                     FIXED_ALL_STATIONS_TAB,
                     { slug: 'security', title: 'SECURITY', is_active: 1 },
-                    { slug: 'press', title: 'PRESS STATION', is_active: 1 },
-                    { slug: 'sterilizer', title: 'STERILIZER STATION', is_active: 1 },
-                    { slug: 'threshing', title: 'THRESHING STATION', is_active: 1 },
-                    { slug: 'kernel-plant', title: 'KERNEL PLANT', is_active: 1 },
-                    { slug: 'boiler-house', title: 'BOILER HOUSE', is_active: 1 },
-                    { slug: 'engine-room', title: 'ENGINE ROOM', is_active: 1 },
-                    { slug: 'grading-ramp', title: 'GRADING RAMP', is_active: 1 },
-                    { slug: 'weighbridge', title: 'WEIGHBRIDGE', is_active: 1 },
-                    { slug: 'cmrs', title: 'CMRS', is_active: 1 },
-                    { slug: 'daf-osr', title: 'DAF / OSR', is_active: 1 },
-                    { slug: 'efb-plant', title: 'EFB PLANT', is_active: 1 },
-                    { slug: 'effluent-treatment', title: 'EFFLUENT TREATMENT', is_active: 1 },
-                    { slug: 'loading-ramp', title: 'LOADING RAMP', is_active: 1 },
-                    { slug: 'oil-clarification', title: 'OIL CLARIFICATION ROOM', is_active: 1 },
-                    { slug: 'raw-water-treatment', title: 'RAW WATER TREATMENT', is_active: 1 }
-                ])
+                    { slug: 'press', title: 'PRESS STATION', is_active: 0 },
+                    { slug: 'sterilizer', title: 'STERILIZER STATION', is_active: 0 },
+                    { slug: 'threshing', title: 'THRESHING STATION', is_active: 0 },
+                    { slug: 'kernel-plant', title: 'KERNEL PLANT', is_active: 0 },
+                    { slug: 'boiler-house', title: 'BOILER HOUSE', is_active: 0 },
+                    { slug: 'engine-room', title: 'ENGINE ROOM', is_active: 0 },
+                    { slug: 'grading-ramp', title: 'GRADING RAMP', is_active: 0 },
+                    { slug: 'weighbridge', title: 'WEIGHBRIDGE', is_active: 0 },
+                    { slug: 'cmrs', title: 'CMRS', is_active: 0 },
+                    { slug: 'daf-osr', title: 'DAF / OSR', is_active: 0 },
+                    { slug: 'efb-plant', title: 'EFB PLANT', is_active: 0 },
+                    { slug: 'effluent-treatment', title: 'EFFLUENT TREATMENT', is_active: 0 },
+                    { slug: 'loading-ramp', title: 'LOADING RAMP', is_active: 0 },
+                    { slug: 'oil-clarification', title: 'OIL CLARIFICATION ROOM', is_active: 0 },
+                    { slug: 'raw-water-treatment', title: 'RAW WATER TREATMENT', is_active: 0 }
+                ].filter(s => s.is_active === 1))
             } finally {
                 setLoading(false)
             }

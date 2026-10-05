@@ -55,7 +55,7 @@ function ProofModal({ activeProof, setActiveProof, proofIndex, setProofIndex, cu
             ctx.fillText('GUARD:', 30, canvas.height - 25);
             ctx.fillStyle = '#0f172a';
             ctx.font = '700 16px "Inter", sans-serif';
-            ctx.fillText(`${currentProof.guard} (ID: ${currentProof.id})`, 95, canvas.height - 25);
+            ctx.fillText(`${currentProof.guard}`, 95, canvas.height - 25);
 
             // RIGHT SIDE: TIME & DATE
             ctx.textAlign = 'right';
@@ -109,9 +109,9 @@ function ProofModal({ activeProof, setActiveProof, proofIndex, setProofIndex, cu
                         <div className="som-proof-watermark">
                             <div className="w-row"><span className="w-label">STATION:</span> <span className="w-val">{activeProof.name}</span></div>
                             <div className="w-row">
-                                <span className="w-label">GUARD ID:</span>
+                                <span className="w-label">GUARD:</span>
                                 <span className="w-val">
-                                    {activeProof.proofs[proofIndex].id} ({activeProof.proofs[proofIndex].guard})
+                                    {activeProof.proofs[proofIndex].guard}
                                 </span>
                             </div>
                             <div className="w-row"><span className="w-label">TIMESTAMP:</span> <span className="w-val">{activeProof.proofs[proofIndex].time || currentTime}</span></div>
