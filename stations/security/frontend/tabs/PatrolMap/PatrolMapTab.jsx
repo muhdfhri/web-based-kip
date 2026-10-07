@@ -4,8 +4,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-rotate';
 import './PatrolMapModern.css';
-import { FaCog, FaPlay, FaPause, FaStop, FaTachometerAlt, FaClipboardList, FaMapMarkedAlt } from 'react-icons/fa';
+import { FaCog, FaPlay, FaPause, FaStop, FaTachometerAlt, FaClipboardList, FaMapMarkedAlt, FaMapSigns } from 'react-icons/fa';
 import PatrolLogsView from './PatrolLogsView.jsx';
+import CheckpointSettingsView from './CheckpointSettingsView.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MOBILE WEBVIEW BRIDGE — window.updateGuardLocation
@@ -518,6 +519,10 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
         return <PatrolLogsView onBack={() => setViewMode('map')} />;
     }
 
+    if (viewMode === 'settings') {
+        return <CheckpointSettingsView onBack={() => setViewMode('map')} />;
+    }
+
     return (
         <div className="som-view-container overview-grid" style={{ position: 'relative' }}>
             {/* Settings Modal */}
@@ -554,7 +559,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                             {!isReplayMode && (
                                 <>
                                     <button
-                                        onClick={() => setViewMode(viewMode === 'map' ? 'logs' : 'map')}
+                                        onClick={() => setViewMode('logs')}
                                         style={{
                                             background: '#0f172a',
                                             border: '1px solid #ffdb3b',
@@ -572,6 +577,26 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                         }}
                                     >
                                         <FaClipboardList style={{ fontSize: '12px' }} /> Patrol Logs
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('settings')}
+                                        style={{
+                                            background: '#0f172a',
+                                            border: '1px solid #ffdb3b',
+                                            color: '#ffdb3b',
+                                            padding: '4px 10px',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '11px',
+                                            fontWeight: '800',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '5px',
+                                            transition: 'all 0.2s',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                        }}
+                                    >
+                                        <FaMapSigns style={{ fontSize: '12px' }} /> Setting Checkpoints
                                     </button>
                                     <span className="legend-item"><span className="dot secure"></span> CHECKPOINT</span>
                                     <span className="legend-item"><span className="dot guard"></span> GUARD</span>

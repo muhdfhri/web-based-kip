@@ -7,6 +7,7 @@ function TruckQueuesTab() {
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   const fetchQueues = async () => {
     try {
@@ -201,10 +202,21 @@ function TruckQueuesTab() {
     }
   };
 
-  const filteredQueues = queues.filter(q => {
+  const dateFilteredQueues = React.useMemo(() => {
+    if (!selectedDate) return queues;
+    return queues.filter(q => {
+      const timeVal = q.check_in_at || q.created_at;
+      if (!timeVal) return false;
+      const truckDate = new Date(timeVal).toISOString().split('T')[0];
+      return truckDate === selectedDate;
+    });
+  }, [queues, selectedDate]);
+
+  const filteredQueues = dateFilteredQueues.filter(q => {
     const status = (q.status || q.status_code || 'WAITING').toUpperCase();
     if (activeTab === 'WAITING' && status !== 'WAITING') return false;
-    if (activeTab === 'WEIGHIN' && status !== 'WEIGH_IN' && status !== 'GRADING') return false;
+    if (activeTab === 'WEIGHIN' && status !== 'WEIGH_IN') return false;
+    if (activeTab === 'GRADING' && status !== 'GRADING') return false;
     if (activeTab === 'COMPLETED' && status !== 'COMPLETED' && status !== 'CHECKED_OUT') return false;
 
     if (!searchQuery) return true;
@@ -218,11 +230,116 @@ function TruckQueuesTab() {
     return plate.includes(query) || code.includes(query) || driver.includes(query) || doNo.includes(query) || company.includes(query);
   });
 
-  // Calculate Metrics
-  const totalCount = queues.length;
-  const waitingCount = queues.filter(q => (q.status || '').toUpperCase() === 'WAITING').length;
-  const weighinCount = queues.filter(q => ['WEIGH_IN', 'GRADING'].includes((q.status || '').toUpperCase())).length;
-  const completedCount = queues.filter(q => ['COMPLETED', 'CHECKED_OUT'].includes((q.status || '').toUpperCase())).length;
+  const exportToExcel = () => {
+    if (filteredQueues.length === 0) {
+      alert("No data to export");
+      return;
+    }
+    
+    const headers = [
+      "Ticket No", "Classification", "License Plate", "Driver", "Company", "No DO",
+      "Status", "Check-in Time", "Check-out Time", "PIC Security"
+    ];
+
+    let tableHTML = '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+    tableHTML += '<head><meta charset="UTF-8"></head><body>';
+    tableHTML += '<table border="1" style="font-family: Arial, sans-serif; border-collapse: collapse;">';
+    
+    // Styled Header Row
+    tableHTML += '<tr>';
+    headers.forEach(h => {
+      tableHTML += `<th style="background-color: #1e293b; color: #ffffff; font-weight: bold; padding: 10px; border: 1px solid #cbd5e1;">${h}</th>`;
+    });
+    tableHTML += '</tr>';
+
+    // Data Rows
+    filteredQueues.forEach(q => {
+      const ticket = q.ticket_number || q.queueCode || q.queue_number || '';
+      const cls = q.classification_label || q.classification || q.classification_name || '';
+      const plate = q.licensePlate || q.plate_number || '';
+      const driver = q.driverName || q.driver_name || '';
+      const company = q.perusahaan || q.transporterCompany || '';
+      const noDo = q.noDo || q.no_do || '';
+      const status = (q.status || q.status_code || 'WAITING').toUpperCase();
+      const checkin = q.check_in_at ? new Date(q.check_in_at).toLocaleString('id-ID') : '';
+      const checkout = q.check_out_at ? new Date(q.check_out_at).toLocaleString('id-ID') : '';
+      const pic = q.registeredByName || q.registered_by_name || q.registeredbyname || 'System';
+
+      tableHTML += '<tr>';
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${ticket}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${cls}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${plate}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${driver}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${company}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1; mso-number-format:'\@';">${noDo}</td>`; // Force string
+      
+      // Basic styling for status
+      let statusColor = status === 'WAITING' ? '#b45309' : status === 'WEIGH_IN' ? '#0369a1' : status === 'GRADING' ? '#5b21b6' : '#15803d';
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1; color: ${statusColor}; font-weight: bold;">${status}</td>`;
+      
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${checkin}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${checkout}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${pic}</td>`;
+      tableHTML += '</tr>';
+    });
+
+    tableHTML += '</table></body></html>';
+
+    const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `truck_queues_${selectedDate || 'ALL_DATA'}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Calculate Metrics based on the Date Filtered Queues
+  const totalCount = dateFilteredQueues.length;
+  const waitingCount = dateFilteredQueues.filter(q => (q.status || '').toUpperCase() === 'WAITING').length;
+  const weighinCount = dateFilteredQueues.filter(q => (q.status || '').toUpperCase() === 'WEIGH_IN').length;
+  const gradingCount = dateFilteredQueues.filter(q => (q.status || '').toUpperCase() === 'GRADING').length;
+  const completedCount = dateFilteredQueues.filter(q => ['COMPLETED', 'CHECKED_OUT'].includes((q.status || '').toUpperCase())).length;
+
+  // Calculate Average Handle Time
+  const averageMetrics = React.useMemo(() => {
+    const groups = {};
+    queues.forEach(q => {
+      const status = (q.status || q.status_code || '').toUpperCase();
+      if (status === 'COMPLETED' && q.check_out_at && q.check_in_at) {
+        // Basic frontend mock filter for the operational date (ignoring exact shift hours for now just for UI demo)
+        const checkOutDateStr = new Date(q.check_out_at).toISOString().split('T')[0];
+        if (checkOutDateStr === selectedDate) {
+          const cls = q.classificationCode || q.classification_name || q.classification || 'OTHER';
+          if (!groups[cls]) groups[cls] = { total: 0, sumSeconds: 0 };
+          
+          const inTime = new Date(q.check_in_at).getTime();
+          const outTime = new Date(q.check_out_at).getTime();
+          if (outTime > inTime) {
+            groups[cls].total += 1;
+            groups[cls].sumSeconds += (outTime - inTime) / 1000;
+          }
+        }
+      }
+    });
+
+    return Object.keys(groups).map(cls => {
+      const { total, sumSeconds } = groups[cls];
+      const avgSeconds = sumSeconds / total;
+      
+      let avgText = '';
+      if (avgSeconds < 3600) {
+         avgText = `${Math.floor(avgSeconds / 60)} Menit`;
+      } else {
+         const hrs = Math.floor(avgSeconds / 3600);
+         const mins = Math.floor((avgSeconds % 3600) / 60);
+         avgText = `${hrs} Jam ${mins} Menit`;
+      }
+      
+      return { classification: cls, total, avgText };
+    });
+  }, [queues, selectedDate]);
 
   if (loading) {
     return (
@@ -250,7 +367,7 @@ function TruckQueuesTab() {
       }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
+          gridTemplateColumns: 'repeat(5, 1fr)',
           gap: '12px',
           width: '100%'
         }}>
@@ -282,12 +399,23 @@ function TruckQueuesTab() {
               <FaVolumeUp />
             </div>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: '800', color: '#0284c7', letterSpacing: '0.05em', textTransform: 'uppercase' }}>WEIGH-IN / GRADING</div>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#0284c7', letterSpacing: '0.05em', textTransform: 'uppercase' }}>WEIGH-IN</div>
               <div style={{ fontSize: '22px', fontWeight: '900', color: '#0369a1', lineHeight: '1.2' }}>{weighinCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#0284c7' }}>Active</span></div>
             </div>
           </div>
 
           {/* Metric 4 */}
+          <div style={{ background: '#f8fafc', border: '1px solid #c4b5fd', borderRadius: '0px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '0px', background: '#ede9fe', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+              <FaSearch />
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: '800', color: '#7c3aed', letterSpacing: '0.05em', textTransform: 'uppercase' }}>GRADING</div>
+              <div style={{ fontSize: '22px', fontWeight: '900', color: '#5b21b6', lineHeight: '1.2' }}>{gradingCount} <span style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed' }}>Active</span></div>
+            </div>
+          </div>
+
+          {/* Metric 5 */}
           <div style={{ background: '#f8fafc', border: '1px solid #bbf7d0', borderRadius: '0px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{ width: '42px', height: '42px', borderRadius: '0px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
               <FaChevronRight />
@@ -298,6 +426,112 @@ function TruckQueuesTab() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── AVERAGE HANDLE TIME & DATE FILTER BAR ── */}
+      <div style={{
+        padding: '12px 20px',
+        background: '#f1f5f9',
+        borderBottom: '1px solid #e2e8f0',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        flexShrink: 0
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '13px', fontWeight: '800', color: '#475569', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FaClock style={{ color: '#64748b' }} />
+            AVERAGE HANDLE TIME (OPERATIONAL DATE)
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              onClick={() => setSelectedDate('')}
+              style={{
+                padding: '6px 12px',
+                background: !selectedDate ? '#1e293b' : '#f8fafc',
+                color: !selectedDate ? '#fff' : '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: '4px',
+                fontSize: '12px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              ALL DATA
+            </button>
+            
+            <label style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginLeft: '6px' }}>DATE:</label>
+            <input 
+              type="date" 
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={{
+                padding: '6px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '4px',
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#334155',
+                outline: 'none',
+                background: '#fff',
+                cursor: 'pointer'
+              }}
+            />
+
+            <button
+              onClick={exportToExcel}
+              style={{
+                padding: '6px 14px',
+                background: '#16a34a',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '4px',
+                fontSize: '12px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginLeft: '10px',
+                boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)'
+              }}
+            >
+              EXPORT EXCEL
+            </button>
+          </div>
+        </div>
+
+        {averageMetrics.length === 0 ? (
+          <div style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', padding: '4px 0' }}>
+            No completed trucks for the selected date to calculate averages.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            {averageMetrics.map((metric, idx) => (
+              <div key={idx} style={{
+                background: '#fff',
+                border: '1px solid #e2e8f0',
+                padding: '10px 14px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+              }}>
+                <div style={{ width: '32px', height: '32px', background: '#f8fafc', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: '#64748b' }}>
+                  🚚
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>{metric.classification.toUpperCase()}</div>
+                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                    Total: <strong style={{ color: '#334155' }}>{metric.total} Truk</strong> | Rata-rata: <strong style={{ color: '#059669' }}>{metric.avgText}</strong>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── MAIN CONTENT AREA (FULL-WIDTH 100% WITHOUT SIDE SPACE) ── */}
@@ -369,6 +603,7 @@ function TruckQueuesTab() {
                   { key: 'ALL', label: 'ALL QUEUES' },
                   { key: 'WAITING', label: 'WAITING' },
                   { key: 'WEIGHIN', label: 'WEIGH-IN' },
+                  { key: 'GRADING', label: 'GRADING' },
                   { key: 'COMPLETED', label: 'COMPLETED' }
                 ].map(t => (
                   <button
@@ -399,14 +634,17 @@ function TruckQueuesTab() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 10, borderBottom: '2px solid #e2e8f0' }}>
                 <tr>
+                  <th style={thStyle}>PIC / SECURITY</th>
                   <th style={thStyle}>CHECK-IN TIME</th>
+                  <th style={thStyle}>CHECK-OUT TIME</th>
+                  <th style={thStyle}>HANDLE TIME</th>
                   <th style={thStyle}>TICKET NO.</th>
+                  <th style={{ ...thStyle, textAlign: 'center' }}>TRANSPORT CLASSIFICATION</th>
                   <th style={thStyle}>LICENSE PLATE</th>
                   <th style={thStyle}>DRIVER NAME</th>
                   <th style={thStyle}>SIM NO.</th>
                   <th style={thStyle}>DO NUMBER</th>
                   <th style={thStyle}>COMPANY / VENDOR</th>
-                  <th style={thStyle}>CLASSIFICATION</th>
                   <th style={thStyle}>PHOTO PROOF</th>
                   <th style={thStyle}>QUEUE STATUS</th>
                   <th style={{ ...thStyle, textAlign: 'center' }}>ACTION</th>
@@ -415,7 +653,7 @@ function TruckQueuesTab() {
               <tbody>
                 {filteredQueues.length === 0 ? (
                   <tr>
-                    <td colSpan="11" style={{ textAlign: 'center', padding: '50px 20px', color: '#94a3b8' }}>
+                    <td colSpan="13" style={{ textAlign: 'center', padding: '50px 20px', color: '#94a3b8' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                         <FaTruck style={{ fontSize: '32px', color: '#cbd5e1' }} />
                         <span style={{ fontSize: '14px', fontWeight: '700', color: '#64748b' }}>NO TRUCK QUEUE RECORDS FOUND</span>
@@ -426,19 +664,43 @@ function TruckQueuesTab() {
                 ) : (
                   filteredQueues.map((q, idx) => {
                     const checkInDate = q.checkInAt || q.check_in_at;
+                    const status = (q.status || 'WAITING').toUpperCase();
+                    const checkOutDate = q.checkOutAt || q.check_out_at || (status === 'COMPLETED' ? (q.updatedAt || q.updated_at) : null);
+                    
+                    let handleTime = '-';
+                    if (checkInDate) {
+                      const start = new Date(checkInDate);
+                      const end = checkOutDate ? new Date(checkOutDate) : new Date();
+                      const diffMs = end - start;
+                      if (diffMs >= 0) {
+                        const diffMins = Math.floor(diffMs / 60000);
+                        const hours = Math.floor(diffMins / 60);
+                        const mins = diffMins % 60;
+                        handleTime = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+                      }
+                    }
+
                     const queueCode = q.queueCode || q.queue_number;
                     const plate = q.licensePlate || q.plate_number;
                     const driver = q.driverName || q.driver_name || '-';
                     const sim = q.noSim || q.no_sim || '-';
                     const doNo = q.noDo || q.no_do || '-';
                     const company = q.perusahaan || q.transporterCompany || q.transporter_company || '-';
-                    const classCode = q.classificationCode || q.classification_name || '-';
+                    const classCode = q.classification_id || q.classificationcode || q.classification_code || q.classificationCode || '-';
                     const photo = q.driverPhoto || q.driver_photo;
-                    const status = (q.status || 'WAITING').toUpperCase();
 
                     return (
                       <tr key={q.id || queueCode || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#fafafa', transition: 'background 0.15s' }}>
                         
+                        {/* PIC / Security */}
+                        <td style={tdStyle}>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b' }}>
+                              {q.registeredByName || q.registered_by_name || q.registeredbyname || 'System'}
+                            </span>
+                          </div>
+                        </td>
+
                         {/* Check-in Time */}
                         <td style={tdStyle}>
                           <div style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>
@@ -449,21 +711,81 @@ function TruckQueuesTab() {
                           </div>
                         </td>
 
-                        {/* Ticket Code */}
+                        {/* Check-out Time */}
+                        <td style={tdStyle}>
+                          <div style={{ fontSize: '12px', fontWeight: '800', color: checkOutDate ? '#0f172a' : '#94a3b8' }}>
+                            {checkOutDate ? new Date(checkOutDate).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\./g, ':') + ' WIB' : '-'}
+                          </div>
+                          {checkOutDate && (
+                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>
+                              {new Date(checkOutDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Handle Time */}
                         <td style={tdStyle}>
                           <span style={{
-                            fontFamily: 'monospace',
-                            fontSize: '13px',
-                            fontWeight: '900',
-                            color: '#b45309',
-                            background: '#fef3c7',
+                            fontSize: '12px',
+                            fontWeight: '800',
+                            color: checkOutDate ? '#16a34a' : '#ea580c',
+                            background: checkOutDate ? '#dcfce7' : '#ffedd5',
                             padding: '3px 8px',
                             borderRadius: '6px',
-                            border: '1px solid #fde68a'
                           }}>
-                            {queueCode}
+                            {handleTime}
                           </span>
                         </td>
+
+                        {(() => {
+                          const classMap = {
+                            'SO': { label: 'FFB SUPER', bg: '#fef3c7', text: '#b45309', border: '#fde68a' },
+                            'U': { label: 'FFB UMUM', bg: '#d1fae5', text: '#047857', border: '#a7f3d0' },
+                            'M': { label: 'FFB MITRA', bg: '#cffafe', text: '#0369a1', border: '#bae6fd' },
+                            'C': { label: 'CRUDE PALM OIL', bg: '#ffedd5', text: '#c2410c', border: '#fed7aa' },
+                            'K': { label: 'PALM KERNEL', bg: '#ffedd5', text: '#c2410c', border: '#fed7aa' },
+                            'S': { label: 'PALM KERNEL SHELL', bg: '#f3e8ff', text: '#7e22ce', border: '#e9d5ff' },
+                            'DLL': { label: 'DLL', bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' }
+                          };
+                          const meta = classMap[classCode] || { label: q.classification_name || classCode, bg: '#f3f4f6', text: '#4b5563', border: '#e5e7eb' };
+
+                          return (
+                            <>
+                              {/* Ticket Code */}
+                              <td style={tdStyle}>
+                                <span style={{
+                                  fontFamily: 'monospace',
+                                  fontSize: '13px',
+                                  fontWeight: '900',
+                                  color: meta.text,
+                                  background: meta.bg,
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  border: `1px solid ${meta.border}`
+                                }}>
+                                  {queueCode}
+                                </span>
+                              </td>
+
+                              {/* Classification */}
+                              <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                <span style={{
+                                  fontSize: '11px',
+                                  fontWeight: '800',
+                                  background: meta.bg,
+                                  color: meta.text,
+                                  border: `1px solid ${meta.border}`,
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  letterSpacing: '0.02em',
+                                  display: 'inline-block'
+                                }}>
+                                  {meta.label}
+                                </span>
+                              </td>
+                            </>
+                          );
+                        })()}
 
                         {/* License Plate */}
                         <td style={tdStyle}>
@@ -492,35 +814,6 @@ function TruckQueuesTab() {
 
                         {/* Company */}
                         <td style={{ ...tdStyle, fontSize: '12px', color: '#475569', fontWeight: '600' }}>{company}</td>
-
-                        {/* Classification */}
-                        <td style={tdStyle}>
-                          {(() => {
-                            const classMap = {
-                              'U': 'FFB UMUM',
-                              'M': 'FFB MITRA',
-                              'C': 'CRUDE PALM OIL',
-                              'K': 'PALM KERNEL',
-                              'S': 'PALM KERNEL SHELL'
-                            };
-                            const label = classMap[classCode] || (q.classification_name && q.classification_name !== classCode ? q.classification_name : '');
-                            const text = label ? `${classCode} - ${label}` : classCode;
-                            return (
-                              <span style={{
-                                fontSize: '11px',
-                                fontWeight: '800',
-                                background: '#0f172a',
-                                color: '#fbbf24',
-                                padding: '4px 10px',
-                                borderRadius: '6px',
-                                letterSpacing: '0.02em',
-                                display: 'inline-block'
-                              }}>
-                                {text}
-                              </span>
-                            );
-                          })()}
-                        </td>
 
                         {/* Photo */}
                         <td style={tdStyle}>
@@ -560,9 +853,9 @@ function TruckQueuesTab() {
                             fontSize: '11px',
                             fontWeight: '900',
                             letterSpacing: '0.04em',
-                            background: status === 'WAITING' ? '#fefce8' : status === 'WEIGH_IN' || status === 'GRADING' ? '#e0f2fe' : status === 'COMPLETED' || status === 'CHECKED_OUT' ? '#dcfce7' : '#f1f5f9',
-                            color: status === 'WAITING' ? '#b45309' : status === 'WEIGH_IN' || status === 'GRADING' ? '#0369a1' : status === 'COMPLETED' || status === 'CHECKED_OUT' ? '#15803d' : '#64748b',
-                            border: status === 'WAITING' ? '1px solid #fde68a' : status === 'WEIGH_IN' || status === 'GRADING' ? '1px solid #bae6fd' : status === 'COMPLETED' || status === 'CHECKED_OUT' ? '1px solid #bbf7d0' : '1px solid #cbd5e1'
+                            background: status === 'WAITING' ? '#fefce8' : status === 'WEIGH_IN' ? '#e0f2fe' : status === 'GRADING' ? '#ede9fe' : status === 'COMPLETED' || status === 'CHECKED_OUT' ? '#dcfce7' : '#f1f5f9',
+                            color: status === 'WAITING' ? '#b45309' : status === 'WEIGH_IN' ? '#0369a1' : status === 'GRADING' ? '#5b21b6' : status === 'COMPLETED' || status === 'CHECKED_OUT' ? '#15803d' : '#64748b',
+                            border: status === 'WAITING' ? '1px solid #fde68a' : status === 'WEIGH_IN' ? '1px solid #bae6fd' : status === 'GRADING' ? '1px solid #c4b5fd' : status === 'COMPLETED' || status === 'CHECKED_OUT' ? '1px solid #bbf7d0' : '1px solid #cbd5e1'
                           }}>
                             {status}
                           </span>

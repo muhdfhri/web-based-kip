@@ -20,6 +20,16 @@ export const pool = new Pool({
   idleTimeoutMillis: 30000,
 });
 
+export const mainPool = new Pool({
+  host: dbHost,
+  port: dbPort,
+  user: dbUser,
+  password: dbPassword,
+  database: 'mewah_main',
+  max: 5,
+  idleTimeoutMillis: 30000,
+});
+
 /**
  * Converts MySQL parameter placeholders (?) to PostgreSQL placeholders ($1, $2, ...)
  */
@@ -50,6 +60,17 @@ async function executeQuery(sql, params = []) {
   const fields = res.fields || [];
   return [rows, fields];
 }
+
+async function executeMainQuery(sql, params = []) {
+  const pgSql = convertSqlParams(sql);
+  const res = await mainPool.query(pgSql, params);
+  const rows = res.rows || [];
+  return [rows, res.fields || []];
+}
+
+export const dbMainPool = {
+  query: executeMainQuery
+};
 
 export const dbPool = {
   query: executeQuery,

@@ -1,5 +1,6 @@
 import express from 'express';
-import { dbPool } from '../config/db.js';
+import { dbPool, dbMainPool } from '../config/db.js';
+import { requireAuth } from '../middleware/jwtMiddleware.js';
 
 const router = express.Router();
 
@@ -55,20 +56,22 @@ setInterval(async () => {
   }
 }, 5000);
 
-// Master Data Classifications
-const CLASSIFICATIONS = [
-  { code: 'U', name: 'FFB UMUM', label: 'FFB UMUM' },
-  { code: 'M', name: 'FFB MITRA', label: 'FFB MITRA' },
-  { code: 'C', name: 'CRUDE PALM OIL', label: 'CRUDE PALM OIL' },
-  { code: 'K', name: 'PALM KERNEL', label: 'PALM KERNEL' },
-  { code: 'S', name: 'PALM KERNEL SHELL', label: 'PALM KERNEL SHELL' },
-];
-
 /**
  * GET /api/security/queues/classifications
  */
-router.get('/classifications', (req, res) => {
-  res.json({ success: true, data: CLASSIFICATIONS });
+router.get('/classifications', async (req, res) => {
+  try {
+    const [rows] = await dbPool.query(
+      `SELECT code, label as name, label, requires_grading 
+       FROM security_queue_classifications 
+       WHERE is_active = 1 
+       ORDER BY sort_order ASC`
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error('Error fetching classifications:', err);
+    res.status(500).json({ success: false, data: [] });
+  }
 });
 
 /**
@@ -194,6 +197,8 @@ const getQueueList = async (req, res) => {
         q.check_in_at,
         q.weigh_in_at AS weighInAt,
         q.weigh_in_at,
+        q.check_out_at AS checkOutAt,
+        q.check_out_at,
         q.driver_photo AS driverPhoto,
         q.driver_photo,
         q.no_do AS noDo,
@@ -204,6 +209,8 @@ const getQueueList = async (req, res) => {
         q.transporter_company AS transporterCompany,
         q.transporter_company,
         q.notes,
+        q.registered_by AS registeredBy,
+        q.registered_by_name AS registeredByName,
         q.created_at AS createdAt,
         q.created_at,
         q.updated_at AS updatedAt,
@@ -268,6 +275,7 @@ const createQueueHandler = async (req, res) => {
     driverPhoto, driver_photo,
     queueCode, queue_number
   } = req.body;
+  console.log('[DEBUG] createQueue body:', req.body);
 
   const finalDriverName = driverName || driver_name || 'Driver';
   const finalPlateNumber = licensePlate || plate_number || '';
@@ -279,11 +287,32 @@ const createQueueHandler = async (req, res) => {
   const finalNotes = notes || null;
   const finalPhoto = driverPhoto || driver_photo || null;
 
+  // Extract from body (Payload-based approach) or JWT (if available)
+  // Extract from body (Payload-based approach) or JWT (if available)
+  let registeredBy = req.body.registeredBy || req.body.registered_by || req.user?.userId || req.user?.id || 1;
+  let registeredByName = req.body.registeredByName || req.body.registered_by_name || req.user?.username || null;
+
   if (!finalPlateNumber) {
     return res.status(400).json({ success: false, message: 'License plate number is required' });
   }
 
   try {
+    if (!registeredByName && registeredBy) {
+      try {
+        const [userRows] = await dbMainPool.query('SELECT username FROM users WHERE id = ?', [registeredBy]);
+        if (userRows && userRows.length > 0) {
+          registeredByName = userRows[0].username;
+        } else {
+          registeredByName = 'System';
+        }
+      } catch (e) {
+        console.error('Error fetching username:', e);
+        registeredByName = 'System';
+      }
+    } else if (!registeredByName) {
+      registeredByName = 'System';
+    }
+
     const today = new Date().toISOString().split('T')[0];
     
     const [seqRows] = await dbPool.query(
@@ -344,7 +373,7 @@ const createQueueHandler = async (req, res) => {
     const [result] = await dbPool.query(
       `INSERT INTO security_truck_queues 
        (queue_code, classification_code, queue_date, sequence_number, driver_name, no_sim, license_plate, no_do, transporter_company, perusahaan, driver_photo, status, check_in_at, notes, registered_by, registered_by_name, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'WAITING', CURRENT_TIMESTAMP, ?, 1, 'Security', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'WAITING', CURRENT_TIMESTAMP, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [
         finalQueueCode,
         finalClassCode,
@@ -357,7 +386,9 @@ const createQueueHandler = async (req, res) => {
         finalTransporter,
         finalPerusahaan,
         finalPhoto,
-        finalNotes
+        finalNotes,
+        registeredBy,
+        registeredByName
       ]
     );
 
@@ -379,6 +410,8 @@ const createQueueHandler = async (req, res) => {
       notes: finalNotes,
       driverPhoto: finalPhoto,
       status: 'WAITING',
+      registeredBy: registeredBy,
+      registeredByName: registeredByName,
       checkInAt: new Date(),
     };
 
@@ -492,6 +525,8 @@ const updateQueueHandler = async (req, res) => {
       values.push(finalStatus);
       if (finalStatus === 'WEIGH_IN') {
         fields.push('weigh_in_at = CURRENT_TIMESTAMP');
+      } else if (finalStatus === 'COMPLETED') {
+        fields.push('check_out_at = CURRENT_TIMESTAMP');
       }
     }
     if (finalDriverName) {
@@ -530,8 +565,11 @@ const updateQueueHandler = async (req, res) => {
       fields.push('driver_photo = ?');
       values.push(finalPhoto);
     }
+    
+    // Always update updated_at when updating a queue
+    fields.push('updated_at = CURRENT_TIMESTAMP');
 
-    if (fields.length === 0) {
+    if (fields.length === 1) { // Only updated_at is in there
       return res.status(400).json({ success: false, message: 'No fields to update' });
     }
 

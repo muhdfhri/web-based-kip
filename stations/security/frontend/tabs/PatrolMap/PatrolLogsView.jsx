@@ -137,15 +137,12 @@ function PatrolLogsView({ onBack }) {
             </button>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 10px #22c55e' }} />
+          {onBack && <div style={{ width: '1px', height: '24px', background: '#e2e8f0' }}></div>}
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div>
-              <h2 style={{ fontSize: '15px', fontWeight: '900', margin: 0, letterSpacing: '0.03em', color: '#0f172a', textTransform: 'uppercase' }}>
-                PATROL CHECKPOINT LOGS AUDIT
-              </h2>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0', fontWeight: '600' }}>
-                Historical verified checkpoint findings & guard activity logs
-              </p>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px' }}>Patrol Logs</h2>
+              <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>Historical verified checkpoint findings & guard activity logs</div>
             </div>
           </div>
         </div>

@@ -1086,4 +1086,72 @@ const syncOfflineBatchHandler = async (req, res) => {
 
 router.post('/sync-offline-batch', syncOfflineBatchHandler);
 
+// --- Master Checkpoints CRUD API ---
+
+// 1. GET all checkpoints
+router.get('/master-checkpoints', async (req, res) => {
+  try {
+    const [rows] = await dbPool.query('SELECT * FROM security_stations ORDER BY checkpoint_code ASC');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching master checkpoints:', error);
+    res.status(500).json({ error: 'Failed to fetch master checkpoints' });
+  }
+});
+
+// 2. POST create new checkpoint
+router.post('/master-checkpoints', async (req, res) => {
+  try {
+    const { checkpoint_code, label, latitude, longitude, radius_meters } = req.body;
+    
+    // Get max id since the column is not serial
+    const [maxRows] = await dbPool.query('SELECT MAX(id) as max_id FROM security_stations');
+    const newId = (maxRows[0]?.max_id || 0) + 1;
+
+    await dbPool.query(
+      `INSERT INTO security_stations (id, station_key, checkpoint_code, label, normalized_x, normalized_y, latitude, longitude, radius_meters, is_active, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, 0.5, 0.5, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [newId, checkpoint_code.toLowerCase().replace(/[^a-z0-9]/g, '_'), checkpoint_code, label, latitude, longitude, radius_meters || 30]
+    );
+    res.json({ success: true, message: 'Checkpoint created successfully' });
+  } catch (error) {
+    console.error('Error creating checkpoint:', error);
+    res.status(500).json({ error: 'Failed to create checkpoint' });
+  }
+});
+
+// 3. PUT update checkpoint
+router.put('/master-checkpoints/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { checkpoint_code, label, latitude, longitude, radius_meters } = req.body;
+    await dbPool.query(
+      `UPDATE security_stations 
+       SET checkpoint_code = ?, label = ?, latitude = ?, longitude = ?, radius_meters = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [checkpoint_code, label, latitude, longitude, radius_meters, id]
+    );
+    res.json({ success: true, message: 'Checkpoint updated successfully' });
+  } catch (error) {
+    console.error('Error updating checkpoint:', error);
+    res.status(500).json({ error: 'Failed to update checkpoint' });
+  }
+});
+
+// 4. PUT toggle status (soft delete)
+router.put('/master-checkpoints/:id/toggle', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    await dbPool.query(
+      'UPDATE security_stations SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [is_active ? 1 : 0, id]
+    );
+    res.json({ success: true, message: 'Checkpoint status updated' });
+  } catch (error) {
+    console.error('Error toggling checkpoint status:', error);
+    res.status(500).json({ error: 'Failed to toggle status' });
+  }
+});
+
 export default router;
