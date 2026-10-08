@@ -7,7 +7,14 @@ function TruckQueuesTab() {
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const todayDate = new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState(todayDate);
+  const [endDate, setEndDate] = useState(todayDate);
+  const [visibleCount, setVisibleCount] = useState(100);
+
+  React.useEffect(() => {
+    setVisibleCount(100);
+  }, [startDate, endDate, searchQuery, activeTab]);
 
   const fetchQueues = async () => {
     try {
@@ -162,8 +169,12 @@ function TruckQueuesTab() {
     const code = spellCode(q.queueCode || q.queue_number || q.ticket_number || '');
     const driver = q.driverName || q.driver_name || '';
     const plate = spellPlate(q.licensePlate || q.plate_number || '');
+    const status = (q.status || 'WAITING').toUpperCase();
 
-    const text = `Nomor antrian ${code}, ${driver}, plat nomor ${plate}, silakan menuju timbangan.`;
+    let text = `Nomor antrian ${code}, ${driver}, plat nomor ${plate}, silakan menuju timbangan.`;
+    if (status === 'GRADING') {
+      text = `Nomor antrian ${code}, ${driver}, plat nomor ${plate}, silakan menuju area sortir grading.`;
+    }
 
     try {
       if (window.speechSynthesis.paused) {
@@ -203,14 +214,22 @@ function TruckQueuesTab() {
   };
 
   const dateFilteredQueues = React.useMemo(() => {
-    if (!selectedDate) return queues;
+    if (!startDate && !endDate) return queues;
     return queues.filter(q => {
       const timeVal = q.check_in_at || q.created_at;
       if (!timeVal) return false;
       const truckDate = new Date(timeVal).toISOString().split('T')[0];
-      return truckDate === selectedDate;
+      
+      if (startDate && endDate) {
+        return truckDate >= startDate && truckDate <= endDate;
+      } else if (startDate) {
+        return truckDate >= startDate;
+      } else if (endDate) {
+        return truckDate <= endDate;
+      }
+      return true;
     });
-  }, [queues, selectedDate]);
+  }, [queues, startDate, endDate]);
 
   const filteredQueues = dateFilteredQueues.filter(q => {
     const status = (q.status || q.status_code || 'WAITING').toUpperCase();
@@ -289,7 +308,17 @@ function TruckQueuesTab() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `truck_queues_${selectedDate || 'ALL_DATA'}.xls`);
+    
+    let dateStr = 'ALL_DATA';
+    if (startDate && endDate) {
+      dateStr = `${startDate}_to_${endDate}`;
+    } else if (startDate) {
+      dateStr = `From_${startDate}`;
+    } else if (endDate) {
+      dateStr = `To_${endDate}`;
+    }
+    
+    link.setAttribute("download", `truck_queues_${dateStr}.xls`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -310,7 +339,19 @@ function TruckQueuesTab() {
       if (status === 'COMPLETED' && q.check_out_at && q.check_in_at) {
         // Basic frontend mock filter for the operational date (ignoring exact shift hours for now just for UI demo)
         const checkOutDateStr = new Date(q.check_out_at).toISOString().split('T')[0];
-        if (checkOutDateStr === selectedDate) {
+        
+        let matchDate = false;
+        if (startDate && endDate) {
+          matchDate = checkOutDateStr >= startDate && checkOutDateStr <= endDate;
+        } else if (startDate) {
+          matchDate = checkOutDateStr >= startDate;
+        } else if (endDate) {
+          matchDate = checkOutDateStr <= endDate;
+        } else {
+          matchDate = true;
+        }
+
+        if (matchDate) {
           const cls = q.classificationCode || q.classification_name || q.classification || 'OTHER';
           if (!groups[cls]) groups[cls] = { total: 0, sumSeconds: 0 };
           
@@ -339,7 +380,7 @@ function TruckQueuesTab() {
       
       return { classification: cls, total, avgText };
     });
-  }, [queues, selectedDate]);
+  }, [queues, startDate, endDate]);
 
   if (loading) {
     return (
@@ -351,6 +392,14 @@ function TruckQueuesTab() {
       </div>
     );
   }
+  const handleScroll = (e) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.target;
+    if (scrollHeight - scrollTop <= clientHeight + 100) {
+      if (visibleCount < filteredQueues.length) {
+        setVisibleCount(prev => prev + 100);
+      }
+    }
+  };
 
   return (
     <div className="som-view-container" style={{ padding: '0', background: '#f8fafc', height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
@@ -445,11 +494,11 @@ function TruckQueuesTab() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
-              onClick={() => setSelectedDate('')}
+              onClick={() => { setStartDate(''); setEndDate(''); }}
               style={{
                 padding: '6px 12px',
-                background: !selectedDate ? '#1e293b' : '#f8fafc',
-                color: !selectedDate ? '#fff' : '#475569',
+                background: (!startDate && !endDate) ? '#1e293b' : '#f8fafc',
+                color: (!startDate && !endDate) ? '#fff' : '#475569',
                 border: '1px solid #cbd5e1',
                 borderRadius: '4px',
                 fontSize: '12px',
@@ -461,23 +510,45 @@ function TruckQueuesTab() {
               ALL DATA
             </button>
             
-            <label style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginLeft: '6px' }}>DATE:</label>
-            <input 
-              type="date" 
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{
-                padding: '6px 12px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '4px',
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#334155',
-                outline: 'none',
-                background: '#fff',
-                cursor: 'pointer'
-              }}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>FROM:</label>
+              <input 
+                type="date" 
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                style={{
+                  padding: '6px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#334155',
+                  outline: 'none',
+                  background: '#fff',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '700', color: '#64748b' }}>TO:</label>
+              <input 
+                type="date" 
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                style={{
+                  padding: '6px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '4px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#334155',
+                  outline: 'none',
+                  background: '#fff',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
 
             <button
               onClick={exportToExcel}
@@ -630,7 +701,7 @@ function TruckQueuesTab() {
           </div>
 
           {/* ── TABLE CONTAINER ── */}
-          <div style={{ flex: '1', overflowY: 'auto' }}>
+          <div style={{ flex: '1', overflowY: 'auto' }} onScroll={handleScroll}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 10, borderBottom: '2px solid #e2e8f0' }}>
                 <tr>
@@ -662,7 +733,7 @@ function TruckQueuesTab() {
                     </td>
                   </tr>
                 ) : (
-                  filteredQueues.map((q, idx) => {
+                  filteredQueues.slice(0, visibleCount).map((q, idx) => {
                     const checkInDate = q.checkInAt || q.check_in_at;
                     const status = (q.status || 'WAITING').toUpperCase();
                     const checkOutDate = q.checkOutAt || q.check_out_at || (status === 'COMPLETED' ? (q.updatedAt || q.updated_at) : null);
@@ -695,7 +766,7 @@ function TruckQueuesTab() {
                         {/* PIC / Security */}
                         <td style={tdStyle}>
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b' }}>
+                            <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>
                               {q.registeredByName || q.registered_by_name || q.registeredbyname || 'System'}
                             </span>
                           </div>
@@ -703,21 +774,21 @@ function TruckQueuesTab() {
 
                         {/* Check-in Time */}
                         <td style={tdStyle}>
-                          <div style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a' }}>
                             {checkInDate ? new Date(checkInDate).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\./g, ':') + ' WIB' : '-'}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>
+                          <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '900', marginTop: '2px' }}>
                             {checkInDate ? new Date(checkInDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                           </div>
                         </td>
 
                         {/* Check-out Time */}
                         <td style={tdStyle}>
-                          <div style={{ fontSize: '12px', fontWeight: '800', color: checkOutDate ? '#0f172a' : '#94a3b8' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '900', color: checkOutDate ? '#0f172a' : '#94a3b8' }}>
                             {checkOutDate ? new Date(checkOutDate).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\./g, ':') + ' WIB' : '-'}
                           </div>
                           {checkOutDate && (
-                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>
+                            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: '900', marginTop: '2px' }}>
                               {new Date(checkOutDate).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </div>
                           )}
@@ -726,8 +797,8 @@ function TruckQueuesTab() {
                         {/* Handle Time */}
                         <td style={tdStyle}>
                           <span style={{
-                            fontSize: '12px',
-                            fontWeight: '800',
+                            fontSize: '13px',
+                            fontWeight: '900',
                             color: checkOutDate ? '#16a34a' : '#ea580c',
                             background: checkOutDate ? '#dcfce7' : '#ffedd5',
                             padding: '3px 8px',
@@ -754,14 +825,14 @@ function TruckQueuesTab() {
                               {/* Ticket Code */}
                               <td style={tdStyle}>
                                 <span style={{
-                                  fontFamily: 'monospace',
                                   fontSize: '13px',
                                   fontWeight: '900',
                                   color: meta.text,
                                   background: meta.bg,
                                   padding: '3px 8px',
                                   borderRadius: '6px',
-                                  border: `1px solid ${meta.border}`
+                                  border: `1px solid ${meta.border}`,
+                                  textTransform: 'uppercase'
                                 }}>
                                   {queueCode}
                                 </span>
@@ -770,15 +841,16 @@ function TruckQueuesTab() {
                               {/* Classification */}
                               <td style={{ ...tdStyle, textAlign: 'center' }}>
                                 <span style={{
-                                  fontSize: '11px',
-                                  fontWeight: '800',
+                                  fontSize: '13px',
+                                  fontWeight: '900',
                                   background: meta.bg,
                                   color: meta.text,
                                   border: `1px solid ${meta.border}`,
                                   padding: '4px 10px',
                                   borderRadius: '6px',
                                   letterSpacing: '0.02em',
-                                  display: 'inline-block'
+                                  display: 'inline-block',
+                                  textTransform: 'uppercase'
                                 }}>
                                   {meta.label}
                                 </span>
@@ -797,23 +869,24 @@ function TruckQueuesTab() {
                             background: '#f1f5f9',
                             padding: '3px 8px',
                             borderRadius: '4px',
-                            border: '1px solid #cbd5e1'
+                            border: '1px solid #cbd5e1',
+                            textTransform: 'uppercase'
                           }}>
                             {plate}
                           </span>
                         </td>
 
                         {/* Driver */}
-                        <td style={{ ...tdStyle, fontWeight: '700', color: '#0f172a' }}>{driver}</td>
+                        <td style={{ ...tdStyle, fontSize: '13px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>{driver}</td>
 
                         {/* SIM */}
-                        <td style={{ ...tdStyle, fontSize: '12px', color: '#64748b', fontFamily: 'monospace' }}>{sim}</td>
+                        <td style={{ ...tdStyle, fontSize: '13px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>{sim}</td>
 
                         {/* DO */}
-                        <td style={{ ...tdStyle, fontSize: '12px', fontWeight: '700', color: '#0284c7' }}>{doNo}</td>
+                        <td style={{ ...tdStyle, fontSize: '13px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>{doNo}</td>
 
                         {/* Company */}
-                        <td style={{ ...tdStyle, fontSize: '12px', color: '#475569', fontWeight: '600' }}>{company}</td>
+                        <td style={{ ...tdStyle, fontSize: '13px', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase' }}>{company}</td>
 
                         {/* Photo */}
                         <td style={tdStyle}>
@@ -850,7 +923,7 @@ function TruckQueuesTab() {
                             display: 'inline-block',
                             padding: '4px 10px',
                             borderRadius: '6px',
-                            fontSize: '11px',
+                            fontSize: '13px',
                             fontWeight: '900',
                             letterSpacing: '0.04em',
                             background: status === 'WAITING' ? '#fefce8' : status === 'WEIGH_IN' ? '#e0f2fe' : status === 'GRADING' ? '#ede9fe' : status === 'COMPLETED' || status === 'CHECKED_OUT' ? '#dcfce7' : '#f1f5f9',
@@ -875,8 +948,8 @@ function TruckQueuesTab() {
                                   padding: '6px 12px',
                                   borderRadius: '6px',
                                   cursor: 'pointer',
-                                  fontSize: '11px',
-                                  fontWeight: '800',
+                                  fontSize: '13px',
+                                  fontWeight: '900',
                                   letterSpacing: '0.02em',
                                   boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)',
                                   transition: 'all 0.15s',
@@ -885,7 +958,7 @@ function TruckQueuesTab() {
                                   gap: '6px'
                                 }}
                               >
-                                <FaVolumeUp style={{ fontSize: '11px' }} />
+                                <FaVolumeUp style={{ fontSize: '13px' }} />
                                 CALL WEIGH-IN
                               </button>
                             )}
@@ -901,8 +974,8 @@ function TruckQueuesTab() {
                                     padding: '6px 12px',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
-                                    fontSize: '11px',
-                                    fontWeight: '800',
+                                    fontSize: '13px',
+                                    fontWeight: '900',
                                     letterSpacing: '0.02em',
                                     boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)',
                                     transition: 'all 0.15s'
@@ -931,8 +1004,8 @@ function TruckQueuesTab() {
                                     padding: '6px 10px',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
-                                    fontSize: '11px',
-                                    fontWeight: '800',
+                                    fontSize: '13px',
+                                    fontWeight: '900',
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     gap: '4px',
@@ -956,8 +1029,8 @@ function TruckQueuesTab() {
                                   padding: '6px 12px',
                                   borderRadius: '6px',
                                   cursor: 'pointer',
-                                  fontSize: '11px',
-                                  fontWeight: '800',
+                                  fontSize: '13px',
+                                  fontWeight: '900',
                                   letterSpacing: '0.02em',
                                   boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)',
                                   transition: 'all 0.15s'
@@ -968,7 +1041,7 @@ function TruckQueuesTab() {
                             )}
 
                             {(status === 'COMPLETED' || status === 'CHECKED_OUT') && (
-                              <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '700' }}>DONE</span>
+                              <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '900' }}>DONE</span>
                             )}
                           </div>
                         </td>

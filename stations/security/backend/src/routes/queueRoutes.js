@@ -24,37 +24,8 @@ async function broadcastQueueEvent(event, data) {
   }
 }
 
-// ⏱️ 5-MINUTE AUTO TRANSITION WORKER: WEIGH_IN -> GRADING
-setInterval(async () => {
-  try {
-    const [dueRows] = await dbPool.query(
-      `SELECT id, queue_code, license_plate, driver_name 
-       FROM security_truck_queues 
-       WHERE status = 'WEIGH_IN' AND weigh_in_at IS NOT NULL 
-       AND TIMESTAMPDIFF(SECOND, weigh_in_at, NOW()) >= 300`
-    );
-    if (dueRows.length > 0) {
-      const ids = dueRows.map(r => r.id);
-      await dbPool.query(
-        `UPDATE security_truck_queues SET status = 'GRADING' WHERE id IN (?)`,
-        [ids]
-      );
-      console.log(`[QUEUE WORKER] Auto-transitioned ${dueRows.length} queue(s) from WEIGH_IN to GRADING:`, ids);
-      
-      for (const row of dueRows) {
-        const [[updatedRow]] = await dbPool.query(
-          'SELECT * FROM security_truck_queues WHERE id = ?',
-          [row.id]
-        );
-        if (updatedRow) {
-          broadcastQueueEvent('queue_updated', updatedRow);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('[QUEUE WORKER] Auto-transition error:', err.message);
-  }
-}, 5000);
+// Auto transition worker (WEIGH_IN -> GRADING) has been intentionally removed
+// due to real-world operations needing manual control to avoid chaotic queues.
 
 /**
  * GET /api/security/queues/classifications
@@ -177,6 +148,15 @@ router.get('/next-sequence/:code', async (req, res) => {
  */
 const getQueueList = async (req, res) => {
   try {
+    const { date } = req.query;
+    let whereClause = '';
+    const params = [];
+
+    if (date) {
+      whereClause = 'WHERE DATE(COALESCE(q.check_in_at, q.created_at)) = ?';
+      params.push(date);
+    }
+
     const [rows] = await dbPool.query(
       `SELECT 
         q.id,
@@ -219,7 +199,9 @@ const getQueueList = async (req, res) => {
        LEFT JOIN (
          SELECT DISTINCT ON (code) code, label FROM security_queue_classifications ORDER BY code, id
        ) c ON q.classification_code = c.code
-       ORDER BY q.check_in_at DESC`
+       ${whereClause}
+       ORDER BY q.check_in_at DESC`,
+      params
     );
     res.json({ success: true, data: rows });
   } catch (error) {
@@ -449,15 +431,22 @@ const callQueueHandler = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Truck queue entry not found' });
     }
 
-    await dbPool.query(
-      "UPDATE security_truck_queues SET status = 'WEIGH_IN', weigh_in_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [id]
-    );
+    const currentStatus = (queueRow.status || 'WAITING').toUpperCase();
+
+    // Only update to WEIGH_IN and set timestamp if it is still WAITING
+    if (currentStatus === 'WAITING') {
+      await dbPool.query(
+        "UPDATE security_truck_queues SET status = 'WEIGH_IN', weigh_in_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [id]
+      );
+    }
 
     const [[updatedRow]] = await dbPool.query(
       'SELECT * FROM security_truck_queues WHERE id = ?',
       [id]
     );
+
+    const newStatus = (updatedRow.status || 'WAITING').toUpperCase();
 
     const payload = {
       id: updatedRow.id,
@@ -465,7 +454,7 @@ const callQueueHandler = async (req, res) => {
       licensePlate: updatedRow.license_plate,
       driverName: updatedRow.driver_name,
       classificationCode: updatedRow.classification_code,
-      status: 'WEIGH_IN',
+      status: newStatus,
       weighInAt: updatedRow.weigh_in_at
     };
 
@@ -475,7 +464,7 @@ const callQueueHandler = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Queue ticket ${updatedRow.queue_code} called to weigh bridge speaker. Status updated to WEIGH_IN.`,
+      message: `Queue ticket ${updatedRow.queue_code} called to speaker. Current status: ${newStatus}.`,
       data: updatedRow
     });
   } catch (error) {

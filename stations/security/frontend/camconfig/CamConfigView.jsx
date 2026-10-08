@@ -125,8 +125,14 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
         body: JSON.stringify(payload),
       });
 
-      const json = await res.json();
-      if (json.success) {
+      const responseText = await res.text();
+      let json;
+      try {
+        json = JSON.parse(responseText);
+      } catch {
+        throw new Error(`Respons server tidak valid (HTTP ${res.status}). Pastikan backend Security berjalan pada port 3101.`);
+      }
+      if (res.ok && json.success) {
         setShowCameraModal(false);
         resetForm();
         fetchCameras();
@@ -135,7 +141,9 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
       }
     } catch (err) {
       console.error("[CamConfigView] Save error:", err);
-      alert("Server connection error.");
+      alert(err instanceof TypeError
+        ? "Tidak dapat menghubungi server. Periksa koneksi dan backend Security pada port 3101."
+        : err.message || "Gagal menyimpan kamera.");
     } finally {
       setSaving(false);
     }

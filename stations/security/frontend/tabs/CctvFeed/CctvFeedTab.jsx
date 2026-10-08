@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import SharedCctvStream from '../../components/SharedCctvStream.jsx';
 
 function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
     // null = ALL (auto-fit), number = fixed columns
@@ -29,7 +30,7 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
 
     // Mini grid icon squares count & sizing per grid option
     const gridOptions = [
-        { n: 3, squares: 9,  s: 3.2, g: 0.4 },
+        { n: 3, squares: 9, s: 3.2, g: 0.4 },
         { n: 4, squares: 16, s: 2.4, g: 0.32 },
         { n: 6, squares: 36, s: 1.6, g: 0.16 },
     ];
@@ -55,7 +56,7 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                     <span style={{ fontSize: '13px', fontWeight: '900', color: '#0f172a', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                         LIVE CCTV MONITORING
                     </span>
-                    
+
                     {/* Minimalist Aktif Badge */}
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: '6px', border: '1px solid #bbf7d0', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <span>Aktif:</span>
@@ -86,15 +87,15 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                             title="Show all cameras"
                         >
                             <svg width="13" height="13" viewBox="0 0 12 12" fill="currentColor">
-                                <rect x="0" y="0" width="3.2" height="3.2" rx="0.4"/>
-                                <rect x="4.4" y="0" width="3.2" height="3.2" rx="0.4"/>
-                                <rect x="8.8" y="0" width="3.2" height="3.2" rx="0.4"/>
-                                <rect x="0" y="4.4" width="3.2" height="3.2" rx="0.4"/>
-                                <rect x="4.4" y="4.4" width="3.2" height="3.2" rx="0.4"/>
-                                <rect x="8.8" y="4.4" width="3.2" height="3.2" rx="0.4"/>
-                                <rect x="0" y="8.8" width="3.2" height="3.2" rx="0.4"/>
-                                <rect x="4.4" y="8.8" width="3.2" height="3.2" rx="0.4"/>
-                                <rect x="8.8" y="8.8" width="3.2" height="3.2" rx="0.4"/>
+                                <rect x="0" y="0" width="3.2" height="3.2" rx="0.4" />
+                                <rect x="4.4" y="0" width="3.2" height="3.2" rx="0.4" />
+                                <rect x="8.8" y="0" width="3.2" height="3.2" rx="0.4" />
+                                <rect x="0" y="4.4" width="3.2" height="3.2" rx="0.4" />
+                                <rect x="4.4" y="4.4" width="3.2" height="3.2" rx="0.4" />
+                                <rect x="8.8" y="4.4" width="3.2" height="3.2" rx="0.4" />
+                                <rect x="0" y="8.8" width="3.2" height="3.2" rx="0.4" />
+                                <rect x="4.4" y="8.8" width="3.2" height="3.2" rx="0.4" />
+                                <rect x="8.8" y="8.8" width="3.2" height="3.2" rx="0.4" />
                             </svg>
                             ALL
                         </button>
@@ -217,15 +218,9 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                                     justifyContent: 'center',
                                 }}
                             >
-                                <img
+                                <SharedCctvStream
                                     src={getAiStreamUrl(camera)}
                                     alt={camera.camera_name}
-                                    onError={(e) => {
-                                        e.target.style.display = 'none';
-                                        if (e.target.nextSibling) {
-                                            e.target.nextSibling.style.display = 'flex';
-                                        }
-                                    }}
                                     style={{
                                         width: '100%',
                                         height: '100%',

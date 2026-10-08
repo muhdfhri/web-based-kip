@@ -118,7 +118,7 @@ function MapUpdater({ center, zoom, bearing }) {
     return null;
 }
 
-function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = [], stationCheckpoints = [], patrolTracks = [], cctvCameras = [], setProofIndex, setActiveProof, replaySessionId, setReplaySessionId }) {
+function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = [], stationCheckpoints = [], patrolTracks = [], cctvCameras = [], setProofIndex, setActiveProof, replaySessionId, setReplaySessionId, isSettingCheckpointsOpen, setIsSettingCheckpointsOpen }) {
     const [center, setCenter] = useState([3.683095, 98.704352]);
     const [zoom, setZoom] = useState(18);
     const [bearing, setBearing] = useState(0);
@@ -296,56 +296,94 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
         ? [parseFloat(replayData.tracks[replayIndex].latitude) + 0, parseFloat(replayData.tracks[replayIndex].longitude) + 0]
         : null;
 
-    const getStationData = (cp) => ({
-        status: 'SECURE',
-        lastCheck: new Date(cp.verified_at).toLocaleTimeString('id-ID'),
-        activeProofImg: cp.verification_photo || null,
-        activeGuardName: cp.guard_name || `Guard`,
-        proofs: [{
-            guard: cp.guard_name || `Guard`,
-            id: cp.session_id,
-            img: cp.verification_photo || null,
-            time: new Date(cp.verified_at).toLocaleTimeString('id-ID'),
-            date: new Date(cp.verified_at).toLocaleDateString('id-ID')
-        }]
-    });
+    const getStationData = (cp, latestLog = null) => {
+        if (!latestLog) {
+            return {
+                status: 'PENDING',
+                lastCheck: 'Not Checked',
+                activeProofImg: null,
+                activeGuardName: 'None',
+                proofs: []
+            };
+        }
+        return {
+            status: 'SECURE',
+            lastCheck: new Date(latestLog.verified_at).toLocaleTimeString('id-ID'),
+            activeProofImg: latestLog.verification_photo || null,
+            activeGuardName: latestLog.guard_name || `Guard`,
+            proofs: [{
+                guard: latestLog.guard_name || `Guard`,
+                id: latestLog.session_id,
+                img: latestLog.verification_photo || null,
+                time: new Date(latestLog.verified_at).toLocaleTimeString('id-ID'),
+                date: new Date(latestLog.verified_at).toLocaleDateString('id-ID')
+            }]
+        };
+    };
 
     const createGuardIcon = (guard, color = '#fbbf24', searching = false) => {
         const initial = (guard.name || guard.guard_name || '?').charAt(0).toUpperCase();
         const photoHtml = guard.latest_photo
-            ? `<img src="${guard.latest_photo}" alt="G" style="width:100%;height:100%;object-fit:cover;border-radius:50% !important;" />`
+            ? `<img src="${guard.latest_photo}" alt="G" style="width:100%;height:100%;object-fit:cover;border-radius:9999px !important;" />`
             : `<span style="color:#fff;font-size:15px;font-weight:800;">${initial}</span>`;
         const borderColor = searching ? '#ef4444' : color;
-        const avatarStyle = searching
-            ? `border-radius: 50% !important; border-color:${borderColor};box-shadow:0 0 12px ${borderColor}40;opacity:0.7;`
-            : `border-radius: 50% !important; border-color:${borderColor};box-shadow:0 0 12px ${borderColor}40;`;
         const tagExtra = searching ? `<div style="font-size:8px;color:#ef4444;font-weight:700;margin-top:2px;">📡 Searching GPS...</div>` : '';
         return L.divIcon({
             className: 'custom-guard-icon',
             html: `
-                <div style="position:absolute;bottom:0px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:50;">
-                    <div class="pm-guard-tag">${guard.name || guard.guard_name || 'Guard'}</div>
+                <div style="position:absolute;bottom:0px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:99999;pointer-events:none;">
+                    <div style="background:rgba(0,0,0,0.8);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;margin-bottom:4px;white-space:nowrap;border:1px solid #fbbf24;">${guard.name || guard.guard_name || 'Guard'}</div>
                     ${tagExtra}
-                    <div style="position:relative;">
-                        <div class="pm-guard-avatar" style="${avatarStyle}">
+                    <div style="position:relative;width:44px;height:44px;">
+                        <div style="width:44px;height:44px;border-radius:9999px;border:3px solid ${borderColor};overflow:hidden;background:#1e293b;display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px ${borderColor};box-sizing:border-box;">
                             ${photoHtml}
                         </div>
-                        <div class="pm-guard-pulse" style="border-radius: 50% !important; border-color:${borderColor};"></div>
+                        <div style="position:absolute;top:-4px;left:-4px;right:-4px;bottom:-4px;border-radius:9999px;border:2px solid ${borderColor};opacity:0.5;box-sizing:border-box;"></div>
                         <div style="position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid ${borderColor};"></div>
                     </div>
                 </div>
             `,
-            iconSize: [40, 56],
-            iconAnchor: [20, 56]
+            iconSize: [44, 70],
+            iconAnchor: [22, 70]
         });
     };
 
-    const createCheckpointIcon = (cp) => L.divIcon({
-        className: 'custom-cp-icon',
-        html: `<div class="pm-cp-marker"><div class="pm-cp-dot"></div><div class="pm-cp-label">${cp.station_name || `CP-${cp.id}`}</div></div>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7]
-    });
+    const createCheckpointIcon = (cp, isVerified = false, isNextTarget = false) => {
+        const seq = cp.sequence_order !== undefined && cp.sequence_order !== null ? cp.sequence_order : '';
+        
+        let bgColor = '#f8fafc'; // Default: Belum dikunjungi (Putih cerah)
+        let labelColor = '#ffffff'; 
+        let shadow = '0 0 4px rgba(0,0,0,0.8)';
+        
+        if (isVerified) {
+            bgColor = '#fbbf24'; // Kuning (Selesai)
+            labelColor = '#fbbf24';
+        } else if (isNextTarget) {
+            bgColor = '#ef4444'; // Merah (Target Selanjutnya)
+            labelColor = '#ef4444';
+            shadow = '0 0 10px #ef4444, 0 0 4px rgba(0,0,0,0.8)';
+        }
+
+        const seqBadge = seq ? `<span style="background: ${bgColor}; color: #0f172a; padding: 1px 5px; border-radius: 8px; font-size: 10px; font-weight: 800; margin-right: 4px; box-shadow: ${shadow};">#${seq}</span>` : '';
+        
+        let displayLabelText = cp.station_name || cp.checkpoint_code || `CP-${cp.id}`;
+        
+        if (isMobileEmbed) {
+            // Mobile UX: Sembunyikan label panjang kecuali untuk target selanjutnya
+            if (!isNextTarget) {
+                displayLabelText = ''; 
+            }
+        }
+
+        const labelHtml = displayLabelText ? `<div class="pm-cp-label" style="color: ${labelColor}; text-shadow: 1px 1px 2px black, -1px -1px 2px black; font-weight: bold;">${seqBadge}${displayLabelText}</div>` : `<div class="pm-cp-label">${seqBadge}</div>`;
+
+        return L.divIcon({
+            className: 'custom-cp-icon',
+            html: `<div class="pm-cp-marker"><div class="pm-cp-dot" style="background: ${bgColor}; box-shadow: ${shadow}; border: 1.5px solid #0f172a;"></div>${labelHtml}</div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+        });
+    };
 
     if (isMobileEmbed) {
         return (
@@ -365,17 +403,26 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                             )}
 
                             {/* Replay checkpoints */}
-                            {replayVisibleCheckpoints.map((cp, i) => {
-                                const sData = getStationData(cp);
+                            {mapStations.map((station, i) => {
+                                if (!station.latitude || !station.longitude) return null;
+                                const logsForStation = replayVisibleCheckpoints.filter(cp => cp.station_id === station.id || cp.station_name === station.station_name);
+                                const latestLog = logsForStation.length > 0 ? logsForStation[0] : null;
+                                const sData = getStationData(station, latestLog);
+                                
+                                const isVerified = !!latestLog;
+                                const sortedReplayStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
+                                const nextReplayTarget = sortedReplayStations.find(s => replayVisibleCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
+                                const isNextTarget = nextReplayTarget && nextReplayTarget.id === station.id;
+
                                 return (
                                     <Marker
                                         key={`rcp-m-${i}`}
-                                        position={[parseFloat(cp.latitude) + 0, parseFloat(cp.longitude) + 0]}
-                                        icon={createCheckpointIcon(cp)}
+                                        position={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]}
+                                        icon={createCheckpointIcon(station, isVerified, isNextTarget)}
                                     >
                                         <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
                                             <div className="pm-tooltip-card">
-                                                <div className="pm-tooltip-title">{cp.station_name}</div>
+                                                <div className="pm-tooltip-title">{station.station_name}</div>
                                                 <div className="pm-tooltip-meta">{sData.lastCheck}</div>
                                             </div>
                                         </Tooltip>
@@ -425,31 +472,40 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                             })}
 
                             {/* LIVE: Checkpoint markers */}
-                            {stationCheckpoints.map(cp => {
-                                if (!cp.latitude || !cp.longitude) return null;
-                                const sData = getStationData(cp);
+                            {mapStations.map(station => {
+                                if (!station.latitude || !station.longitude) return null;
+                                
+                                const logsForStation = stationCheckpoints.filter(cp => cp.station_id === station.id || cp.station_name === station.station_name);
+                                const latestLog = logsForStation.length > 0 ? logsForStation[0] : null;
+                                const sData = getStationData(station, latestLog);
+                                
                                 const handleMarkerClick = () => {
                                     if (window.MapMarkerChannel && window.MapMarkerChannel.postMessage) {
                                         window.MapMarkerChannel.postMessage(JSON.stringify({
-                                            title: cp.station_name,
+                                            title: station.station_name,
                                             time: sData.lastCheck,
                                             guard: sData.activeGuardName,
                                             photo: sData.activeProofImg,
-                                            lat: cp.latitude,
-                                            lng: cp.longitude
+                                            lat: station.latitude,
+                                            lng: station.longitude
                                         }));
                                     }
                                 };
+                                const isVerified = !!latestLog;
+                                const sortedLiveStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
+                                const nextLiveTarget = sortedLiveStations.find(s => stationCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
+                                const isNextTarget = nextLiveTarget && nextLiveTarget.id === station.id;
+
                                 return (
                                     <Marker 
-                                        key={`cp-m-${cp.id}`} 
-                                        position={[parseFloat(cp.latitude) + 0, parseFloat(cp.longitude) + 0]} 
-                                        icon={createCheckpointIcon(cp)}
+                                        key={`cp-m-${station.id}`} 
+                                        position={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]} 
+                                        icon={createCheckpointIcon(station, isVerified, isNextTarget)}
                                         eventHandlers={{ click: handleMarkerClick }}
                                     >
                                         <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
                                             <div className="pm-tooltip-card" onClick={handleMarkerClick}>
-                                                <div className="pm-tooltip-title">{cp.station_name}</div>
+                                                <div className="pm-tooltip-title">{station.station_name}</div>
                                                 <div className="pm-tooltip-meta">{sData.lastCheck} • {sData.activeGuardName}</div>
                                                 {sData.activeProofImg && (
                                                     <div className="pm-tooltip-photo">
@@ -497,10 +553,10 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                     if (!hasGps) return null;
                                     const pos = [parseFloat(guard.latitude), parseFloat(guard.longitude)];
                                     return (
-                                        <Marker key={`guard-m-${guard.session_id || idx}`} position={pos} icon={createGuardIcon(guard)}>
+                                        <Marker key={`guard-m-${guard.session_id || idx}`} position={pos} icon={createGuardIcon(guard)} zIndexOffset={10000}>
                                             <Tooltip direction="top" offset={[0, -45]} opacity={1} className="pm-hover-tooltip">
                                                 <div className="pm-tooltip-card">
-                                                    <div className="pm-tooltip-title">{guard.guard_name}</div>
+                                                    <div className="pm-tooltip-title">{guard.guard_name || guard.name || 'Guard Mobile'}</div>
                                                     <div className="pm-tooltip-meta">Active Patrol</div>
                                                 </div>
                                             </Tooltip>
@@ -519,8 +575,11 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
         return <PatrolLogsView onBack={() => setViewMode('map')} />;
     }
 
-    if (viewMode === 'settings') {
-        return <CheckpointSettingsView onBack={() => setViewMode('map')} />;
+    if (viewMode === 'settings' || isSettingCheckpointsOpen) {
+        return <CheckpointSettingsView onBack={() => {
+            setViewMode('map');
+            if (setIsSettingCheckpointsOpen) setIsSettingCheckpointsOpen(false);
+        }} />;
     }
 
     return (
@@ -546,9 +605,42 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
             <section className="som-patrol-map-section mini">
                 {!isMobileEmbed && (
                     <div className="som-section-header">
-                        <div className="som-section-title">
-                            <span className="dot animate-ping" style={{ backgroundColor: isReplayMode ? '#f59e0b' : '#ffdb3b' }}></span>
-                            {isReplayMode ? `REPLAY: ${replayData.session.guard_name}` : 'LIVE PATROL MAP'}
+                        <div className="som-section-title" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span className="dot animate-ping" style={{ backgroundColor: isReplayMode ? '#f59e0b' : '#ffdb3b' }}></span>
+                                {isReplayMode ? `REPLAY: ${replayData.session.guard_name}` : 'LIVE PATROL MAP'}
+                            </div>
+                            
+                            {!isReplayMode && (
+                                <button
+                                    onClick={() => setViewMode('logs')}
+                                    style={{
+                                        background: '#0f172a',
+                                        border: '1px solid #ffdb3b',
+                                        color: '#ffdb3b',
+                                        padding: '4px 10px',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontSize: '11px',
+                                        fontWeight: '800',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '5px',
+                                        transition: 'all 0.2s',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = '#ffdb3b';
+                                        e.currentTarget.style.color = '#0f172a';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = '#0f172a';
+                                        e.currentTarget.style.color = '#ffdb3b';
+                                    }}
+                                >
+                                    <FaClipboardList style={{ fontSize: '12px' }} /> Patrol Logs
+                                </button>
+                            )}
                         </div>
                         <div className="som-map-legend" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             {isReplayMode && (
@@ -558,47 +650,9 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                             )}
                             {!isReplayMode && (
                                 <>
-                                    <button
-                                        onClick={() => setViewMode('logs')}
-                                        style={{
-                                            background: '#0f172a',
-                                            border: '1px solid #ffdb3b',
-                                            color: '#ffdb3b',
-                                            padding: '4px 10px',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            fontSize: '11px',
-                                            fontWeight: '800',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '5px',
-                                            transition: 'all 0.2s',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                                        }}
-                                    >
-                                        <FaClipboardList style={{ fontSize: '12px' }} /> Patrol Logs
-                                    </button>
-                                    <button
-                                        onClick={() => setViewMode('settings')}
-                                        style={{
-                                            background: '#0f172a',
-                                            border: '1px solid #ffdb3b',
-                                            color: '#ffdb3b',
-                                            padding: '4px 10px',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            fontSize: '11px',
-                                            fontWeight: '800',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '5px',
-                                            transition: 'all 0.2s',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                                        }}
-                                    >
-                                        <FaMapSigns style={{ fontSize: '12px' }} /> Setting Checkpoints
-                                    </button>
-                                    <span className="legend-item"><span className="dot secure"></span> CHECKPOINT</span>
+                                    <span className="legend-item"><span className="dot selesai"></span> SELESAI</span>
+                                    <span className="legend-item"><span className="dot target"></span> TARGET</span>
+                                    <span className="legend-item"><span className="dot pending"></span> PENDING</span>
                                     <span className="legend-item"><span className="dot guard"></span> GUARD</span>
                                 </>
                             )}
@@ -633,18 +687,27 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                 )}
 
                                 {/* Replay checkpoints (appear as avatar passes them) */}
-                                {replayVisibleCheckpoints.map((cp, i) => {
-                                    const sData = getStationData(cp);
+                                {mapStations.map((station, i) => {
+                                    if (!station.latitude || !station.longitude) return null;
+                                    const logsForStation = replayVisibleCheckpoints.filter(cp => cp.station_id === station.id || cp.station_name === station.station_name);
+                                    const latestLog = logsForStation.length > 0 ? logsForStation[0] : null;
+                                    const sData = getStationData(station, latestLog);
+                                    
+                                    const isVerified = !!latestLog;
+                                    const sortedReplayStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
+                                    const nextReplayTarget = sortedReplayStations.find(s => replayVisibleCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
+                                    const isNextTarget = nextReplayTarget && nextReplayTarget.id === station.id;
+                                    
                                     return (
                                         <Marker
                                             key={`rcp-${i}`}
-                                            position={[parseFloat(cp.latitude) + 0, parseFloat(cp.longitude) + 0]}
-                                            icon={createCheckpointIcon(cp)}
-                                            eventHandlers={{ click: () => { setProofIndex(0); setActiveProof({ name: cp.station_name, ...sData }); } }}
+                                            position={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]}
+                                            icon={createCheckpointIcon(station, isVerified, isNextTarget)}
+                                            eventHandlers={{ click: () => { setProofIndex(0); setActiveProof({ name: station.station_name, ...sData }); } }}
                                         >
                                             <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
                                                 <div className="pm-tooltip-card">
-                                                    <div className="pm-tooltip-title">{cp.station_name}</div>
+                                                    <div className="pm-tooltip-title">{station.station_name}</div>
                                                     <div className="pm-tooltip-meta">{sData.lastCheck}</div>
                                                     {sData.activeProofImg && (
                                                         <div className="pm-tooltip-photo">
@@ -716,20 +779,43 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                     );
                                 })}
 
-                                {/* LIVE: Checkpoint markers */}
-                                {stationCheckpoints.map(cp => {
-                                    if (!cp.latitude || !cp.longitude) return null;
-                                    const sData = getStationData(cp);
+                                {/* LIVE: Planned sequence patrol route polyline (Dashed Line) */}
+                            {(() => {
+                                const sortedStations = [...mapStations]
+                                    .filter(s => s.latitude && s.longitude)
+                                    .sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
+                                const routeCoords = sortedStations.map(s => [parseFloat(s.latitude), parseFloat(s.longitude)]);
+                                if (routeCoords.length < 2) return null;
+                                return (
+                                    <Polyline 
+                                        positions={routeCoords} 
+                                        pathOptions={{ color: '#64748b', weight: 2, dashArray: '6, 8', opacity: 0.6 }} 
+                                    />
+                                );
+                            })()}
+
+                            {/* LIVE: Checkpoint markers */}
+                                {mapStations.map(station => {
+                                    if (!station.latitude || !station.longitude) return null;
+                                    const logsForStation = stationCheckpoints.filter(cp => cp.station_id === station.id || cp.station_name === station.station_name);
+                                    const latestLog = logsForStation.length > 0 ? logsForStation[0] : null;
+                                    const sData = getStationData(station, latestLog);
+                                    
+                                    const isVerified = !!latestLog;
+                                    const sortedLiveStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
+                                    const nextLiveTarget = sortedLiveStations.find(s => stationCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
+                                    const isNextTarget = nextLiveTarget && nextLiveTarget.id === station.id;
+                                    
                                     return (
                                         <Marker
-                                            key={`cp-${cp.id}`}
-                                            position={[parseFloat(cp.latitude) + 0, parseFloat(cp.longitude) + 0]}
-                                            icon={createCheckpointIcon(cp)}
-                                            eventHandlers={{ click: () => { setProofIndex(0); setActiveProof({ name: cp.station_name, ...sData }); } }}
+                                            key={`cp-${station.id}`}
+                                            position={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]}
+                                            icon={createCheckpointIcon(station, isVerified, isNextTarget)}
+                                            eventHandlers={{ click: () => { setProofIndex(0); setActiveProof({ name: station.station_name, ...sData }); } }}
                                         >
                                             <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
                                                 <div className="pm-tooltip-card">
-                                                    <div className="pm-tooltip-title">{cp.station_name}</div>
+                                                    <div className="pm-tooltip-title">{station.station_name}</div>
                                                     <div className="pm-tooltip-meta">{sData.lastCheck} • {sData.activeGuardName}</div>
                                                     {sData.activeProofImg && (
                                                         <div className="pm-tooltip-photo">
@@ -781,10 +867,10 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
 
                                         return (
                                             <Marker 
-                                                key={`g-${guard.session_id}`} 
-                                                position={[lat + 0, lng + 0]} 
+                                                key={`g-${guard.session_id || idx}`} 
+                                                position={[lat, lng]} 
                                                 icon={createGuardIcon(guard, '#fbbf24', !hasGps)} 
-                                                zIndexOffset={hasGps ? (1000 - idx) : 500}
+                                                zIndexOffset={hasGps ? (10000 - idx) : 5000}
                                             />
                                         );
                                     });

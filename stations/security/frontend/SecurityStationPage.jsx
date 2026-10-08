@@ -9,7 +9,7 @@ import SecurityAside from './components/SecurityAside.jsx'
 import ProofModal from './components/ProofModal.jsx'
 import CctvModal from './components/CctvModal.jsx'
 
-function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen }) {
+function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSettingCheckpointsOpen, setIsSettingCheckpointsOpen }) {
     // ── Detect ?mode=mobile from URL — render bare Patrol Map for Flutter WebView ──
     const urlParams = new URLSearchParams(window.location.search);
     const isMobileEmbed = urlParams.get('mode') === 'mobile';
@@ -127,6 +127,8 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen }) {
                     setActiveProof={setActiveProof}
                     replaySessionId={replaySessionId}
                     setReplaySessionId={setReplaySessionId}
+                    isSettingCheckpointsOpen={isSettingCheckpointsOpen}
+                    setIsSettingCheckpointsOpen={setIsSettingCheckpointsOpen}
                 />
             </div>
         );
@@ -142,9 +144,14 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen }) {
                 <div className="som-station-tabs">
                     <button className={`som-station-tab ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
                     <button className={`som-station-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Patrol Map</button>
-                    <button className={`som-station-tab ${activeTab === 'cctv' ? 'active' : ''}`} onClick={() => setActiveTab('cctv')}>CCTV Feed</button>
-                    <button className={`som-station-tab ${activeTab === 'incidents' ? 'active' : ''}`} onClick={() => setActiveTab('incidents')}>Incidents</button>
+                    {(!user || !['security'].includes(user.role)) && (
+                        <button className={`som-station-tab ${activeTab === 'cctv' ? 'active' : ''}`} onClick={() => setActiveTab('cctv')}>CCTV Feed</button>
+                    )}
                     <button className={`som-station-tab ${activeTab === 'queues' ? 'active' : ''}`} onClick={() => setActiveTab('queues')}>Truck Queues</button>
+                    <button className="som-station-tab locked" disabled style={{ opacity: 0.6, cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        Incidents
+                    </button>
                 </div>
 
                 <div className="som-header-right">
@@ -168,6 +175,8 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen }) {
                             setActiveProof={setActiveProof}
                             replaySessionId={replaySessionId}
                             setReplaySessionId={setReplaySessionId}
+                            isSettingCheckpointsOpen={isSettingCheckpointsOpen}
+                            setIsSettingCheckpointsOpen={setIsSettingCheckpointsOpen}
                         />
                     )}
                     {activeTab === 'cctv' && (

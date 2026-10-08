@@ -70,15 +70,17 @@ router.get('/', async (req, res) => {
     sql += ' ORDER BY sort_order ASC, id ASC';
 
     const [rows] = await dbPool.query(sql, params);
-    const hostHeader = req.headers.host ? req.headers.host : 'localhost:3101';
-    const protocol = req.protocol || 'http';
+    const sourceIds = new Map();
+    for (const cam of rows) {
+      if (!sourceIds.has(cam.rtsp_url)) sourceIds.set(cam.rtsp_url, cam.id);
+    }
 
     // 2. Menambahkan station_slug dan camera_code pada mapping objek
     const cameras = rows.map(cam => ({
       ...cam,
       camera_code: cam.camera_code || `CAM_${cam.id}`,
       station_slug: cam.station_slug || 'security',
-      stream_url: `${protocol}://${hostHeader}/api/security/cctv/stream/${cam.id}`
+      stream_url: `/api/security/cctv/stream/${cam.id}`
     }));
 
     res.json({ success: true, data: cameras });
@@ -103,17 +105,17 @@ router.post('/', async (req, res) => {
 
     const targetSlug = station_slug || 'security';
 
+    // Ambil ID tertinggi terlebih dahulu untuk membentuk camera_code secara konsisten
+    const [maxRows] = await dbPool.query('SELECT MAX(id) as max_id FROM cctv_cameras');
+    const nextId = (maxRows[0]?.max_id || 0) + 1;
+    const finalCode = (camera_code && camera_code.trim()) ? camera_code.trim() : `CAM_${nextId}`;
+
     const [result] = await dbPool.query(
       'INSERT INTO cctv_cameras (camera_code, camera_name, location, station_slug, rtsp_url, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
-      [camera_code || null, camera_name, location || null, targetSlug, rtsp_url, is_active ? 1 : 0, parseInt(sort_order, 10) || 0]
+      [finalCode, camera_name, location || null, targetSlug, rtsp_url, is_active ? 1 : 0, parseInt(sort_order, 10) || 0]
     );
 
-    const insertedId = result.insertId || (result[0] && result[0].id) || 0;
-    const finalCode = (camera_code && camera_code.trim()) ? camera_code.trim() : `CAM_${insertedId}`;
-
-    if (insertedId > 0) {
-      await dbPool.query('UPDATE cctv_cameras SET camera_code = ? WHERE id = ?', [finalCode, insertedId]);
-    }
+    const insertedId = result.insertId || (result[0] && result[0].id) || nextId;
 
     syncToAiBackend({
       id: insertedId,

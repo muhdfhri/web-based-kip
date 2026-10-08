@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FaClipboardList, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaCamera, FaCheckCircle, FaFilter, FaSync, FaArrowLeft } from 'react-icons/fa';
+import { FaClipboardList, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaCamera, FaCheckCircle, FaFilter, FaSync, FaArrowLeft, FaFileExcel } from 'react-icons/fa';
+import * as XLSX from 'xlsx';
 import ProofModal from '../../components/ProofModal.jsx';
 
 function PatrolLogsView({ onBack }) {
@@ -7,23 +8,45 @@ function PatrolLogsView({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStation, setSelectedStation] = useState('ALL');
-  const [selectedDate, setSelectedDate] = useState('');
+  
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [fromDate, setFromDate] = useState(todayStr);
+  const [toDate, setToDate] = useState(todayStr);
+  const [isAllData, setIsAllData] = useState(false);
+
   const [stations, setStations] = useState([]);
   const [activeProof, setActiveProof] = useState(null);
   const [proofIndex, setProofIndex] = useState(0);
+
+  const fetchStations = async () => {
+    try {
+      const res = await fetch('/api/security/patrol/stations');
+      const json = await res.json();
+      if (Array.isArray(json)) {
+        setStations(json.map(st => st.station_name || st.label).filter(Boolean).sort());
+      }
+    } catch (err) {
+      console.error('[PatrolLogsView] Failed to fetch stations:', err);
+    }
+  };
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('kip_token');
-      const res = await fetch('/api/security/patrol/logs', {
+      const queryParams = new URLSearchParams({
+        from_date: fromDate,
+        to_date: toDate,
+        all_data: isAllData
+      });
+
+      const res = await fetch(`/api/security/patrol/logs?${queryParams.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const json = await res.json();
       const rawLogs = Array.isArray(json) ? json : (json.logs || json.data || []);
       
       const parsedLogs = [];
-      const stationSet = new Set();
 
       rawLogs.forEach(item => {
         if (!item.verified_at && !item.created_at) return;
@@ -34,14 +57,23 @@ function PatrolLogsView({ onBack }) {
         const lng = parseFloat(item.longitude || 0).toFixed(5);
         const photo = item.verification_photo || item.photo_path || item.photo_url || item.photo;
 
-        if (station) stationSet.add(station);
+        const startAt = item.started_at ? new Date(item.started_at) : null;
+        const completeAt = item.completed_at ? new Date(item.completed_at) : null;
+        
+        const formatTime = (d) => d ? d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\./g, ':') + ' WIB' : '-';
+        const formatDate = (d) => d ? d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
         parsedLogs.push({
           id: item.id || Math.random(),
           dateObj: verifiedAt,
           dateStr: verifiedAt.toISOString().split('T')[0],
-          timeStr: verifiedAt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).replace(/\./g, ':') + ' WIB',
-          formattedDate: verifiedAt.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }),
+          timeStr: formatTime(verifiedAt),
+          formattedDate: formatDate(verifiedAt),
+          startTimeStr: formatTime(startAt),
+          startDateStr: formatDate(startAt),
+          endTimeStr: formatTime(completeAt),
+          endDateStr: formatDate(completeAt),
+          shift: item.shift || '-',
           officer,
           initial: officer.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
           station,
@@ -52,7 +84,6 @@ function PatrolLogsView({ onBack }) {
       });
 
       setLogs(parsedLogs);
-      setStations(Array.from(stationSet).sort());
     } catch (err) {
       console.error('[PatrolLogsView] Failed to fetch logs:', err);
     } finally {
@@ -61,8 +92,32 @@ function PatrolLogsView({ onBack }) {
   };
 
   useEffect(() => {
-    fetchLogs();
+    fetchStations();
   }, []);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fromDate, toDate, isAllData]);
+
+  const exportToExcel = () => {
+    if (filteredLogs.length === 0) return alert("No logs to export");
+    const exportData = filteredLogs.map((log, index) => ({
+      "No": index + 1,
+      "PIC Security": log.officer,
+      "Start Time": log.startTimeStr !== '-' ? `${log.startDateStr} ${log.startTimeStr}` : '-',
+      "End Time": log.endTimeStr !== '-' ? `${log.endDateStr} ${log.endTimeStr}` : '-',
+      "Shift": log.shift,
+      "Location Checkpoint": log.station,
+      "Verified Time": `${log.formattedDate} ${log.timeStr}`,
+      "GPS Coordinates": log.coord,
+      "Status": log.status
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "PatrolLogs");
+    XLSX.writeFile(workbook, `PatrolLogs_${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`);
+  };
 
   const filteredLogs = logs.filter(log => {
     const searchMatch = 
@@ -71,9 +126,8 @@ function PatrolLogsView({ onBack }) {
       log.coord.toLowerCase().includes(searchQuery.toLowerCase());
 
     const stationMatch = selectedStation === 'ALL' || log.station === selectedStation;
-    const dateMatch = !selectedDate || log.dateStr === selectedDate;
 
-    return searchMatch && stationMatch && dateMatch;
+    return searchMatch && stationMatch;
   });
 
   const thStyle = {
@@ -147,25 +201,48 @@ function PatrolLogsView({ onBack }) {
           </div>
         </div>
 
-        <button
-          onClick={fetchLogs}
-          style={{
-            background: '#f8fafc',
-            border: '1px solid #cbd5e1',
-            color: '#0f172a',
-            padding: '8px 14px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '12px',
-            fontWeight: '700',
-            transition: 'all 0.2s'
-          }}
-        >
-          <FaSync style={{ fontSize: '12px', color: '#64748b' }} /> Refresh
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={exportToExcel}
+            style={{
+              background: '#10b981',
+              border: 'none',
+              color: '#ffffff',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '12px',
+              fontWeight: '700',
+              transition: 'all 0.2s',
+              boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)'
+            }}
+          >
+            <FaFileExcel style={{ fontSize: '14px' }} /> Export Excel
+          </button>
+          
+          <button
+            onClick={fetchLogs}
+            style={{
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              color: '#0f172a',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '12px',
+              fontWeight: '700',
+              transition: 'all 0.2s'
+            }}
+          >
+            <FaSync style={{ fontSize: '12px', color: '#64748b' }} /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* ── SEARCH & FILTERS BAR ── */}
@@ -227,12 +304,12 @@ function PatrolLogsView({ onBack }) {
           </div>
 
           {/* Date Picker Filter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', padding: '4px 10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', padding: '4px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', opacity: isAllData ? 0.5 : 1, pointerEvents: isAllData ? 'none' : 'auto' }}>
             <FaCalendarAlt style={{ color: '#64748b', fontSize: '13px' }} />
             <input
               type="date"
-              value={selectedDate}
-              onChange={e => setSelectedDate(e.target.value)}
+              value={fromDate}
+              onChange={e => setFromDate(e.target.value)}
               style={{
                 border: 'none',
                 background: 'transparent',
@@ -243,15 +320,40 @@ function PatrolLogsView({ onBack }) {
                 cursor: 'pointer'
               }}
             />
-            {selectedDate && (
-              <button
-                onClick={() => setSelectedDate('')}
-                style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '11px', fontWeight: '800' }}
-              >
-                CLEAR
-              </button>
-            )}
+            <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '800' }}>-</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={e => setToDate(e.target.value)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#0f172a',
+                fontSize: '13px',
+                fontWeight: '700',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
           </div>
+
+          {/* All Data Toggle */}
+          <button
+            onClick={() => setIsAllData(!isAllData)}
+            style={{
+              background: isAllData ? '#0f172a' : '#f1f5f9',
+              color: isAllData ? '#ffffff' : '#64748b',
+              border: `1px solid ${isAllData ? '#0f172a' : '#cbd5e1'}`,
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: '800',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+          >
+            All Data
+          </button>
         </div>
       </div>
 
@@ -265,9 +367,11 @@ function PatrolLogsView({ onBack }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 10, borderBottom: '2px solid #e2e8f0' }}>
               <tr>
-                <th style={thStyle}>VERIFIED TIME</th>
-                <th style={thStyle}>OFFICER NAME</th>
-                <th style={thStyle}>STATION / CHECKPOINT</th>
+                <th style={thStyle}>PIC SECURITY</th>
+                <th style={thStyle}>START TIME</th>
+                <th style={thStyle}>END TIME</th>
+                <th style={thStyle}>SHIFT</th>
+                <th style={thStyle}>LOCATION CHECKPOINT</th>
                 <th style={thStyle}>GPS COORDINATES</th>
                 <th style={thStyle}>PHOTO PROOF</th>
                 <th style={thStyle}>STATUS</th>
@@ -276,7 +380,7 @@ function PatrolLogsView({ onBack }) {
             <tbody>
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                       <FaClipboardList style={{ fontSize: '36px', color: '#cbd5e1' }} />
                       <span style={{ fontSize: '14px', fontWeight: '700', color: '#64748b' }}>NO PATROL LOGS FOUND</span>
@@ -288,13 +392,7 @@ function PatrolLogsView({ onBack }) {
                 filteredLogs.map((log, idx) => (
                   <tr key={log.id || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
                     
-                    {/* Verified Time */}
-                    <td style={tdStyle}>
-                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.timeStr}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>{log.formattedDate}</div>
-                    </td>
-
-                    {/* Officer */}
+                    {/* Officer / PIC Security */}
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{
@@ -319,11 +417,33 @@ function PatrolLogsView({ onBack }) {
                       </div>
                     </td>
 
-                    {/* Station */}
+                    {/* Start Time */}
+                    <td style={tdStyle}>
+                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.startTimeStr}</div>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>{log.startDateStr}</div>
+                    </td>
+
+                    {/* End Time */}
+                    <td style={tdStyle}>
+                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.endTimeStr}</div>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>{log.endDateStr}</div>
+                    </td>
+
+                    {/* Shift */}
+                    <td style={tdStyle}>
+                      <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', border: '1px solid #cbd5e1' }}>
+                        {log.shift}
+                      </span>
+                    </td>
+
+                    {/* Location Checkpoint */}
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FaMapMarkerAlt style={{ color: '#ef4444', fontSize: '14px' }} />
-                        <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.station}</span>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.station}</div>
+                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Verified: {log.timeStr}</div>
+                        </div>
                       </div>
                     </td>
 

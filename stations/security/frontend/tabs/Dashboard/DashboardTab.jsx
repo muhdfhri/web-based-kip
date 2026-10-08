@@ -139,37 +139,22 @@ function MetricCard({ icon, label, value, valueColor, iconColor, trendLabel, tre
       style={{
         ...panelStyle,
         padding: `${space.md}px ${space.lg}px`,
-        minHeight: 86,
+        minHeight: 120,
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
         ...style,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <div style={font.label}>{label}</div>
-          <div style={{ ...font.metric, color: valueColor || colors.textStrong, marginTop: 4 }}>{value}</div>
-        </div>
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: radius.sm,
-            background: colors.bg,
-            border: `1px solid ${colors.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: iconColor || colors.textMuted,
-            flexShrink: 0,
-          }}
-        >
-          {icon}
+      <div style={{ ...font.label, fontSize: '1.2rem', fontWeight: 700 }}>{label}</div>
+      
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ ...font.metric, fontSize: 64, fontWeight: 800, color: valueColor || colors.textStrong }}>
+          {value}
         </div>
       </div>
+
       {trendLabel && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: space.xs, ...font.support }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: space.xs, ...font.support, fontSize: '0.85rem' }}>
           {trendPositive && (
             <span style={{ color: colors.success, fontWeight: 700, display: 'inline-flex', alignItems: 'center' }}>
               <FaArrowUp size={8} />
@@ -295,6 +280,7 @@ function getQueueStatusStyle(status) {
 function DashboardTab() {
   const [summary, setSummary] = useState({ activeQueues: 0, activePatrols: 0, openIncidents: 0, activeCctvs: 0 });
   const [queues, setQueues] = useState([]);
+  const [classifications, setClassifications] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [activeGuards, setActiveGuards] = useState([]);
   const [checkpoints, setCheckpoints] = useState([]);
@@ -316,6 +302,7 @@ function DashboardTab() {
         const [
           summaryRes,
           queuesRes,
+          classRes,
           incidentsRes,
           guardsRes,
           checkpointsRes,
@@ -323,6 +310,7 @@ function DashboardTab() {
         ] = await Promise.all([
           fetch('/api/security/queues/summary', { headers: authHeaders }),
           fetch('/api/security/queues', { headers: authHeaders }),
+          fetch('/api/security/queues/classifications', { headers: authHeaders }),
           fetch('/api/security/incidents', { headers: authHeaders }),
           fetch('/api/security/patrol/active', { headers: authHeaders }),
           fetch('/api/security/patrol/checkpoints', { headers: authHeaders }),
@@ -331,6 +319,7 @@ function DashboardTab() {
 
         const summaryJson = await summaryRes.json().catch(() => ({}));
         const queuesJson = await queuesRes.json().catch(() => ({}));
+        const classJson = await classRes.json().catch(() => ({}));
         const incidentsData = await incidentsRes.json().catch(() => []);
         const guardsData = await guardsRes.json().catch(() => []);
         const checkpointsData = await checkpointsRes.json().catch(() => []);
@@ -338,12 +327,14 @@ function DashboardTab() {
 
         if (isMounted) {
           const queueList = Array.isArray(queuesJson.data) ? queuesJson.data : (Array.isArray(queuesJson) ? queuesJson : []);
+          const classList = Array.isArray(classJson.data) ? classJson.data : (Array.isArray(classJson) ? classJson : []);
           const cctvList = Array.isArray(cctvsJson.data) ? cctvsJson.data : (Array.isArray(cctvsJson) ? cctvsJson : []);
           const guardList = Array.isArray(guardsData) ? guardsData : [];
           const incidentList = Array.isArray(incidentsData) ? incidentsData : [];
           const checkpointList = Array.isArray(checkpointsData) ? checkpointsData : [];
 
           setQueues(queueList);
+          setClassifications(classList);
           setIncidents(incidentList);
           setActiveGuards(guardList);
           setCheckpoints(checkpointList);
@@ -435,38 +426,42 @@ function DashboardTab() {
   });
 
   // Dynamic Commodity Breakdown
-  const commodityCounts = {
-    'FFB UMUM': 0,
-    'FFB MITRA': 0,
-    'CRUDE PALM OIL': 0,
-    'PALM KERNEL': 0,
-    'PALM KERNEL SHELL': 0
-  };
+  const commodityCounts = {};
+  classifications.forEach(c => {
+    commodityCounts[c.code] = { count: 0, label: c.label || c.code, code: c.code };
+  });
+  // Fallback for missing/unknown classifications
+  if (!commodityCounts['OTHER']) {
+    commodityCounts['OTHER'] = { count: 0, label: 'Lain-lain', code: 'OTHER' };
+  }
 
   filteredQueuesForChart.forEach(q => {
-    const code = (q.classification_code || q.classificationCode || q.classification_id || 'U').toUpperCase();
-    if (code === 'U') commodityCounts['FFB UMUM']++;
-    else if (code === 'M') commodityCounts['FFB MITRA']++;
-    else if (code === 'C') commodityCounts['CRUDE PALM OIL']++;
-    else if (code === 'K') commodityCounts['PALM KERNEL']++;
-    else if (code === 'S') commodityCounts['PALM KERNEL SHELL']++;
+    const code = (q.classification_code || q.classificationCode || q.classification_id || 'OTHER').toUpperCase();
+    if (commodityCounts[code]) {
+      commodityCounts[code].count++;
+    } else {
+      // Try finding by label if code didn't match (fallback)
+      const found = classifications.find(c => c.label && c.label.toUpperCase() === code);
+      if (found) {
+        commodityCounts[found.code].count++;
+      } else {
+        commodityCounts['OTHER'].count++;
+      }
+    }
   });
 
-  const totalCommoditiesCount = Object.values(commodityCounts).reduce((a, b) => a + b, 0);
-  const maxCount = Math.max(...Object.values(commodityCounts), 1);
+  // Filter out 'OTHER' if it has 0 count to keep chart clean
+  const commodityItems = Object.values(commodityCounts).filter(c => c.count > 0 || c.code !== 'OTHER');
 
-  // Single-color chart palette — categories differ by label, not by hue.
-  const commodityItems = [
-    { label: 'FFB UMUM', code: 'UMUM', count: commodityCounts['FFB UMUM'] },
-    { label: 'FFB MITRA', code: 'MITRA', count: commodityCounts['FFB MITRA'] },
-    { label: 'CPO', code: 'CPO', count: commodityCounts['CRUDE PALM OIL'] },
-    { label: 'PK', code: 'PK', count: commodityCounts['PALM KERNEL'] },
-    { label: 'PKS', code: 'PKS', count: commodityCounts['PALM KERNEL SHELL'] }
-  ];
+  const totalCommoditiesCount = commodityItems.reduce((a, b) => a + b.count, 0);
+  const maxCount = Math.max(...commodityItems.map(c => c.count), 1);
 
   // Calculate coordinates for smooth Bezier Spline Line Chart (SVG viewBox 0 0 300 120)
   const coords = commodityItems.map((item, idx) => {
-    const x = 30 + (idx * 60);
+    // If only 1 item, place at center (150)
+    // If more, distribute across 240px (from 30 to 270)
+    const span = commodityItems.length > 1 ? 240 / (commodityItems.length - 1) : 0;
+    const x = commodityItems.length > 1 ? 30 + (idx * span) : 150;
     const heightRatio = totalCommoditiesCount > 0 ? (item.count / maxCount) : 0;
     const y = 95 - (heightRatio * 70);
     return { x, y, item, idx };
@@ -489,7 +484,9 @@ function DashboardTab() {
   };
 
   const smoothPathD = createSmoothPath(coords);
-  const areaPathD = `${smoothPathD} L ${coords[coords.length - 1].x},100 L ${coords[0].x},100 Z`;
+  const areaPathD = coords.length > 0
+    ? `${smoothPathD} L ${coords[coords.length - 1].x},100 L ${coords[0].x},100 Z`
+    : '';
 
   if (loading) {
     return <LoadingDashboard />;
@@ -519,9 +516,9 @@ function DashboardTab() {
                 {/* Daily / Weekly / Monthly */}
                 <div style={{ display: 'flex', background: colors.bgAlt, padding: 2, borderRadius: 6, border: `1px solid ${colors.border}` }}>
                   {[
-                    { key: 'daily', label: 'D' },
-                    { key: 'weekly', label: 'W' },
-                    { key: 'monthly', label: 'M' },
+                    { key: 'daily', label: 'Daily' },
+                    { key: 'weekly', label: 'Weekly' },
+                    { key: 'monthly', label: 'Monthly' },
                   ].map((tf) => (
                     <button
                       key={tf.key}
@@ -529,13 +526,14 @@ function DashboardTab() {
                       title={`Filter ${tf.key}`}
                       style={{
                         border: 'none',
-                        padding: '2px 6px',
+                        padding: '4px 10px',
                         borderRadius: 4,
-                        fontSize: '0.62rem',
+                        fontSize: '0.7rem',
                         fontWeight: 700,
                         cursor: 'pointer',
                         background: timeFilter === tf.key ? colors.textStrong : 'transparent',
                         color: timeFilter === tf.key ? colors.white : colors.textMuted,
+                        transition: 'all 0.2s ease',
                       }}
                     >
                       {tf.label}
@@ -550,32 +548,34 @@ function DashboardTab() {
                     title="Bar chart"
                     style={{
                       border: 'none',
-                      padding: '2px 5px',
+                      padding: '4px 8px',
                       borderRadius: 4,
                       cursor: 'pointer',
                       background: chartType === 'bar' ? chartColor : 'transparent',
                       color: chartType === 'bar' ? colors.white : colors.textMuted,
                       display: 'flex',
                       alignItems: 'center',
+                      transition: 'all 0.2s ease',
                     }}
                   >
-                    <FaChartBar size={10} />
+                    <FaChartBar size={14} />
                   </button>
                   <button
                     onClick={() => setChartType('line')}
                     title="Line chart"
                     style={{
                       border: 'none',
-                      padding: '2px 5px',
+                      padding: '4px 8px',
                       borderRadius: 4,
                       cursor: 'pointer',
                       background: chartType === 'line' ? chartColor : 'transparent',
                       color: chartType === 'line' ? colors.white : colors.textMuted,
                       display: 'flex',
                       alignItems: 'center',
+                      transition: 'all 0.2s ease',
                     }}
                   >
-                    <FaChartLine size={10} />
+                    <FaChartLine size={14} />
                   </button>
                 </div>
               </div>
@@ -583,7 +583,7 @@ function DashboardTab() {
 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 0, position: 'relative' }}>
               {chartType === 'bar' ? (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: space.sm, padding: `${space.sm}px 2px 2px 2px`, borderBottom: `1px solid ${colors.bgAlt}` }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: space.md, padding: `${space.sm}px 2px 2px 2px`, borderBottom: `1px solid ${colors.bgAlt}` }}>
                   {commodityItems.map((item, idx) => {
                     const heightPct = totalCommoditiesCount > 0 ? Math.round((item.count / maxCount) * 100) : 0;
                     return (
@@ -596,7 +596,7 @@ function DashboardTab() {
                         <span
                           style={{
                             ...font.mono,
-                            fontSize: '0.65rem',
+                            fontSize: '0.75rem',
                             fontWeight: 700,
                             color: item.count > 0 ? colors.textStrong : colors.borderStrong,
                           }}
@@ -605,16 +605,16 @@ function DashboardTab() {
                         </span>
                         <div
                           style={{
-                            width: '100%',
-                            maxWidth: 24,
+                            width: '80%', // Responsive width relative to container
+                            maxWidth: 80, // Much wider than 24
                             height: `${Math.max(heightPct, 4)}%`,
                             background: item.count > 0 ? chartColor : colors.bgAlt,
                             opacity: hoveredNode?.code === item.code || !hoveredNode ? 1 : 0.5,
-                            borderRadius: '4px 4px 0 0',
+                            borderRadius: '6px 6px 0 0',
                             transition: 'opacity 0.15s ease, height 0.2s ease',
                           }}
                         />
-                        <span style={{ fontSize: '0.58rem', fontWeight: 700, color: colors.textMuted, marginTop: 2 }}>{item.code}</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textMuted, marginTop: 4 }}>{item.code}</span>
                       </div>
                     );
                   })}
@@ -633,15 +633,15 @@ function DashboardTab() {
                         </filter>
                       </defs>
 
-                      <line x1="20" y1="25" x2="280" y2="25" stroke={colors.bgAlt} strokeDasharray="3 3" strokeWidth="1" />
-                      <line x1="20" y1="60" x2="280" y2="60" stroke={colors.bgAlt} strokeDasharray="3 3" strokeWidth="1" />
-                      <line x1="20" y1="95" x2="280" y2="95" stroke={colors.border} strokeWidth="1" />
+                      <line x1="20" y1="25" x2="280" y2="25" stroke={colors.bgAlt} strokeDasharray="3 3" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                      <line x1="20" y1="60" x2="280" y2="60" stroke={colors.bgAlt} strokeDasharray="3 3" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                      <line x1="20" y1="95" x2="280" y2="95" stroke={colors.border} strokeWidth="1" vectorEffect="non-scaling-stroke" />
 
                       {/* Vertical guide from the hovered point down to the baseline */}
                       {hoveredNode && (() => {
                         const hc = coords.find((c) => c.item.code === hoveredNode.code);
                         if (!hc) return null;
-                        return <line x1={hc.x} y1={hc.y} x2={hc.x} y2="95" stroke={colors.borderStrong} strokeDasharray="2 2" strokeWidth="1" />;
+                        return <line x1={hc.x} y1={hc.y} x2={hc.x} y2="95" stroke={colors.borderStrong} strokeDasharray="2 2" strokeWidth="1" vectorEffect="non-scaling-stroke" />;
                       })()}
 
                       <path d={areaPathD} fill="url(#areaGradient)" />
@@ -649,30 +649,42 @@ function DashboardTab() {
                         d={smoothPathD}
                         fill="none"
                         stroke={chartColor}
-                        strokeWidth="3"
+                        strokeWidth="6"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         filter="url(#lineShadow)"
+                        vectorEffect="non-scaling-stroke"
                       />
-
-                      {coords.map((c, i) => {
-                        const isHovered = hoveredNode?.code === c.item.code;
-                        return (
-                          <g key={i} onMouseEnter={() => setHoveredNode(c.item)} onMouseLeave={() => setHoveredNode(null)} style={{ cursor: 'default' }}>
-                            {isHovered && <circle cx={c.x} cy={c.y} r="8" fill={chartColor} opacity="0.14" />}
-                            <circle
-                              cx={c.x}
-                              cy={c.y}
-                              r={isHovered ? 5 : 3.5}
-                              fill={chartColor}
-                              stroke={colors.white}
-                              strokeWidth="1.5"
-                              style={{ transition: 'r 0.15s ease' }}
-                            />
-                          </g>
-                        );
-                      })}
                     </svg>
+
+                    {/* Nodes (rendered as HTML divs to avoid SVG stretching) */}
+                    {coords.map((c, i) => {
+                      const isHovered = hoveredNode?.code === c.item.code;
+                      const leftPct = (c.x / 300) * 100;
+                      const topPct = (c.y / 120) * 100;
+                      return (
+                        <div
+                          key={i}
+                          onMouseEnter={() => setHoveredNode(c.item)}
+                          onMouseLeave={() => setHoveredNode(null)}
+                          style={{
+                            position: 'absolute',
+                            left: `${leftPct}%`,
+                            top: `${topPct}%`,
+                            width: isHovered ? 24 : 16,
+                            height: isHovered ? 24 : 16,
+                            transform: 'translate(-50%, -50%)',
+                            background: chartColor,
+                            border: `3px solid ${colors.white}`,
+                            borderRadius: '50%',
+                            boxShadow: isHovered ? `0 0 0 8px ${chartColor}33` : '0 2px 4px rgba(0,0,0,0.1)',
+                            transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                            cursor: 'pointer',
+                            zIndex: 10
+                          }}
+                        />
+                      );
+                    })}
 
                     {/* Y-axis scale labels */}
                     <div style={{ position: 'absolute', left: 0, top: '18%', transform: 'translateY(-50%)', fontSize: '0.55rem', fontWeight: 600, color: colors.textMuted, pointerEvents: 'none' }}>
@@ -759,38 +771,107 @@ function DashboardTab() {
               <SectionHeader
                 icon={<FaTruck size={12} />}
                 title="Truck Queues"
-                badgeLabel="Live"
+                badgeLabel="Live Recently (15)"
                 badgeColor={colors.primaryText}
                 badgeBg="#FEF9E7"
                 badgeBorder="#FDE68A"
               />
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: space.xs, overflowY: 'auto', paddingRight: 2 }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(70px, 1fr) minmax(65px, 1fr) minmax(80px, 1.2fr) minmax(90px, 1.5fr) minmax(75px, 1.2fr) minmax(80px, 1.2fr) minmax(90px, 1.5fr) 95px 75px',
+                    gap: space.xs,
+                    padding: `0 ${space.sm}px ${space.xs}px ${space.sm}px`,
+                    borderBottom: `1px solid ${colors.border}`,
+                    marginBottom: space.xs,
+                  }}
+                >
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>PIC</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>TICKET NO</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>LICENSE PLATE</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>DRIVER</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>COMMODITY</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>DO NUMBER</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>VENDOR</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>CHECKIN</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted, textAlign: 'right' }}>STATUS</span>
+                </div>
+
                 {queues.length === 0 ? (
                   <EmptyState title="No active queues" message="All truck operations are clear." />
                 ) : (
-                  queues.slice(0, 6).map((q, idx) => {
-                    const code = q.queueCode || q.queue_code || `U-${idx + 1}`;
+                  queues.slice(0, 15).map((q, idx) => {
+                    const code = q.ticket_number || q.queueCode || q.queue_code || q.queue_number || `U-${idx + 1}`;
                     const plate = q.licensePlate || q.plate_number || 'Unknown';
+                    const driver = q.driverName || q.driver_name || '-';
+                    const vendor = q.perusahaan || q.transporterCompany || q.transporter_company || '-';
+                    const doNum = q.noDo || q.no_do || '-';
+                    const pic = q.registeredByName || q.registered_by_name || q.registeredBy || q.registered_by || 'security13';
+
                     const status = (q.status || 'WAITING').toUpperCase();
                     const s = getQueueStatusStyle(status);
+                    
+                    const checkInDate = q.check_in_at ? new Date(q.check_in_at) : null;
+                    const timeStr = checkInDate ? checkInDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
+                    
+                    let durationStr = '';
+                    if (checkInDate) {
+                      const isCompleted = status === 'COMPLETED' || status === 'CHECKED_OUT';
+                      // If completed, use updated_at as the end time. Otherwise, it's still running.
+                      const endTime = isCompleted && q.updated_at ? new Date(q.updated_at) : new Date();
+                      const diffMs = Math.max(0, endTime - checkInDate);
+                      const diffMins = Math.floor(diffMs / 60000);
+                      
+                      if (diffMins >= 60) {
+                        durationStr = `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
+                      } else {
+                        durationStr = `${diffMins}m`;
+                      }
+                    }
+
                     return (
                       <div
                         key={q.id || idx}
                         style={{
-                          display: 'flex',
+                          display: 'grid',
+                          gridTemplateColumns: 'minmax(70px, 1fr) minmax(65px, 1fr) minmax(80px, 1.2fr) minmax(90px, 1.5fr) minmax(75px, 1.2fr) minmax(80px, 1.2fr) minmax(90px, 1.5fr) 95px 75px',
+                          gap: space.xs,
                           alignItems: 'center',
-                          justifyContent: 'space-between',
                           padding: `${space.xs + 2}px ${space.sm}px`,
                           background: colors.bg,
                           border: `1px solid ${colors.border}`,
                           borderRadius: radius.sm - 2,
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: space.xs + 2 }}>
-                          <span style={{ ...font.mono, fontSize: '0.68rem', fontWeight: 700, color: colors.textStrong }}>{code}</span>
-                          <span style={{ fontSize: '0.68rem', fontWeight: 600, color: colors.textBody }}>{plate}</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 4, textTransform: 'uppercase' }}>{pic}</span>
+                        <span style={{ ...font.mono, fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, textTransform: 'uppercase' }}>{code}</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, textTransform: 'uppercase' }}>{plate}</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 4, textTransform: 'uppercase' }}>{driver}</span>
+                        
+                        <div style={{ display: 'flex' }}>
+                          <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted, background: colors.bgAlt, padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', textTransform: 'uppercase' }}>
+                            {q.classification_name || q.classificationCode || q.classification_code || 'UMUM'}
+                          </span>
                         </div>
-                        <StatusBadge label={s.label} color={s.color} bg={s.bg} />
+
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 4, textTransform: 'uppercase' }}>{doNum}</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 4, textTransform: 'uppercase' }}>{vendor}</span>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: space.xs, whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '0.6rem', fontWeight: 600, color: colors.textMuted }}>
+                            {timeStr}
+                          </span>
+                          {durationStr && (
+                            <span style={{ fontSize: '0.58rem', fontWeight: 700, color: status === 'COMPLETED' ? colors.success : colors.orange, background: status === 'COMPLETED' ? colors.successBg : '#FFF7ED', padding: '1px 4px', borderRadius: 4 }}>
+                              {durationStr}
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <StatusBadge label={s.label} color={s.color} bg={s.bg} />
+                        </div>
                       </div>
                     );
                   })
@@ -865,32 +946,28 @@ function DashboardTab() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: space.md, minHeight: 0, overflow: 'hidden' }}>
           <MetricCard
             style={{ flex: 1, minHeight: 0 }}
-            icon={<FaTruck size={14} />}
             label="Trucks in Queue"
             value={summary.activeQueues}
-            trendLabel={`${queuesToday.length} registered today`}
+            trendLabel={`${queuesToday.length} Registered Today`}
             trendPositive={queuesToday.length > 0}
           />
           <MetricCard
             style={{ flex: 1, minHeight: 0 }}
-            icon={<FaShieldAlt size={14} />}
             label="Active Patrols"
             value={summary.activePatrols}
-            trendLabel={`${activeGuards.length} on duty · ${checkpoints.length} checkpoints verified`}
+            trendLabel={`${activeGuards.length} On Duty · ${checkpoints.length} Checkpoints Verified`}
           />
           <MetricCard
             style={{ flex: 1, minHeight: 0 }}
-            icon={<FaMapMarkerAlt size={14} />}
             label="Total Checkpoints"
             value={checkpointsToday.length}
-            trendLabel="scanned today"
+            trendLabel="Scanned Today"
           />
           <MetricCard
             style={{ flex: 1, minHeight: 0 }}
-            icon={<FaVideo size={14} />}
             label="CCTV Cameras"
             value={`${summary.activeCctvs} / ${cctvs.length}`}
-            trendLabel="online"
+            trendLabel="Online"
           />
         </div>
       </div>

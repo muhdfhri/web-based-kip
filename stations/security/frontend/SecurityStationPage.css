@@ -784,9 +784,10 @@
     font-weight: 800;
 }
 
-.legend-item .dot.secure { background: #ffdb3b; box-shadow: 0 0 8px rgba(255, 219, 59, 0.4); }
-.legend-item .dot.pending { background: #1e293b; border: 2px solid #475569; width: 6px; height: 6px; }
-.legend-item .dot.guard { background: #ffdb3b; box-shadow: 0 0 8px rgba(255, 219, 59, 0.4); }
+.legend-item .dot.selesai { background: #fbbf24; box-shadow: 0 0 8px rgba(251, 191, 36, 0.6); border: none; width: 8px; height: 8px; }
+.legend-item .dot.target { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.8); border: none; width: 8px; height: 8px; }
+.legend-item .dot.pending { background: #f8fafc; border: 1px solid #94a3b8; width: 6px; height: 6px; }
+.legend-item .dot.guard { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); border: none; width: 8px; height: 8px; }
 
 .som-patrol-map-container {
     flex: 1;

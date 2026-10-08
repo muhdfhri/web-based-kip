@@ -24,6 +24,68 @@ const getShiftStartTimeStr = () => {
     return `${startOfDay.getFullYear()}-${pad(startOfDay.getMonth() + 1)}-${pad(startOfDay.getDate())} ${pad(startOfDay.getHours())}:${pad(startOfDay.getMinutes())}:${pad(startOfDay.getSeconds())}`;
 };
 
+/**
+ * Helper Logika Auto-Shift & Sesi/Round (4 Sesi per Shift - Tiap 2 Jam)
+ * - Shift 1: 07.00 – 15.00 (Round 1: 07-09, Round 2: 09-11, Round 3: 11-13, Round 4: 13-15)
+ * - Shift 2: 15.00 – 23.00 (Round 1: 15-17, Round 2: 17-19, Round 3: 19-21, Round 4: 21-23)
+ * - Shift 3: 23.00 – 07.00 (Round 1: 23-01, Round 2: 01-03, Round 3: 03-05, Round 4: 05-07)
+ */
+export const calculateAutoShift = (dateObj = new Date()) => {
+    const hours = dateObj.getHours();
+    
+    let shift = 'Shift 1';
+    let round_number = 1;
+    let workDateObj = new Date(dateObj);
+
+    if (hours >= 7 && hours < 15) {
+        shift = 'Shift 1';
+        if (hours >= 7 && hours < 9) round_number = 1;
+        else if (hours >= 9 && hours < 11) round_number = 2;
+        else if (hours >= 11 && hours < 13) round_number = 3;
+        else round_number = 4;
+    } else if (hours >= 15 && hours < 23) {
+        shift = 'Shift 2';
+        if (hours >= 15 && hours < 17) round_number = 1;
+        else if (hours >= 17 && hours < 19) round_number = 2;
+        else if (hours >= 19 && hours < 21) round_number = 3;
+        else round_number = 4;
+    } else {
+        shift = 'Shift 3';
+        if (hours >= 23 || hours < 1) round_number = 1;
+        else if (hours >= 1 && hours < 3) round_number = 2;
+        else if (hours >= 3 && hours < 5) round_number = 3;
+        else round_number = 4;
+
+        if (hours < 7) {
+            workDateObj.setDate(workDateObj.getDate() - 1);
+        }
+    }
+
+    const pad = (n) => n.toString().padStart(2, '0');
+    const work_date = `${workDateObj.getFullYear()}-${pad(workDateObj.getMonth() + 1)}-${pad(workDateObj.getDate())}`;
+
+    return { shift, round_number, work_date };
+};
+
+// ==========================================
+// Haversine Formula for Distance Calculation
+// ==========================================
+function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
+  const R = 6371e3; // Earth radius in meters
+  const toRad = (val) => (val * Math.PI) / 180;
+  const phi1 = toRad(lat1);
+  const phi2 = toRad(lat2);
+  const deltaPhi = toRad(lat2 - lat1);
+  const deltaLambda = toRad(lon2 - lon1);
+
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+            Math.cos(phi1) * Math.cos(phi2) *
+            Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+}
+
 // Ensure security_map_settings table exists & has default factory row
 const initMapSettingsTable = async () => {
   try {
@@ -112,6 +174,15 @@ router.post('/map-settings', async (req, res) => {
  */
 const getActiveGuardsHandler = async (req, res) => {
   try {
+    const { shift, round_number, work_date } = calculateAutoShift(new Date());
+
+    // HARD RESET: Auto-close semua sesi yang masih "active" tapi round/shift-nya sudah kadaluarsa
+    await dbPool.query(`
+      UPDATE security_patrol_sessions 
+      SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
+      WHERE status = 'active' AND (work_date != ? OR shift != ? OR round_number != ?)
+    `, [work_date, shift, round_number]);
+
     // Tampilkan HANYA guard yang sedang memiliki sesi patroli AKTIF (status = 'active')
     const [rows] = await dbPool.query(`
       SELECT 
@@ -208,16 +279,28 @@ router.get('/sessions', async (req, res) => {
  */
 const getCheckpointsHandler = async (req, res) => {
   try {
-    const startTimeStr = getShiftStartTimeStr();
+    const { shift, round_number, work_date } = calculateAutoShift(new Date());
 
+    // 1. HARD RESET: Auto-close semua sesi yang masih "active" tapi round/shift-nya sudah kadaluarsa
+    await dbPool.query(`
+      UPDATE security_patrol_sessions 
+      SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
+      WHERE status = 'active' AND (work_date != ? OR shift != ? OR round_number != ?)
+    `, [work_date, shift, round_number]);
+
+    // 2. Ambil data checkpoint yang HANYA milik round yang berlaku saat ini
     const [rows] = await dbPool.query(`
-      SELECT c.*, s.guard_name, s.guard_id 
+      SELECT c.*, s.guard_name, s.guard_id, s.started_at, s.completed_at, s.shift 
       FROM security_session_checkpoints c
       JOIN security_patrol_sessions s ON c.session_id = s.id
-      WHERE c.status = 'verified' AND (s.status = 'active' OR c.verified_at >= ?)
+      WHERE c.status = 'verified' 
+        AND s.work_date = ? 
+        AND s.shift = ? 
+        AND s.round_number = ?
       ORDER BY c.verified_at DESC 
       LIMIT 200
-    `, [startTimeStr]);
+    `, [work_date, shift, round_number]);
+    
     res.json(rows);
   } catch (error) {
     console.error('Error fetching patrol checkpoints:', error);
@@ -226,7 +309,38 @@ const getCheckpointsHandler = async (req, res) => {
 };
 
 router.get('/checkpoints', getCheckpointsHandler);
-router.get('/logs', getCheckpointsHandler);
+
+// Historical Logs for Web View
+router.get('/logs', async (req, res) => {
+  try {
+    const { from_date, to_date, all_data } = req.query;
+    let queryParams = [];
+    let dateFilter = "";
+
+    if (all_data !== 'true') {
+      const today = new Date().toISOString().split('T')[0];
+      const fromDate = from_date || today;
+      const toDate = to_date || today;
+      dateFilter = "AND DATE(c.verified_at) BETWEEN ? AND ?";
+      queryParams.push(fromDate, toDate);
+    }
+
+    const [rows] = await dbPool.query(`
+      SELECT c.*, s.guard_name, s.guard_id, s.started_at, s.completed_at, s.shift 
+      FROM security_session_checkpoints c
+      JOIN security_patrol_sessions s ON c.session_id = s.id
+      WHERE c.status = 'verified' 
+      ${dateFilter}
+      ORDER BY c.verified_at DESC 
+      LIMIT 1000
+    `, queryParams);
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching patrol logs history:', error);
+    res.status(500).json({ error: 'Failed to fetch patrol logs history' });
+  }
+});
 
 /**
  * POST /api/security/patrol/sessions/start
@@ -265,15 +379,22 @@ router.post('/sessions/start', async (req, res) => {
       [user_id]
     );
 
+    // Hitung Auto Shift, Work Date, dan Round Number secara presisi dari jam server saat ini
+    const autoShiftInfo = calculateAutoShift(new Date());
+    const finalShift = autoShiftInfo.shift;
+    const workDate = autoShiftInfo.work_date;
+    const roundNum = autoShiftInfo.round_number;
+
     const session_code = `PTR-${Date.now()}`;
     const [result] = await dbPool.query(
-      "INSERT INTO security_patrol_sessions (session_code, guard_id, guard_name, shift, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-      [session_code, user_id, guard_name, shift]
+      "INSERT INTO security_patrol_sessions (session_code, guard_id, guard_name, shift, work_date, round_number, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id",
+      [session_code, user_id, guard_name, finalShift, workDate, roundNum]
     );
 
+    const newSessionId = result.insertId || (result.length > 0 && result[0].id) || 0;
     
     // Clear Kalman filter cache for this session if any
-    sessionKalmanMap.delete(result.insertId);
+    sessionKalmanMap.delete(newSessionId);
 
     // Update guard status: Reset to NULL unless initial_lat & initial_lng are provided for the NEW patrol
     try {
@@ -289,7 +410,7 @@ router.post('/sessions/start', async (req, res) => {
             // Simpan sebagai titik PERTAMA di tracks untuk sesi baru ini
             await dbPool.query(
               'INSERT INTO security_patrol_tracks (session_id, latitude, longitude, recorded_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)',
-              [result.insertId, initLatNum, initLngNum]
+              [newSessionId, initLatNum, initLngNum]
             );
         } else {
             // Jika belum ada koordinat saat tekan start: RESET lat & lng ke NULL agar tidak memakai lokasi sesi lama!
@@ -302,7 +423,7 @@ router.post('/sessions/start', async (req, res) => {
         console.error('Error resetting/updating guard status on session start:', e);
     }
 
-    res.status(201).json({ success: true, session_id: result.insertId, session_code, message: 'Patrol session started' });
+    res.status(201).json({ success: true, session_id: newSessionId, session_code, message: 'Patrol session started' });
   } catch (error) {
     console.error('Error starting patrol session:', error);
     res.status(500).json({ error: 'Failed to start patrol session' });
@@ -424,6 +545,46 @@ router.post('/checkpoints', async (req, res) => {
   }
   
   try {
+    // === SEQUENCE VALIDATION LOGIC ===
+    const [masterCheckpoints] = await dbPool.query("SELECT * FROM security_stations WHERE is_active = 1 ORDER BY sequence_order ASC, id ASC");
+    
+    // Validasi apakah CP ini terdaftar di master
+    const isValidMasterCP = masterCheckpoints.find(mc => mc.checkpoint_code === checkpoint_code || mc.label === station_name);
+    
+    if (isValidMasterCP) {
+        // Ambil CP yang sudah di-scan di sesi ini
+        const [scannedCheckpoints] = await dbPool.query("SELECT checkpoint_code, station_name FROM security_session_checkpoints WHERE session_id = ? ORDER BY verified_at ASC", [session_id]);
+        
+        const expectedIndex = scannedCheckpoints.length;
+        
+        if (expectedIndex < masterCheckpoints.length) {
+            const expectedCheckpoint = masterCheckpoints[expectedIndex];
+            
+            // Validasi urutan beruntun
+            if (checkpoint_code !== expectedCheckpoint.checkpoint_code && station_name !== expectedCheckpoint.label) {
+                return res.status(400).json({ error: `Beruntun Patroli Gagal: Anda harus scan Checkpoint urutan ke-${expectedIndex + 1} (${expectedCheckpoint.label}) terlebih dahulu!` });
+            }
+
+            // Validasi Radius (Dispensasi Jarak)
+            const maxRadius = expectedCheckpoint.radius_meters || 30; // Default 30 meter jika NULL
+            if (expectedCheckpoint.latitude && expectedCheckpoint.longitude) {
+                const distance = calculateDistanceMeters(
+                    parseFloat(latitude), 
+                    parseFloat(longitude), 
+                    parseFloat(expectedCheckpoint.latitude), 
+                    parseFloat(expectedCheckpoint.longitude)
+                );
+                
+                if (distance > maxRadius) {
+                    return res.status(400).json({ error: `Gagal: Anda berada di luar radius area pos! (Jarak Anda ${distance}m, Maksimal ${maxRadius}m)` });
+                }
+            }
+        } else {
+            return res.status(400).json({ error: 'Beruntun Patroli Gagal: Semua checkpoint sudah di-scan untuk ronde ini.' });
+        }
+    }
+    // ===================================
+
     const [result] = await dbPool.query(
       "INSERT INTO security_session_checkpoints (session_id, checkpoint_code, station_name, status, verified_at, verification_photo, verification_notes, latitude, longitude, gps_accuracy) VALUES (?, ?, ?, 'verified', CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)",
       [session_id, checkpoint_code, station_name, verification_photo || null, verification_notes || null, latitude, longitude, gps_accuracy]
@@ -761,7 +922,7 @@ router.get('/history', async (req, res) => {
   try {
     const [rows] = await dbPool.query(`
       SELECT 
-        s.id, s.guard_name, s.status, s.started_at, s.completed_at,
+        s.id, s.guard_name, s.status, s.started_at, s.completed_at, s.shift, s.round_number,
         (SELECT COUNT(*) FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_count,
         (SELECT STRING_AGG(DISTINCT c.station_name, ', ') FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_names,
         (SELECT COUNT(*) FROM security_patrol_tracks t WHERE t.session_id = s.id) as track_count
@@ -782,8 +943,9 @@ router.get('/history', async (req, res) => {
  */
 router.get('/stations', async (req, res) => {
   try {
-    const [rows] = await dbPool.query('SELECT * FROM security_stations WHERE is_active = 1');
-    res.json(rows);
+    const [rows] = await dbPool.query('SELECT * FROM security_stations WHERE is_active = 1 ORDER BY sequence_order ASC, id ASC');
+    const mappedRows = rows.map(r => ({ ...r, station_name: r.label || r.station_name || r.checkpoint_code }));
+    res.json(mappedRows);
   } catch (error) {
     console.error('Error fetching stations:', error);
     res.status(500).json({ error: 'Failed to fetch stations' });
@@ -896,9 +1058,10 @@ const syncOfflineBatchHandler = async (req, res) => {
             const [existing] = await dbPool.query("SELECT id FROM security_patrol_sessions WHERE id = ?", [effectiveSessionId]);
             if (!existing || existing.length === 0) {
               const sCode = `PTR-${effectiveSessionId}`;
+              const autoShiftInfo = calculateAutoShift(new Date(eventTime));
               await dbPool.query(
-                "INSERT INTO security_patrol_sessions (id, session_code, guard_id, guard_name, shift, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)",
-                [effectiveSessionId, sCode, gId, gName, shift || 'Shift A', eventTime, eventTime, eventTime]
+                "INSERT INTO security_patrol_sessions (id, session_code, guard_id, guard_name, shift, work_date, round_number, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)",
+                [effectiveSessionId, sCode, gId, gName, autoShiftInfo.shift, autoShiftInfo.work_date, autoShiftInfo.round_number, eventTime, eventTime, eventTime]
               );
               console.log(`[SYNC BATCH] Processed START_SESSION: ${effectiveSessionId}`);
               broadcastPatrolEvent('patrol_session_started', {
@@ -1091,7 +1254,7 @@ router.post('/sync-offline-batch', syncOfflineBatchHandler);
 // 1. GET all checkpoints
 router.get('/master-checkpoints', async (req, res) => {
   try {
-    const [rows] = await dbPool.query('SELECT * FROM security_stations ORDER BY checkpoint_code ASC');
+    const [rows] = await dbPool.query('SELECT * FROM security_stations ORDER BY sequence_order ASC, id ASC');
     res.json(rows);
   } catch (error) {
     console.error('Error fetching master checkpoints:', error);
@@ -1102,16 +1265,17 @@ router.get('/master-checkpoints', async (req, res) => {
 // 2. POST create new checkpoint
 router.post('/master-checkpoints', async (req, res) => {
   try {
-    const { checkpoint_code, label, latitude, longitude, radius_meters } = req.body;
+    const { checkpoint_code, label, latitude, longitude, radius_meters, sequence_order } = req.body;
     
     // Get max id since the column is not serial
     const [maxRows] = await dbPool.query('SELECT MAX(id) as max_id FROM security_stations');
     const newId = (maxRows[0]?.max_id || 0) + 1;
+    const seq = sequence_order !== undefined ? parseInt(sequence_order, 10) : newId;
 
     await dbPool.query(
-      `INSERT INTO security_stations (id, station_key, checkpoint_code, label, normalized_x, normalized_y, latitude, longitude, radius_meters, is_active, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, 0.5, 0.5, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [newId, checkpoint_code.toLowerCase().replace(/[^a-z0-9]/g, '_'), checkpoint_code, label, latitude, longitude, radius_meters || 30]
+      `INSERT INTO security_stations (id, station_key, checkpoint_code, label, normalized_x, normalized_y, latitude, longitude, radius_meters, sequence_order, is_active, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, 0.5, 0.5, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [newId, checkpoint_code.toLowerCase().replace(/[^a-z0-9]/g, '_'), checkpoint_code, label, latitude, longitude, radius_meters || 30, seq]
     );
     res.json({ success: true, message: 'Checkpoint created successfully' });
   } catch (error) {
@@ -1124,12 +1288,13 @@ router.post('/master-checkpoints', async (req, res) => {
 router.put('/master-checkpoints/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { checkpoint_code, label, latitude, longitude, radius_meters } = req.body;
+    const { checkpoint_code, label, latitude, longitude, radius_meters, sequence_order } = req.body;
+    const seq = sequence_order !== undefined ? parseInt(sequence_order, 10) : 0;
     await dbPool.query(
       `UPDATE security_stations 
-       SET checkpoint_code = ?, label = ?, latitude = ?, longitude = ?, radius_meters = ?, updated_at = CURRENT_TIMESTAMP
+       SET checkpoint_code = ?, label = ?, latitude = ?, longitude = ?, radius_meters = ?, sequence_order = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      [checkpoint_code, label, latitude, longitude, radius_meters, id]
+      [checkpoint_code, label, latitude, longitude, radius_meters, seq, id]
     );
     res.json({ success: true, message: 'Checkpoint updated successfully' });
   } catch (error) {

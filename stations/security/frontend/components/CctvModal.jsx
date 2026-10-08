@@ -1,5 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import SharedCctvStream from './SharedCctvStream.jsx';
 
 function CctvModal({ selectedCctv, setSelectedCctv }) {
     if (!selectedCctv) return null;
@@ -26,10 +27,11 @@ function CctvModal({ selectedCctv, setSelectedCctv }) {
                 </button>
             </div>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#000' }}>
-                <img
+                <SharedCctvStream
                     src={getAiStreamUrl(selectedCctv)}
                     alt={selectedCctv.camera_name}
-                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                    fit="contain"
+                    style={{ width: '100%', height: '100%' }}
                 />
             </div>
         </div>,

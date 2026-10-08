@@ -14,7 +14,8 @@ const CheckpointSettingsView = ({ onBack }) => {
         label: '',
         latitude: '',
         longitude: '',
-        radius_meters: 30
+        radius_meters: 30,
+        sequence_order: 1
     });
 
     const thStyle = { padding: '12px 20px', fontSize: '11px', color: '#94a3b8', fontWeight: '800', letterSpacing: '0.5px' };
@@ -95,11 +96,12 @@ const CheckpointSettingsView = ({ onBack }) => {
                 label: cp.label,
                 latitude: cp.latitude,
                 longitude: cp.longitude,
-                radius_meters: cp.radius_meters || 30
+                radius_meters: cp.radius_meters || 30,
+                sequence_order: cp.sequence_order !== undefined ? cp.sequence_order : 1
             });
             setEditingCp(cp);
         } else {
-            // Auto-generate next code
+            // Auto-generate next code & sequence
             let nextNum = 1;
             if (checkpoints.length > 0) {
                 const maxNum = Math.max(...checkpoints.map(c => {
@@ -114,7 +116,8 @@ const CheckpointSettingsView = ({ onBack }) => {
                 label: '',
                 latitude: '',
                 longitude: '',
-                radius_meters: 30
+                radius_meters: 30,
+                sequence_order: nextNum
             });
             setEditingCp(null);
         }
@@ -197,10 +200,15 @@ const CheckpointSettingsView = ({ onBack }) => {
                                     <input type="number" step="any" required value={formData.longitude} onChange={e => setFormData({...formData, longitude: e.target.value})} style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                <label style={{ fontWeight: 'bold', fontSize: '13px', color: '#475569' }}>Radius Toleransi (Meter)</label>
-                                <input type="number" required min="1" value={formData.radius_meters} onChange={e => setFormData({...formData, radius_meters: e.target.value})} style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
-                                <small style={{ color: '#94a3b8' }}>Batas area di mana satpam diperbolehkan check-in (Default: 30 meter).</small>
+                            <div style={{ display: 'flex', gap: '15px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
+                                    <label style={{ fontWeight: 'bold', fontSize: '13px', color: '#475569' }}>Radius Toleransi (Meter)</label>
+                                    <input type="number" required min="1" value={formData.radius_meters} onChange={e => setFormData({...formData, radius_meters: e.target.value})} style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
+                                    <label style={{ fontWeight: 'bold', fontSize: '13px', color: '#475569' }}>Urutan Patroli (Sequence)</label>
+                                    <input type="number" required min="1" value={formData.sequence_order} onChange={e => setFormData({...formData, sequence_order: e.target.value})} style={{ padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} />
+                                </div>
                             </div>
                             
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'flex-end' }}>
@@ -221,7 +229,7 @@ const CheckpointSettingsView = ({ onBack }) => {
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                                     <tr>
-                                        <th style={{ ...thStyle, textAlign: 'center' }}>NO</th>
+                                        <th style={{ ...thStyle, textAlign: 'center' }}>URUTAN</th>
                                         <th style={thStyle}>KODE</th>
                                         <th style={thStyle}>LOKASI</th>
                                         <th style={thStyle}>KOORDINAT (LAT, LNG)</th>
@@ -233,7 +241,11 @@ const CheckpointSettingsView = ({ onBack }) => {
                                 <tbody>
                                     {checkpoints.map((cp, idx) => (
                                         <tr key={cp.id} style={{ background: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
-                                            <td style={{ ...tdStyle, textAlign: 'center' }}>{idx + 1}</td>
+                                            <td style={{ ...tdStyle, textAlign: 'center' }}>
+                                                <span style={{ background: '#0f172a', color: '#ffdb3b', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '800' }}>
+                                                    #{cp.sequence_order ?? (idx + 1)}
+                                                </span>
+                                            </td>
                                             <td style={{ ...tdStyle, fontWeight: '800', color: '#0f172a' }}>{cp.checkpoint_code}</td>
                                             <td style={{ ...tdStyle, fontWeight: '600' }}>{cp.label}</td>
                                             <td style={tdStyle}><span style={{ fontFamily: 'monospace', fontSize: '13px', color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px' }}>{cp.latitude}, {cp.longitude}</span></td>

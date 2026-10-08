@@ -146,6 +146,7 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
   const [activeMenu, setActiveMenu] = useState("Dashboard");
   const [viewPlcConfig, setViewPlcConfig] = useState(false);
   const [isCamConfigOpen, setIsCamConfigOpen] = useState(false);
+  const [isSettingCheckpointsOpen, setIsSettingCheckpointsOpen] = useState(false);
   const [isXooraUnlocked, setIsXooraUnlocked] = useState(false);
   const [stations, setStations] = useState([]);
   const [stationTitles, setStationTitles] = useState([]);
@@ -469,6 +470,8 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
                   configMode={isXooraUnlocked}
                   isCamConfigOpen={isCamConfigOpen}
                   setIsCamConfigOpen={setIsCamConfigOpen}
+                  isSettingCheckpointsOpen={isSettingCheckpointsOpen}
+                  setIsSettingCheckpointsOpen={setIsSettingCheckpointsOpen}
                 />
               </div>
             </div>
@@ -489,6 +492,8 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
             configMode={isXooraUnlocked}
             isCamConfigOpen={isCamConfigOpen}
             setIsCamConfigOpen={setIsCamConfigOpen}
+            isSettingCheckpointsOpen={isSettingCheckpointsOpen}
+            setIsSettingCheckpointsOpen={setIsSettingCheckpointsOpen}
           />
         </div>
       );
@@ -614,6 +619,54 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
                   <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
                 {isCamConfigOpen ? "CLOSE CAM CONFIG" : "CAM CONFIG"}
+              </button>
+            )}
+
+            {/* SETTING CHECKPOINTS BUTTON (Only for Security) */}
+            {activeSubmenu === "Security" && (user?.id === 5 || user?.user_id === 5 || user?.userRole?.toLowerCase() === "developer" || user?.role?.toLowerCase() === "developer") && (
+              <button
+                onClick={() => setIsSettingCheckpointsOpen(!isSettingCheckpointsOpen)}
+                style={{
+                  position: "fixed",
+                  bottom: "136px",
+                  right: "24px",
+                  zIndex: 9999,
+                  padding: "12px 18px",
+                  background: isSettingCheckpointsOpen
+                    ? "#ef4444"
+                    : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "9999px",
+                  boxShadow:
+                    "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(59, 130, 246, 0.4)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "0.8rem",
+                  fontWeight: 800,
+                  letterSpacing: "0.05em",
+                  textTransform: "uppercase",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                  e.currentTarget.style.boxShadow =
+                    "0 15px 30px -5px rgba(59, 130, 246, 0.5)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0px) scale(1)";
+                  e.currentTarget.style.boxShadow =
+                    "0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(59, 130, 246, 0.4)";
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon>
+                  <line x1="9" y1="3" x2="9" y2="18"></line>
+                  <line x1="15" y1="6" x2="15" y2="21"></line>
+                </svg>
+                {isSettingCheckpointsOpen ? "CLOSE CHECKPOINTS" : "SETTING CHECKPOINTS"}
               </button>
             )}
 

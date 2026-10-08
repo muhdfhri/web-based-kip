@@ -66,7 +66,12 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                                     <div className={`history-status-dot ${isActive ? 'active' : 'completed'}`}></div>
                                     <div className="history-info">
                                         <div className="history-name">{session.guard_name}</div>
-                                        <div className="history-meta">
+                                        {session.shift && (
+                                            <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', marginTop: '2px', letterSpacing: '0.02em' }}>
+                                                {session.shift.startsWith('Shift') ? session.shift : `Shift ${session.shift}`} • Round {session.round_number}
+                                            </div>
+                                        )}
+                                        <div className="history-meta" style={{ marginTop: '2px' }}>
                                             {startTime}{endTime ? ` — ${endTime} WIB` : ' WIB (active)'}
                                             <span className="history-cp-count" title={session.checkpoint_names || `${session.checkpoint_count} Checkpoints`}>
                                                 <FaMapMarkerAlt style={{ fontSize: '9px', marginLeft: '4px', marginRight: '3px' }} /> 
