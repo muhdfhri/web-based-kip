@@ -7,3 +7,9 @@ logs/
 *.zip
 stations/security/backend/uploads/
 stations/security.zip
+
+# Generated Python cache and local CCTV verification output
+__pycache__/
+*.py[cod]
+stations/security/verification/*.json
+stations/security/verification/*.png

@@ -52,7 +52,7 @@ module.exports = {
       cwd: "./main-service/frontend",
       watch: false,
       autorestart: true,
-      max_memory_restart: "250M",
+      max_memory_restart: "1G",
       log_date_format: "YYYY-MM-DD HH:mm:ss",
       error_file: "./logs/frontend-shell.err.log",
       out_file: "./logs/frontend-shell.out.log",
@@ -97,7 +97,7 @@ module.exports = {
       cwd: "./stations/security/backend",
       watch: false,
       autorestart: true,
-      max_memory_restart: "150M",
+      max_memory_restart: "256M",
       env: {
         NODE_ENV: "development",
         PORT: 3101,
@@ -109,11 +109,11 @@ module.exports = {
     {
       name: "security-ai-service",
       script: "app.py",
-      interpreter: "python3",
+      interpreter: process.env.SECURITY_AI_PYTHON || (process.platform === "win32" ? "python" : "python3"),
       cwd: "./stations/security/ai/backend",
       watch: false,
       autorestart: true,
-      max_memory_restart: "500M",
+      max_memory_restart: "1G",
       env: {
         PORT: 4101,
         FLASK_ENV: "production",

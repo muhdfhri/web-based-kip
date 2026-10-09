@@ -4,6 +4,9 @@ import SharedCctvStream from '../../components/SharedCctvStream.jsx';
 function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
     // null = ALL (auto-fit), number = fixed columns
     const [gridSize, setGridSize] = useState(null); // default: ALL
+    const [streamStatus, setStreamStatus] = useState({});
+    const updateStreamStatus = (id, status) => setStreamStatus(previous =>
+        previous[id] === status ? previous : { ...previous, [id]: status });
 
     /**
      * 🎯 Helper Function: determine stream URL per camera
@@ -61,15 +64,15 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: '6px', border: '1px solid #bbf7d0', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                         <span>Aktif:</span>
                         <strong style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                            {cctvCameras.filter(c => c.is_active === 1 || c.is_active === true || c.is_active === undefined).length}
+                            {cctvCameras.filter(c => streamStatus[c.id] === 'live').length}
                         </strong>
                     </span>
 
                     {/* Minimalist Non-Aktif Badge */}
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#dc2626', background: '#fef2f2', padding: '2px 8px', borderRadius: '6px', border: '1px solid #fecaca', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <span>Non-Aktif:</span>
+                        <span>Belum Live:</span>
                         <strong style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                            {cctvCameras.filter(c => c.is_active === 0 || c.is_active === false).length}
+                            {cctvCameras.filter(c => streamStatus[c.id] !== 'live').length}
                         </strong>
                     </span>
                 </div>
@@ -194,13 +197,13 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                                 <span className="cam-status" style={{
                                     fontSize: '9px',
                                     fontWeight: '900',
-                                    color: camera.is_active === 0 ? '#dc2626' : '#16a34a',
-                                    background: camera.is_active === 0 ? '#fef2f2' : '#f0fdf4',
+                                    color: streamStatus[camera.id] === 'live' ? '#16a34a' : '#a16207',
+                                    background: streamStatus[camera.id] === 'live' ? '#f0fdf4' : '#fefce8',
                                     padding: '2px 6px',
                                     borderRadius: '4px',
-                                    border: camera.is_active === 0 ? '1px solid #fecaca' : '1px solid #bbf7d0'
+                                    border: streamStatus[camera.id] === 'live' ? '1px solid #bbf7d0' : '1px solid #fef08a'
                                 }}>
-                                    {camera.is_active === 0 ? 'OFFLINE' : 'LIVE'}
+                                    {({ live: 'LIVE', offline: 'OFFLINE', reconnecting: 'RECONNECT' })[streamStatus[camera.id]] || 'CONNECTING'}
                                 </span>
                             </div>
 
@@ -221,6 +224,7 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
                                 <SharedCctvStream
                                     src={getAiStreamUrl(camera)}
                                     alt={camera.camera_name}
+                                    onStatus={status => updateStreamStatus(camera.id, status)}
                                     style={{
                                         width: '100%',
                                         height: '100%',

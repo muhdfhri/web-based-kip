@@ -1,8 +1,33 @@
 from flask import Blueprint, Response, jsonify, request
 from core.rtsp_streamer import (generate_mjpeg_stream_by_id, capture_single_snapshot,
-                               get_camera_status, get_camera_info_by_id)
+                               get_camera_status, get_camera_info_by_id,
+                               generate_combined_stream, get_camera_infos, stream_diagnostics)
 
 stream_bp = Blueprint('stream_bp', __name__)
+
+
+@stream_bp.route('/api/security-ai/live', methods=['GET'])
+def get_combined_stream():
+    try:
+        camera_ids = list(dict.fromkeys(int(value) for value in request.args.get('ids', '').split(',')))
+        if not camera_ids or len(camera_ids) > 64 or any(cid <= 0 for cid in camera_ids):
+            raise ValueError('Invalid IDs')
+    except ValueError:
+        return jsonify(success=False, message='Expected 1-64 positive camera IDs'), 400
+    try:
+        infos = get_camera_infos(camera_ids)
+    except Exception:
+        return jsonify(success=False, message='Camera configuration unavailable'), 503
+    response = Response(generate_combined_stream(camera_ids, infos,
+                        request.args.get('focus', type=int)), mimetype='application/octet-stream')
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['X-Accel-Buffering'] = 'no'
+    return response
+
+
+@stream_bp.route('/api/security-ai/stream/status', methods=['GET'])
+def get_stream_status():
+    return jsonify(success=True, data=stream_diagnostics())
 
 
 def _id():

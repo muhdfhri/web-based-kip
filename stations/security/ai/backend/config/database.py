@@ -20,7 +20,8 @@ def get_db_ai_connection():
         user=Config.DB_USER,
         password=Config.DB_PASSWORD,
         dbname=Config.DB_NAME_AI,
-        cursor_factory=RealDictCursor
+        cursor_factory=RealDictCursor,
+        connect_timeout=5
     )
     conn.autocommit = True
     return conn
@@ -38,7 +39,8 @@ def get_db_general_connection():
         user=Config.DB_USER,
         password=Config.DB_PASSWORD,
         dbname=Config.DB_NAME_GENERAL,
-        cursor_factory=RealDictCursor
+        cursor_factory=RealDictCursor,
+        connect_timeout=5
     )
     conn.autocommit = True
     return conn

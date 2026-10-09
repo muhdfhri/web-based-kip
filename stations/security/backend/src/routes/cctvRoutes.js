@@ -1,290 +1,153 @@
 import express from 'express';
-import http from 'http';
-import { dbPool } from '../config/db.js';
+import http from 'node:http';
+import { pool } from '../config/db.js';
 
 const router = express.Router();
+const aiHost = process.env.SECURITY_AI_HOST || '127.0.0.1';
+const aiPort = Number(process.env.SECURITY_AI_PORT || 4101);
+const validId = value => /^\d+$/.test(String(value)) && Number.isSafeInteger(Number(value)) && Number(value) > 0;
+const active = value => value === true || value === 1 || value === '1';
 
-/**
- * Helper function: auto-sync camera configuration to Python Security AI backend (:4101)
- */
-function syncToAiBackend(cameraData) {
-  try {
-    const postData = JSON.stringify({
-      camera_code: `CAM_${cameraData.id}`,
-      camera_name: cameraData.camera_name,
-      station_slug: cameraData.station_slug || 'security',
-      rtsp_url: cameraData.rtsp_url
-    });
-    const req = http.request({
-      hostname: '127.0.0.1',
-      port: 4101,
-      path: '/api/security-ai/config/cameras',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    }, (res) => {
-      res.resume();
-    });
-    req.on('error', (err) => {
-      console.warn('[CCTV Auto-Sync] Warning: Could not sync camera to Security AI (:4101):', err.message);
-    });
-    req.write(postData);
-    req.end();
-  } catch (err) {
-    console.warn('[CCTV Auto-Sync] Error initiating sync:', err.message);
-  }
+// One grid/modal connection. Pipe respects backpressure; response close releases upstream.
+function forwardCameraStream(req, res, path) {
+  let upstream;
+  const proxy = http.get({ hostname: aiHost, port: aiPort, path, agent: false }, incoming => {
+    upstream = incoming;
+    if (res.destroyed) { incoming.destroy(); return; }
+    res.writeHead(incoming.statusCode, { ...incoming.headers,
+      'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
+    res.flushHeaders();
+    incoming.pipe(res);
+    incoming.on('error', () => res.destroy());
+  });
+  proxy.setTimeout(15000, () => proxy.destroy(new Error('Stream stalled')));
+  proxy.on('error', () => {
+    if (!res.headersSent && !res.destroyed) res.status(502).json({ success: false, message: 'Security AI streamer unavailable' });
+    else res.destroy();
+  });
+  res.on('close', () => { upstream?.destroy(); proxy.destroy(); });
 }
 
-/**
- * GET /api/security/cctv
- * Fetch all CCTV cameras with Gateway stream_url on Port 3101
- * If ?all=true is passed, returns both active and inactive cameras for CRUD management
- */
+function syncToAiBackend(camera, deleting = false) {
+  const code = camera.camera_code || `CAM_${camera.id}`;
+  const body = deleting ? null : JSON.stringify({ camera_code: code,
+    camera_name: camera.camera_name, station_slug: camera.station_slug || 'security',
+    rtsp_url: camera.rtsp_url, is_active: active(camera.is_active) });
+  const request = http.request({ hostname: aiHost, port: aiPort,
+    path: '/api/security-ai/config/cameras' + (deleting ? `/${encodeURIComponent(code)}` : ''),
+    method: deleting ? 'DELETE' : 'POST',
+    headers: body ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } : {},
+  }, response => {
+    response.resume();
+    if (response.statusCode >= 400) console.warn('[CCTV Auto-Sync] HTTP', response.statusCode);
+  });
+  request.setTimeout(5000, () => request.destroy());
+  request.on('error', () => console.warn('[CCTV Auto-Sync] AI service unavailable; retry camera save after recovery'));
+  request.end(body);
+}
+
+router.get('/live', (req, res) => {
+  const values = String(req.query.ids || '').split(',');
+  if (!values.length || values.length > 64 || values.some(value => !validId(value))) {
+    return res.status(400).json({ success: false, message: 'Invalid camera IDs' });
+  }
+  const ids = [...new Set(values.map(Number))];
+  const query = new URLSearchParams({ ids: ids.join(',') });
+  if (validId(req.query.focus) && ids.includes(Number(req.query.focus))) query.set('focus', String(Number(req.query.focus)));
+  forwardCameraStream(req, res, `/api/security-ai/live?${query}`);
+});
+router.get('/stream/status', (req, res) => forwardCameraStream(req, res, '/api/security-ai/stream/status'));
+router.get('/stream/:id', (req, res) => {
+  if (!validId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid camera ID' });
+  forwardCameraStream(req, res, `/api/security-ai/stream?camera_id=${Number(req.params.id)}`);
+});
+
 router.get('/', async (req, res) => {
   try {
-    const showAll = req.query.all === 'true' || req.query.all === '1';
-    const { location, search, station_slug } = req.query;
-    const filterKeyword = (location || search || '').trim();
-
-    // 1. Menambahkan station_slug dan camera_code pada query SELECT
-    let sql = 'SELECT id, camera_code, camera_name, location, station_slug, rtsp_url, is_active, sort_order, created_at FROM cctv_cameras WHERE 1=1';
+    let sql = 'SELECT id, camera_code, camera_name, location, station_slug, rtsp_url, is_active, sort_order, created_at FROM public.cctv_cameras WHERE 1=1';
     const params = [];
-
-    if (!showAll) {
-      sql += ' AND is_active = 1';
+    if (req.query.all !== 'true' && req.query.all !== '1') sql += ' AND is_active = 1';
+    if (req.query.station_slug) {
+      params.push(String(req.query.station_slug).trim());
+      sql += ` AND LOWER(station_slug) = LOWER($${params.length})`;
     }
-
-    if (station_slug) {
-      sql += ' AND LOWER(station_slug) = LOWER(?)';
-      params.push(station_slug.trim());
+    const keyword = String(req.query.location || req.query.search || '').trim();
+    if (keyword) {
+      params.push(`%${keyword.toLowerCase()}%`);
+      sql += ` AND (LOWER(location) LIKE $${params.length} OR LOWER(camera_name) LIKE $${params.length} OR LOWER(camera_code) LIKE $${params.length})`;
     }
-
-    if (filterKeyword) {
-      sql += ' AND (LOWER(location) LIKE ? OR LOWER(camera_name) LIKE ? OR LOWER(camera_code) LIKE ?)';
-      const pattern = `%${filterKeyword.toLowerCase()}%`;
-      params.push(pattern, pattern, pattern);
-    }
-
-    sql += ' ORDER BY sort_order ASC, id ASC';
-
-    const [rows] = await dbPool.query(sql, params);
-    const sourceIds = new Map();
-    for (const cam of rows) {
-      if (!sourceIds.has(cam.rtsp_url)) sourceIds.set(cam.rtsp_url, cam.id);
-    }
-
-    // 2. Menambahkan station_slug dan camera_code pada mapping objek
-    const cameras = rows.map(cam => ({
-      ...cam,
-      camera_code: cam.camera_code || `CAM_${cam.id}`,
-      station_slug: cam.station_slug || 'security',
-      stream_url: `/api/security/cctv/stream/${cam.id}`
-    }));
-
-    res.json({ success: true, data: cameras });
+    const { rows } = await pool.query(sql + ' ORDER BY sort_order ASC, id ASC', params);
+    res.json({ success: true, data: rows.map(camera => ({ ...camera,
+      camera_code: camera.camera_code || `CAM_${camera.id}`, station_slug: camera.station_slug || 'security',
+      stream_url: `/api/security/cctv/stream/${camera.id}` })) });
   } catch (error) {
-    console.error('Error fetching CCTVs:', error);
+    console.error('[CCTV] List failed:', error.code || error.name);
     res.status(500).json({ success: false, message: 'Failed to fetch CCTV cameras' });
   }
 });
 
-
-/**
- * POST /api/security/cctv
- * Create a new CCTV camera
- */
 router.post('/', async (req, res) => {
+  const { camera_name, rtsp_url, location, station_slug, camera_code, is_active = 1, sort_order = 0 } = req.body;
+  if (!camera_name || !rtsp_url) return res.status(400).json({ success: false, message: 'Nama Kamera dan RTSP URL wajib diisi' });
+  let client;
   try {
-    const { camera_code, camera_name, location, station_slug, rtsp_url, is_active = 1, sort_order = 0 } = req.body;
-
-    if (!camera_name || !rtsp_url) {
-      return res.status(400).json({ success: false, message: 'Nama Kamera dan RTSP URL wajib diisi' });
+    client = await pool.connect();
+    await client.query('BEGIN');
+    // Use the PostgreSQL identity, never MAX(id)+1 (deletions/concurrent saves).
+    const { rows } = await client.query(
+      'INSERT INTO public.cctv_cameras (camera_code, camera_name, location, station_slug, rtsp_url, is_active, sort_order, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP) RETURNING *',
+      [String(camera_code || '').trim() || null, camera_name, location || null, station_slug || 'security',
+        rtsp_url, active(is_active) ? 1 : 0, parseInt(sort_order, 10) || 0]);
+    const camera = rows[0];
+    if (!camera.camera_code) {
+      camera.camera_code = `CAM_${camera.id}`;
+      await client.query('UPDATE public.cctv_cameras SET camera_code = $1 WHERE id = $2', [camera.camera_code, camera.id]);
     }
-
-    const targetSlug = station_slug || 'security';
-
-    // Ambil ID tertinggi terlebih dahulu untuk membentuk camera_code secara konsisten
-    const [maxRows] = await dbPool.query('SELECT MAX(id) as max_id FROM cctv_cameras');
-    const nextId = (maxRows[0]?.max_id || 0) + 1;
-    const finalCode = (camera_code && camera_code.trim()) ? camera_code.trim() : `CAM_${nextId}`;
-
-    const [result] = await dbPool.query(
-      'INSERT INTO cctv_cameras (camera_code, camera_name, location, station_slug, rtsp_url, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
-      [finalCode, camera_name, location || null, targetSlug, rtsp_url, is_active ? 1 : 0, parseInt(sort_order, 10) || 0]
-    );
-
-    const insertedId = result.insertId || (result[0] && result[0].id) || nextId;
-
-    syncToAiBackend({
-      id: insertedId,
-      camera_code: finalCode,
-      camera_name,
-      location,
-      station_slug: targetSlug,
-      rtsp_url
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Kamera CCTV berhasil ditambahkan',
-      id: insertedId,
-      camera_code: finalCode
-    });
+    await client.query('COMMIT');
+    syncToAiBackend(camera);
+    res.status(201).json({ success: true, message: 'Kamera CCTV berhasil ditambahkan', id: camera.id, camera_code: camera.camera_code });
   } catch (error) {
-    console.error('Error creating CCTV:', error);
-    res.status(500).json({ success: false, message: 'Gagal menambahkan kamera CCTV' });
-  }
+    if (client) await client.query('ROLLBACK').catch(() => {});
+    console.error('[CCTV] Create failed:', error.code || error.name);
+    res.status(error.code === '23505' ? 409 : 500).json({ success: false,
+      message: error.code === '23505' ? 'Kode kamera sudah digunakan' : 'Gagal menambahkan kamera CCTV' });
+  } finally { client?.release(); }
 });
 
-/**
- * PUT /api/security/cctv/:id
- * Update an existing CCTV camera
- */
 router.put('/:id', async (req, res) => {
+  if (!validId(req.params.id)) return res.status(400).json({ success: false, message: 'ID Kamera tidak valid' });
+  const id = Number(req.params.id);
+  const { camera_name, rtsp_url, location, station_slug, camera_code, is_active, sort_order } = req.body;
+  if (!camera_name || !rtsp_url) return res.status(400).json({ success: false, message: 'Nama Kamera dan RTSP URL wajib diisi' });
   try {
-    const cameraId = parseInt(req.params.id, 10);
-    if (isNaN(cameraId) || cameraId <= 0) {
-      return res.status(400).json({ success: false, message: 'ID Kamera tidak valid' });
-    }
-
-    // Fetch existing camera to preserve camera_code if omitted
-    const [existingRows] = await dbPool.query('SELECT camera_code, camera_name, location, station_slug, rtsp_url, is_active FROM cctv_cameras WHERE id = ?', [cameraId]);
-    if (existingRows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Kamera CCTV tidak ditemukan' });
-    }
-    const existingCam = existingRows[0];
-
-    const { camera_code, camera_name, location, station_slug, rtsp_url, is_active, sort_order } = req.body;
-
-    if (!camera_name || !rtsp_url) {
-      return res.status(400).json({ success: false, message: 'Nama Kamera dan RTSP URL wajib diisi' });
-    }
-
-    const targetSlug = station_slug || existingCam.station_slug || 'security';
-    const finalCode = (camera_code && camera_code.trim()) ? camera_code.trim() : (existingCam.camera_code || `CAM_${cameraId}`);
-
-    const [result] = await dbPool.query(
-      'UPDATE cctv_cameras SET camera_code = ?, camera_name = ?, location = ?, station_slug = ?, rtsp_url = ?, is_active = ?, sort_order = ? WHERE id = ?',
-      [finalCode, camera_name, location || null, targetSlug, rtsp_url, is_active ? 1 : 0, parseInt(sort_order, 10) || 0, cameraId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, message: 'Kamera CCTV tidak ditemukan' });
-    }
-
-    syncToAiBackend({
-      id: cameraId,
-      camera_code: finalCode,
-      camera_name,
-      location,
-      station_slug: targetSlug,
-      rtsp_url,
-      is_active: is_active ? 1 : 0
-    });
-
-    res.json({
-      success: true,
-      message: 'Kamera CCTV berhasil diperbarui'
-    });
+    const existing = await pool.query('SELECT * FROM public.cctv_cameras WHERE id = $1', [id]);
+    if (!existing.rows.length) return res.status(404).json({ success: false, message: 'Kamera CCTV tidak ditemukan' });
+    const old = existing.rows[0];
+    const { rows } = await pool.query(
+      'UPDATE public.cctv_cameras SET camera_code = $1, camera_name = $2, location = $3, station_slug = $4, rtsp_url = $5, is_active = $6, sort_order = $7 WHERE id = $8 RETURNING *',
+      [String(camera_code || '').trim() || old.camera_code || `CAM_${id}`, camera_name, location || null,
+        station_slug || old.station_slug || 'security', rtsp_url, active(is_active ?? old.is_active) ? 1 : 0,
+        parseInt(sort_order ?? old.sort_order, 10) || 0, id]);
+    if (!rows.length) return res.status(404).json({ success: false, message: 'Kamera CCTV tidak ditemukan' });
+    syncToAiBackend(rows[0]);
+    res.json({ success: true, message: 'Kamera CCTV berhasil diperbarui' });
   } catch (error) {
-    console.error('Error updating CCTV:', error);
-    res.status(500).json({ success: false, message: 'Gagal memperbarui kamera CCTV' });
+    console.error('[CCTV] Update failed:', error.code || error.name);
+    res.status(error.code === '23505' ? 409 : 500).json({ success: false, message: 'Gagal memperbarui kamera CCTV' });
   }
 });
 
-
-/**
- * Helper function: auto-sync camera deletion to Python Security AI backend (:4101)
- */
-function syncDeleteToAiBackend(cameraId) {
-  try {
-    const cameraCode = `CAM_${cameraId}`;
-    const req = http.request({
-      hostname: '127.0.0.1',
-      port: 4101,
-      path: `/api/security-ai/config/cameras/${cameraCode}`,
-      method: 'DELETE'
-    }, (res) => {
-      res.resume();
-    });
-    req.on('error', (err) => {
-      console.warn('[CCTV Auto-Sync] Warning: Could not sync delete camera to Security AI (:4101):', err.message);
-    });
-    req.end();
-  } catch (err) {
-    console.warn('[CCTV Auto-Sync] Error initiating delete sync:', err.message);
-  }
-}
-
-/**
- * DELETE /api/security/cctv/:id
- * Delete a CCTV camera
- */
 router.delete('/:id', async (req, res) => {
+  if (!validId(req.params.id)) return res.status(400).json({ success: false, message: 'ID Kamera tidak valid' });
   try {
-    const cameraId = parseInt(req.params.id, 10);
-    if (isNaN(cameraId) || cameraId <= 0) {
-      return res.status(400).json({ success: false, message: 'ID Kamera tidak valid' });
-    }
-
-    const [result] = await dbPool.query('DELETE FROM cctv_cameras WHERE id = ?', [cameraId]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, message: 'Kamera CCTV tidak ditemukan' });
-    }
-
-    syncDeleteToAiBackend(cameraId);
-
-    res.json({
-      success: true,
-      message: 'Kamera CCTV berhasil dihapus'
-    });
+    const { rows } = await pool.query('DELETE FROM public.cctv_cameras WHERE id = $1 RETURNING *', [Number(req.params.id)]);
+    if (!rows.length) return res.status(404).json({ success: false, message: 'Kamera CCTV tidak ditemukan' });
+    syncToAiBackend(rows[0], true); // Stored code matters: dump contains id=21 with code=CAM_1.
+    res.json({ success: true, message: 'Kamera CCTV berhasil dihapus' });
   } catch (error) {
-    console.error('Error deleting CCTV:', error);
+    console.error('[CCTV] Delete failed:', error.code || error.name);
     res.status(500).json({ success: false, message: 'Gagal menghapus kamera CCTV' });
   }
-});
-
-/**
- * GET /api/security/cctv/stream/:id
- * Internal Stream Proxy to Python Security AI (:4101)
- */
-router.get('/stream/:id', (req, res) => {
-  const cameraId = parseInt(req.params.id, 10);
-  if (isNaN(cameraId) || cameraId <= 0) {
-    return res.status(400).json({ success: false, message: 'Invalid camera ID' });
-  }
-
-  const upstreamUrl = `http://127.0.0.1:4101/api/security-ai/stream?camera_id=${cameraId}`;
-
-  const proxyReq = http.get(upstreamUrl, (upstreamRes) => {
-    // Pass headers (e.g. Content-Type: multipart/x-mixed-replace; boundary=frame)
-    res.writeHead(upstreamRes.statusCode, upstreamRes.headers);
-
-    // Pipe upstream stream directly to client response without buffering to memory
-    upstreamRes.pipe(res);
-
-    upstreamRes.on('error', (err) => {
-      console.error(`[CCTV Gateway] Stream error for Camera ID ${cameraId}:`, err.message);
-      if (!res.headersSent) {
-        res.status(502).json({ success: false, message: 'Security AI stream forwarding error' });
-      }
-    });
-  });
-
-  proxyReq.on('error', (err) => {
-    console.error(`[CCTV Gateway] Cannot reach Security AI (:4101) for Camera ID ${cameraId}:`, err.message);
-    if (!res.headersSent) {
-      res.status(502).json({ success: false, message: 'Security AI streamer is unavailable' });
-    }
-  });
-
-  // Clean up upstream proxy request if client disconnects to prevent memory leaks
-  req.on('close', () => {
-    proxyReq.destroy();
-  });
 });
 
 export default router;

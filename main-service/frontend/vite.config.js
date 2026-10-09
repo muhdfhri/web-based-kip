@@ -82,6 +82,9 @@ export default defineConfig({
       "react-dom": fileURLToPath(
         new URL("./node_modules/react-dom", import.meta.url),
       ),
+      "socket.io-client": fileURLToPath(
+        new URL("./node_modules/socket.io-client", import.meta.url),
+      ),
       "react-icons": fileURLToPath(
         new URL("./node_modules/react-icons", import.meta.url),
       ),
