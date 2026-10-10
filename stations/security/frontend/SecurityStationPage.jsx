@@ -25,6 +25,24 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
     const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString())
     const [activeTab, setActiveTab] = useState('dashboard')
 
+    // Determine effective user role for CCTV access
+    let effectiveRole = (user?.role || user?.userRole || '').toLowerCase();
+    if (!effectiveRole) {
+        try {
+            const storedUser = JSON.parse(localStorage.getItem('kip_user') || '{}');
+            effectiveRole = (storedUser.role || storedUser.userRole || '').toLowerCase();
+        } catch (_) {}
+    }
+    // Only Manager, Asisten Manager, General Manager, Mill Manager, Dev/Admin can access CCTV Feed (Security role cannot)
+    const canAccessCctv = ['manager', 'asisten_manager', 'assistant_manager', 'general_manager', 'mill_manager', 'dev', 'developer', 'admin'].includes(effectiveRole);
+
+    // Auto fallback activeTab to dashboard if user has no CCTV access
+    useEffect(() => {
+        if (!canAccessCctv && activeTab === 'cctv') {
+            setActiveTab('dashboard');
+        }
+    }, [canAccessCctv, activeTab]);
+
     // Shared State for Modals & Views
     const [activeProof, setActiveProof] = useState(null)
     const [proofIndex, setProofIndex] = useState(0)
@@ -144,7 +162,7 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
                 <div className="som-station-tabs">
                     <button className={`som-station-tab ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
                     <button className={`som-station-tab ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>Patrol Map</button>
-                    {(!user || !['security'].includes(user.role)) && (
+                    {canAccessCctv && (
                         <button className={`som-station-tab ${activeTab === 'cctv' ? 'active' : ''}`} onClick={() => setActiveTab('cctv')}>CCTV Feed</button>
                     )}
                     <button className={`som-station-tab ${activeTab === 'queues' ? 'active' : ''}`} onClick={() => setActiveTab('queues')}>Truck Queues</button>
@@ -179,7 +197,7 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
                             setIsSettingCheckpointsOpen={setIsSettingCheckpointsOpen}
                         />
                     )}
-                    {activeTab === 'cctv' && (
+                    {activeTab === 'cctv' && canAccessCctv && (
                         <CctvFeedTab
                             setSelectedCctv={setSelectedCctv}
                             cctvCameras={cctvCameras}

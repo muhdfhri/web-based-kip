@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Popup, Tooltip, CircleMarker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, Popup, Tooltip, CircleMarker, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-rotate';
@@ -324,7 +324,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
     const createGuardIcon = (guard, color = '#fbbf24', searching = false) => {
         const initial = (guard.name || guard.guard_name || '?').charAt(0).toUpperCase();
         const photoHtml = guard.latest_photo
-            ? `<img src="${guard.latest_photo}" alt="G" style="width:100%;height:100%;object-fit:cover;border-radius:9999px !important;" />`
+            ? `<img src="${guard.latest_photo}" alt="G" style="width:100%;height:100%;object-fit:cover;border-radius:50% !important;" />`
             : `<span style="color:#fff;font-size:15px;font-weight:800;">${initial}</span>`;
         const borderColor = searching ? '#ef4444' : color;
         const tagExtra = searching ? `<div style="font-size:8px;color:#ef4444;font-weight:700;margin-top:2px;">📡 Searching GPS...</div>` : '';
@@ -332,13 +332,13 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
             className: 'custom-guard-icon',
             html: `
                 <div style="position:absolute;bottom:0px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;z-index:99999;pointer-events:none;">
-                    <div style="background:rgba(0,0,0,0.8);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;margin-bottom:4px;white-space:nowrap;border:1px solid #fbbf24;">${guard.name || guard.guard_name || 'Guard'}</div>
+                    <div style="background:rgba(0,0,0,0.8);color:#fff;padding:4px 8px;border-radius:4px !important;font-size:11px;font-weight:bold;margin-bottom:4px;white-space:nowrap;border:1px solid #fbbf24;">${guard.name || guard.guard_name || 'Guard'}</div>
                     ${tagExtra}
                     <div style="position:relative;width:44px;height:44px;">
-                        <div style="width:44px;height:44px;border-radius:9999px;border:3px solid ${borderColor};overflow:hidden;background:#1e293b;display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px ${borderColor};box-sizing:border-box;">
+                        <div style="width:44px;height:44px;border-radius:50% !important;border:3px solid ${borderColor};overflow:hidden;background:#1e293b;display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px ${borderColor};box-sizing:border-box;">
                             ${photoHtml}
                         </div>
-                        <div style="position:absolute;top:-4px;left:-4px;right:-4px;bottom:-4px;border-radius:9999px;border:2px solid ${borderColor};opacity:0.5;box-sizing:border-box;"></div>
+                        <div style="position:absolute;top:-4px;left:-4px;right:-4px;bottom:-4px;border-radius:50% !important;border:2px solid ${borderColor};opacity:0.5;box-sizing:border-box;"></div>
                         <div style="position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid ${borderColor};"></div>
                     </div>
                 </div>
@@ -497,25 +497,34 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                 const isNextTarget = nextLiveTarget && nextLiveTarget.id === station.id;
 
                                 return (
-                                    <Marker 
-                                        key={`cp-m-${station.id}`} 
-                                        position={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]} 
-                                        icon={createCheckpointIcon(station, isVerified, isNextTarget)}
-                                        eventHandlers={{ click: handleMarkerClick }}
-                                    >
-                                        <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
-                                            <div className="pm-tooltip-card" onClick={handleMarkerClick}>
-                                                <div className="pm-tooltip-title">{station.station_name}</div>
-                                                <div className="pm-tooltip-meta">{sData.lastCheck} • {sData.activeGuardName}</div>
-                                                {sData.activeProofImg && (
-                                                    <div className="pm-tooltip-photo">
-                                                        <img src={sData.activeProofImg} alt="Bukti" />
-                                                        <div className="pm-click-hint">KLIK UNTUK PERBESAR</div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </Tooltip>
-                                    </Marker>
+                                    <React.Fragment key={`cp-frag-${station.id}`}>
+                                        {isNextTarget && (
+                                                <Circle 
+                                                    center={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]} 
+                                                    radius={parseFloat(station.radius_meters) > 0 ? parseFloat(station.radius_meters) : 20} 
+                                                    pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 3 }} 
+                                                />
+                                        )}
+                                        <Marker 
+                                            key={`cp-m-${station.id}`} 
+                                            position={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]} 
+                                            icon={createCheckpointIcon(station, isVerified, isNextTarget)}
+                                            eventHandlers={{ click: handleMarkerClick }}
+                                        >
+                                            <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
+                                                <div className="pm-tooltip-card" onClick={handleMarkerClick}>
+                                                    <div className="pm-tooltip-title">{station.station_name}</div>
+                                                    <div className="pm-tooltip-meta">{sData.lastCheck} • {sData.activeGuardName}</div>
+                                                    {sData.activeProofImg && (
+                                                        <div className="pm-tooltip-photo">
+                                                            <img src={sData.activeProofImg} alt="Bukti" />
+                                                            <div className="pm-click-hint">KLIK UNTUK PERBESAR</div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </Tooltip>
+                                        </Marker>
+                                    </React.Fragment>
                                 );
                             })}
 
@@ -807,25 +816,34 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                     const isNextTarget = nextLiveTarget && nextLiveTarget.id === station.id;
                                     
                                     return (
-                                        <Marker
-                                            key={`cp-${station.id}`}
-                                            position={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]}
-                                            icon={createCheckpointIcon(station, isVerified, isNextTarget)}
-                                            eventHandlers={{ click: () => { setProofIndex(0); setActiveProof({ name: station.station_name, ...sData }); } }}
-                                        >
-                                            <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
-                                                <div className="pm-tooltip-card">
-                                                    <div className="pm-tooltip-title">{station.station_name}</div>
-                                                    <div className="pm-tooltip-meta">{sData.lastCheck} • {sData.activeGuardName}</div>
-                                                    {sData.activeProofImg && (
-                                                        <div className="pm-tooltip-photo">
-                                                            <img src={sData.activeProofImg} alt="Bukti" />
-                                                            <div className="pm-click-hint">Klik untuk perbesar</div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </Tooltip>
-                                        </Marker>
+                                        <React.Fragment key={`cp-frag-${station.id}`}>
+                                            {isNextTarget && (
+                                                <Circle 
+                                                    center={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]} 
+                                                    radius={parseFloat(station.radius_meters) > 0 ? parseFloat(station.radius_meters) : 20} 
+                                                    pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 3 }} 
+                                                />
+                                            )}
+                                            <Marker
+                                                key={`cp-${station.id}`}
+                                                position={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]}
+                                                icon={createCheckpointIcon(station, isVerified, isNextTarget)}
+                                                eventHandlers={{ click: () => { setProofIndex(0); setActiveProof({ name: station.station_name, ...sData }); } }}
+                                            >
+                                                <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
+                                                    <div className="pm-tooltip-card">
+                                                        <div className="pm-tooltip-title">{station.station_name}</div>
+                                                        <div className="pm-tooltip-meta">{sData.lastCheck} • {sData.activeGuardName}</div>
+                                                        {sData.activeProofImg && (
+                                                            <div className="pm-tooltip-photo">
+                                                                <img src={sData.activeProofImg} alt="Bukti" />
+                                                                <div className="pm-click-hint">Klik untuk perbesar</div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </Tooltip>
+                                            </Marker>
+                                        </React.Fragment>
                                     );
                                 })}
 
