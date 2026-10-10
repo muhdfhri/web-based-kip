@@ -62,7 +62,7 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
 
                     {/* Minimalist Aktif Badge */}
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: '6px', border: '1px solid #bbf7d0', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <span>Aktif:</span>
+                        <span>Active:</span>
                         <strong style={{ fontFamily: 'JetBrains Mono, monospace' }}>
                             {cctvCameras.filter(c => streamStatus[c.id] === 'live').length}
                         </strong>
@@ -70,7 +70,7 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
 
                     {/* Minimalist Non-Aktif Badge */}
                     <span style={{ fontSize: '11px', fontWeight: '800', color: '#dc2626', background: '#fef2f2', padding: '2px 8px', borderRadius: '6px', border: '1px solid #fecaca', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <span>Belum Live:</span>
+                        <span>Non-Active:</span>
                         <strong style={{ fontFamily: 'JetBrains Mono, monospace' }}>
                             {cctvCameras.filter(c => streamStatus[c.id] !== 'live').length}
                         </strong>
