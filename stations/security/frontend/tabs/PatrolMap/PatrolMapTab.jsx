@@ -4,7 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-rotate';
 import './PatrolMapModern.css';
-import { FaCog, FaPlay, FaPause, FaStop, FaTachometerAlt, FaClipboardList, FaMapMarkedAlt, FaMapSigns } from 'react-icons/fa';
+import { FaCog, FaPlay, FaPause, FaStop, FaTachometerAlt, FaClipboardList, FaMapMarkedAlt, FaMapSigns, FaExpand, FaCompress, FaTimes } from 'react-icons/fa';
 import PatrolLogsView from './PatrolLogsView.jsx';
 import CheckpointSettingsView from './CheckpointSettingsView.jsx';
 
@@ -109,12 +109,24 @@ const filterCleanTrack = (rawPositions) => {
     return cleanPoints;
 };
 
-function MapUpdater({ center, zoom, bearing }) {
+function MapUpdater({ center, zoom, bearing, isFullscreen }) {
     const map = useMap();
     useEffect(() => {
         if (center && zoom) map.setView(center, zoom);
         if (bearing !== undefined && map.setBearing) map.setBearing(bearing);
     }, [center, zoom, bearing, map]);
+
+    useEffect(() => {
+        // Trigger resize calculation when toggling fullscreen
+        const t1 = setTimeout(() => {
+            try { map.invalidateSize(); } catch (e) {}
+        }, 100);
+        const t2 = setTimeout(() => {
+            try { map.invalidateSize(); } catch (e) {}
+        }, 350);
+        return () => { clearTimeout(t1); clearTimeout(t2); };
+    }, [isFullscreen, map]);
+
     return null;
 }
 
@@ -122,6 +134,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
     const [center, setCenter] = useState([3.683095, 98.704352]);
     const [zoom, setZoom] = useState(18);
     const [bearing, setBearing] = useState(0);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     const [showSettings, setShowSettings] = useState(false);
     const [viewMode, setViewMode] = useState('map'); // 'map' or 'logs'
@@ -129,6 +142,17 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
     const [tempLng, setTempLng] = useState('');
     const [tempZoom, setTempZoom] = useState('');
     const [tempBearing, setTempBearing] = useState('');
+
+    // Escape key to exit full screen
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && isFullscreen) {
+                setIsFullscreen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isFullscreen]);
 
     // ── MOBILE WEBVIEW BRIDGE: live guard positions injected from Flutter ──
     const [mobileGuards, setMobileGuards] = useState({});
@@ -592,7 +616,23 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
     }
 
     return (
-        <div className="som-view-container overview-grid" style={{ position: 'relative' }}>
+        <div 
+            className={`som-view-container overview-grid ${isFullscreen ? 'pm-fullscreen-wrapper' : ''}`} 
+            style={isFullscreen ? {
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 9999999,
+                margin: 0,
+                padding: 0,
+                background: '#0b1120',
+                overflow: 'hidden'
+            } : { position: 'relative' }}
+        >
             {/* Settings Modal */}
             {showSettings && (
                 <div className="pm-settings-overlay">
@@ -611,7 +651,19 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                 </div>
             )}
 
-            <section className="som-patrol-map-section mini">
+            <section 
+                className={`som-patrol-map-section mini ${isFullscreen ? 'pm-fullscreen-mode' : ''}`}
+                style={isFullscreen ? {
+                    width: '100vw',
+                    height: '100vh',
+                    margin: 0,
+                    padding: '14px 20px',
+                    boxSizing: 'border-box',
+                    background: '#0b1120',
+                    display: 'flex',
+                    flexDirection: 'column'
+                } : {}}
+            >
                 {!isMobileEmbed && (
                     <div className="som-section-header">
                         <div className="som-section-title" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -665,24 +717,105 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                     <span className="legend-item"><span className="dot guard"></span> GUARD</span>
                                 </>
                             )}
-                            <button onClick={() => setShowSettings(true)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '14px', padding: '0 5px' }}>
-                                <FaCog style={{ marginRight: '5px' }} />
+                            <button 
+                                onClick={() => setShowSettings(true)} 
+                                title="Factory Location Settings"
+                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '14px', padding: '0 5px', transition: 'color 0.2s' }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = '#ffdb3b'}
+                                onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                            >
+                                <FaCog />
+                            </button>
+                            <button 
+                                onClick={() => setIsFullscreen(!isFullscreen)} 
+                                title={isFullscreen ? "Exit Full Screen" : "Full Screen Map"}
+                                style={{ 
+                                    background: isFullscreen ? '#ffdb3b' : 'transparent', 
+                                    border: isFullscreen ? '1px solid #ffdb3b' : '1px solid #334155', 
+                                    color: isFullscreen ? '#0f172a' : '#94a3b8', 
+                                    cursor: 'pointer', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    fontSize: '13px', 
+                                    padding: '4px 7px', 
+                                    borderRadius: '6px',
+                                    transition: 'all 0.2s' 
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!isFullscreen) {
+                                        e.currentTarget.style.color = '#ffdb3b';
+                                        e.currentTarget.style.borderColor = '#ffdb3b';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (!isFullscreen) {
+                                        e.currentTarget.style.color = '#94a3b8';
+                                        e.currentTarget.style.borderColor = '#334155';
+                                    }
+                                }}
+                            >
+                                {isFullscreen ? <FaCompress /> : <FaExpand />}
                             </button>
                         </div>
                     </div>
                 )}
 
-                <div className="som-patrol-map-container mini-map real-map-container" style={{ position: 'relative', height: '100%', minHeight: isMobileEmbed ? '100vh' : '500px', backgroundColor: '#0f172a', borderRadius: isMobileEmbed ? '0px' : '10px', overflow: 'hidden' }}>
+                <div 
+                    className="som-patrol-map-container mini-map real-map-container" 
+                    style={{ 
+                        position: 'relative', 
+                        height: isFullscreen ? 'calc(100% - 48px)' : '100%', 
+                        flex: isFullscreen ? '1' : undefined,
+                        minHeight: isMobileEmbed ? '100vh' : (isFullscreen ? 'auto' : '500px'), 
+                        backgroundColor: '#0f172a', 
+                        borderRadius: isMobileEmbed ? '0px' : '10px', 
+                        overflow: 'hidden' 
+                    }}
+                >
 
-                    {/* Replay banner */}
-                    {isReplayMode && (
-                        <div className="pm-replay-banner">
-                            <span>🎬 Replay Mode — {replayData.session.guard_name} ({new Date(replayData.session.started_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'})})</span>
-                        </div>
+                    {/* Floating Exit Full Screen button (Aligned symmetrically with zoom control at top: 48px, right: 28px) */}
+                    {isFullscreen && (
+                        <button
+                            onClick={() => setIsFullscreen(false)}
+                            title="Tutup Layar Penuh (Esc)"
+                            className="pm-exit-fullscreen-btn"
+                            style={{
+                                position: 'absolute',
+                                top: '48px',
+                                right: '28px',
+                                zIndex: 1000,
+                                background: '#0f172a',
+                                border: '1px solid #ffdb3b',
+                                color: '#ffdb3b',
+                                padding: '8px 18px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontSize: '13px',
+                                fontWeight: '800',
+                                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)',
+                                transition: 'all 0.15s',
+                                letterSpacing: '0.04em'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#ffdb3b';
+                                e.currentTarget.style.color = '#0f172a';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#0f172a';
+                                e.currentTarget.style.color = '#ffdb3b';
+                            }}
+                        >
+                            <FaTimes style={{ fontSize: '14px' }} />
+                            <span>EXIT FULL SCREEN</span>
+                        </button>
                     )}
 
                     <MapContainer center={center} zoom={zoom} rotate={true} bearing={bearing} touchRotate={true} style={{ width: '100%', height: '100%', zIndex: 1 }} zoomControl={true} dragging={true} touchZoom={true} doubleClickZoom={true} scrollWheelZoom={true}>
-                        <MapUpdater center={center} zoom={zoom} bearing={bearing} />
+                        <MapUpdater center={center} zoom={zoom} bearing={bearing} isFullscreen={isFullscreen} />
                         <TileLayer url="http://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} />
 
                         {isReplayMode ? (

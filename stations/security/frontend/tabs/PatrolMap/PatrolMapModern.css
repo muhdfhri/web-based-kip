@@ -288,4 +288,74 @@
     to { stroke-dashoffset: -24; }
 }
 
+/* ===== Map Zoom Control & Rotation Offset ===== */
+/* Pastikan tombol zoom in & out (+ / -) tidak pernah terpotong di monitor lebar/standar */
+.som-patrol-map-container .leaflet-top.leaflet-left {
+    top: 36px !important;
+    left: 24px !important;
+    z-index: 500 !important;
+}
+
+.pm-fullscreen-mode .leaflet-top.leaflet-left {
+    top: 48px !important;
+    left: 28px !important;
+}
+
+.som-patrol-map-container .leaflet-control-zoom {
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+}
+
+.som-patrol-map-container .leaflet-control-zoom a {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    border-bottom: 1px solid #334155 !important;
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    font-size: 18px !important;
+    transition: background 0.15s, color 0.15s;
+}
+
+.som-patrol-map-container .leaflet-control-zoom a:hover {
+    background-color: #ffdb3b !important;
+    color: #0f172a !important;
+}
+
+/* Kompas rotasi leaflet-rotate */
+.som-patrol-map-container .leaflet-control-rotate {
+    margin-top: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+}
+
+.som-patrol-map-container .leaflet-control-rotate a {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+}
+
+/* Fullscreen mode container override */
+.pm-fullscreen-wrapper {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999999 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.pm-fullscreen-mode {
+    box-shadow: none !important;
+    border-radius: 0px !important;
+}
+
 
