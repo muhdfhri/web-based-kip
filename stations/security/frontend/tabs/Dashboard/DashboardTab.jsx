@@ -764,10 +764,10 @@ function DashboardTab() {
           </div>
 
           {/* Bottom split: Truck Queues + Active Patrols */}
-          <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: space.md, flex: '1 1 0%', minHeight: 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '3.6fr 1.4fr', gap: space.md, flex: '1 1 0%', minHeight: 0 }}>
 
             {/* Truck Queues */}
-            <div style={{ ...panelStyle, padding: space.lg, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+            <div style={{ ...panelStyle, padding: `${space.md}px ${space.lg}px`, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
               <SectionHeader
                 icon={<FaTruck size={12} />}
                 title="Truck Queues"
@@ -780,21 +780,23 @@ function DashboardTab() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'minmax(70px, 1fr) minmax(65px, 1fr) minmax(80px, 1.2fr) minmax(90px, 1.5fr) minmax(75px, 1.2fr) minmax(80px, 1.2fr) minmax(90px, 1.5fr) 95px 75px',
+                    gridTemplateColumns: 'minmax(70px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr) minmax(75px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr) minmax(95px, 1.3fr) minmax(85px, 1.1fr) minmax(90px, 1.3fr) 80px 75px',
                     gap: space.xs,
                     padding: `0 ${space.sm}px ${space.xs}px ${space.sm}px`,
                     borderBottom: `1px solid ${colors.border}`,
                     marginBottom: space.xs,
                   }}
                 >
-                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>PIC</span>
-                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>TICKET NO</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted, textAlign: 'center' }}>FFB SUPER</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted, textAlign: 'center' }}>FFB UMUM</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted, textAlign: 'center' }}>FFB MITRA</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted, textAlign: 'center' }}>CPO</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted, textAlign: 'center' }}>KERNEL</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted, textAlign: 'center' }}>SHELL</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>DRIVER NAME</span>
                   <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>LICENSE PLATE</span>
-                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>DRIVER</span>
-                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>COMMODITY</span>
-                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>DO NUMBER</span>
                   <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>VENDOR</span>
-                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>CHECKIN</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted }}>CHECKIN TIME</span>
                   <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted, textAlign: 'right' }}>STATUS</span>
                 </div>
 
@@ -806,36 +808,54 @@ function DashboardTab() {
                     const plate = q.licensePlate || q.plate_number || 'Unknown';
                     const driver = q.driverName || q.driver_name || '-';
                     const vendor = q.perusahaan || q.transporterCompany || q.transporter_company || '-';
-                    const doNum = q.noDo || q.no_do || '-';
-                    const pic = q.registeredByName || q.registered_by_name || q.registeredBy || q.registered_by || 'security13';
+                    const rawClassCode = (q.classification_code || q.classificationCode || q.classification_id || '').toUpperCase();
 
                     const status = (q.status || 'WAITING').toUpperCase();
                     const s = getQueueStatusStyle(status);
                     
                     const checkInDate = q.check_in_at ? new Date(q.check_in_at) : null;
                     const timeStr = checkInDate ? checkInDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
-                    
-                    let durationStr = '';
-                    if (checkInDate) {
-                      const isCompleted = status === 'COMPLETED' || status === 'CHECKED_OUT';
-                      // If completed, use updated_at as the end time. Otherwise, it's still running.
-                      const endTime = isCompleted && q.updated_at ? new Date(q.updated_at) : new Date();
-                      const diffMs = Math.max(0, endTime - checkInDate);
-                      const diffMins = Math.floor(diffMs / 60000);
-                      
-                      if (diffMins >= 60) {
-                        durationStr = `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
-                      } else {
-                        durationStr = `${diffMins}m`;
+
+                    // Helper to render active ticket badge vs clean subtle dot for empty slot
+                    const renderTicketSlot = (targetCode, badgeStyle) => {
+                      if (rawClassCode === targetCode) {
+                        return (
+                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <span
+                              style={{
+                                ...font.mono,
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.02em',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                maxWidth: '100%',
+                                ...badgeStyle,
+                              }}
+                              title={code}
+                            >
+                              {code}
+                            </span>
+                          </div>
+                        );
                       }
-                    }
+                      return (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#cbd5e1', lineHeight: 1, userSelect: 'none' }}>·</span>
+                        </div>
+                      );
+                    };
 
                     return (
                       <div
                         key={q.id || idx}
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: 'minmax(70px, 1fr) minmax(65px, 1fr) minmax(80px, 1.2fr) minmax(90px, 1.5fr) minmax(75px, 1.2fr) minmax(80px, 1.2fr) minmax(90px, 1.5fr) 95px 75px',
+                          gridTemplateColumns: 'minmax(70px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr) minmax(75px, 1fr) minmax(70px, 1fr) minmax(70px, 1fr) minmax(95px, 1.3fr) minmax(85px, 1.1fr) minmax(90px, 1.3fr) 80px 75px',
                           gap: space.xs,
                           alignItems: 'center',
                           padding: `${space.xs + 2}px ${space.sm}px`,
@@ -844,31 +864,69 @@ function DashboardTab() {
                           borderRadius: radius.sm - 2,
                         }}
                       >
-                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 4, textTransform: 'uppercase' }}>{pic}</span>
-                        <span style={{ ...font.mono, fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, textTransform: 'uppercase' }}>{code}</span>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, textTransform: 'uppercase' }}>{plate}</span>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 4, textTransform: 'uppercase' }}>{driver}</span>
-                        
-                        <div style={{ display: 'flex' }}>
-                          <span style={{ fontSize: '0.6rem', fontWeight: 700, color: colors.textMuted, background: colors.bgAlt, padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%', textTransform: 'uppercase' }}>
-                            {q.classification_name || q.classificationCode || q.classification_code || 'UMUM'}
-                          </span>
-                        </div>
+                        {/* 1. FFB SUPER (Amber / Gold) */}
+                        {renderTicketSlot('SO', {
+                          color: '#B45309',
+                          background: '#FEF3C7',
+                          border: '1px solid #FDE68A',
+                        })}
 
-                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 4, textTransform: 'uppercase' }}>{doNum}</span>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 4, textTransform: 'uppercase' }}>{vendor}</span>
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: space.xs, whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: '0.6rem', fontWeight: 600, color: colors.textMuted }}>
-                            {timeStr}
-                          </span>
-                          {durationStr && (
-                            <span style={{ fontSize: '0.58rem', fontWeight: 700, color: status === 'COMPLETED' ? colors.success : colors.orange, background: status === 'COMPLETED' ? colors.successBg : '#FFF7ED', padding: '1px 4px', borderRadius: 4 }}>
-                              {durationStr}
-                            </span>
-                          )}
-                        </div>
+                        {/* 2. FFB UMUM (Slate) */}
+                        {renderTicketSlot('U', {
+                          color: '#334155',
+                          background: '#F1F5F9',
+                          border: '1px solid #E2E8F0',
+                        })}
 
+                        {/* 3. FFB MITRA (Cyan / Blue) */}
+                        {renderTicketSlot('M', {
+                          color: '#0369A1',
+                          background: '#E0F2FE',
+                          border: '1px solid #BAE6FD',
+                        })}
+
+                        {/* 4. CRUDE PALM OIL (Orange) */}
+                        {renderTicketSlot('C', {
+                          color: '#C2410C',
+                          background: '#FFEDD5',
+                          border: '1px solid #FED7AA',
+                        })}
+
+                        {/* 5. PALM KERNEL (Purple) */}
+                        {renderTicketSlot('K', {
+                          color: '#6D28D9',
+                          background: '#EDE9FE',
+                          border: '1px solid #DDD6FE',
+                        })}
+
+                        {/* 6. PALM KERNEL SHELL (Teal / Emerald) */}
+                        {renderTicketSlot('S', {
+                          color: '#0F766E',
+                          background: '#CCFBF1',
+                          border: '1px solid #99F6E4',
+                        })}
+
+                        {/* DRIVER NAME */}
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 4, textTransform: 'uppercase' }} title={driver}>
+                          {driver}
+                        </span>
+
+                        {/* LICENSE PLATE */}
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textBody, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {plate}
+                        </span>
+
+                        {/* VENDOR */}
+                        <span style={{ fontSize: '0.65rem', fontWeight: 600, color: colors.textBody, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: 4, textTransform: 'uppercase' }} title={vendor}>
+                          {vendor}
+                        </span>
+                        
+                        {/* CHECKIN TIME */}
+                        <span style={{ fontSize: '0.62rem', fontWeight: 600, color: colors.textMuted, whiteSpace: 'nowrap' }}>
+                          {timeStr}
+                        </span>
+
+                        {/* STATUS */}
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                           <StatusBadge label={s.label} color={s.color} bg={s.bg} />
                         </div>
@@ -880,7 +938,7 @@ function DashboardTab() {
             </div>
 
             {/* Active Patrols */}
-            <div style={{ ...panelStyle, padding: space.lg, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+            <div style={{ ...panelStyle, padding: `${space.md}px ${space.md}px`, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
               <SectionHeader
                 icon={<FaShieldAlt size={12} />}
                 title="Active Patrols"

@@ -814,9 +814,9 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                         </button>
                     )}
 
-                    <MapContainer center={center} zoom={zoom} rotate={true} bearing={bearing} touchRotate={true} style={{ width: '100%', height: '100%', zIndex: 1 }} zoomControl={true} dragging={true} touchZoom={true} doubleClickZoom={true} scrollWheelZoom={true}>
+                    <MapContainer center={center} zoom={zoom} rotate={true} bearing={bearing} touchRotate={true} style={{ width: '100%', height: '100%', zIndex: 1 }} zoomControl={true} attributionControl={false} dragging={true} touchZoom={true} doubleClickZoom={true} scrollWheelZoom={true}>
                         <MapUpdater center={center} zoom={zoom} bearing={bearing} isFullscreen={isFullscreen} />
-                        <TileLayer url="http://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} />
+                        <TileLayer url="http://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" maxZoom={22} />
 
                         {isReplayMode ? (
                             <>
