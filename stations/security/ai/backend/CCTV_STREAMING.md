@@ -82,16 +82,10 @@ From the repository root:
 
 ```powershell
 node --test stations/security/frontend/components/cctvTransport.test.mjs
-node stations/security/tools/check-cctv-live.mjs http://127.0.0.1:3101 390 stations/security/verification/cctv-soak.json --allow-offline=E19 --view-codes=D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,D11,D12,D13,D14,D15,D16,E1,E2
-node stations/security/tools/serve-cctv-qa.mjs
 ```
 
-The live check records warming separately, tests image changes/stalled frames and
-all camera statuses, reconnects twice, then holds a connection over five minutes.
-Only exclude a confirmed unavailable source with `--allow-offline`. Omit
-`--view-codes` for full-grid stress. Actual FPS depends on source rate, CPU,
-browser and bandwidth. The CCTV-only visual page uses the production transport
-at `http://127.0.0.1:5189`. Canvas `data-cctv-rendered-frames` exposes render counts.
+Actual FPS depends on source rate, CPU, browser and bandwidth.
+Canvas `data-cctv-rendered-frames` exposes render counts.
 
 From `stations/security/ai/backend`:
 
