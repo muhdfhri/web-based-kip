@@ -10,16 +10,21 @@ stream_bp = Blueprint('stream_bp', __name__)
 def get_combined_stream():
     try:
         camera_ids = list(dict.fromkeys(int(value) for value in request.args.get('ids', '').split(',')))
-        if not camera_ids or len(camera_ids) > 64 or any(cid <= 0 for cid in camera_ids):
+        if not camera_ids or len(camera_ids) > 256 or any(cid <= 0 for cid in camera_ids):
             raise ValueError('Invalid IDs')
+        viewed_ids = None
+        if 'view' in request.args:
+            viewed_ids = {int(value) for value in request.args['view'].split(',') if value}
+            if not viewed_ids.issubset(camera_ids):
+                raise ValueError('Invalid viewed IDs')
     except ValueError:
-        return jsonify(success=False, message='Expected 1-64 positive camera IDs'), 400
+        return jsonify(success=False, message='Expected 1-256 positive camera IDs and a valid view subset'), 400
     try:
         infos = get_camera_infos(camera_ids)
     except Exception:
         return jsonify(success=False, message='Camera configuration unavailable'), 503
     response = Response(generate_combined_stream(camera_ids, infos,
-                        request.args.get('focus', type=int)), mimetype='application/octet-stream')
+                        request.args.get('focus', type=int), viewed_ids), mimetype='application/octet-stream')
     response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Accel-Buffering'] = 'no'
     return response

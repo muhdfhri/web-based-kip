@@ -7,6 +7,8 @@ import re
 import struct
 import threading
 import time
+import random
+import atexit
 
 import cv2
 import numpy as np
@@ -14,7 +16,7 @@ from config.database import get_db_general_connection
 
 os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "rtsp_transport;tcp")
 cv2.setNumThreads(1)
-FPS = max(1, min(20, int(os.getenv("CCTV_PREVIEW_FPS", "15"))))
+FPS = max(1, min(30, int(os.getenv("CCTV_PREVIEW_FPS", "30"))))
 WIDTH = max(320, min(1280, int(os.getenv("CCTV_PREVIEW_WIDTH", "640"))))
 QUALITY = max(40, min(90, int(os.getenv("CCTV_JPEG_QUALITY", "72"))))
 TIMEOUT_MS = 5000
@@ -22,6 +24,9 @@ STALE_SECONDS = 4
 IDLE_SECONDS = 30
 _stream_managers = {}
 _manager_lock = threading.Lock()
+_service_lock = threading.Lock()
+_service_stop = threading.Event()
+_service_thread = None
 
 
 class FramePacer:
@@ -41,17 +46,18 @@ class FramePacer:
         return True
 
 
-def get_camera_infos(camera_ids, active_only=True):
-    if not camera_ids:
+def get_camera_infos(camera_ids=None, active_only=True):
+    if camera_ids is not None and not camera_ids:
         return {}
     conn = get_db_general_connection()
     try:
         with conn.cursor() as cursor:
-            placeholders = ','.join(['%s'] * len(camera_ids))
+            placeholders = ','.join(['%s'] * len(camera_ids or []))
             cursor.execute(
                 f"SELECT id, camera_code, camera_name, station_slug, location, rtsp_url, is_active "
-                f"FROM public.cctv_cameras WHERE id IN ({placeholders})" +
-                (" AND is_active = 1" if active_only else ""), tuple(camera_ids))
+                "FROM public.cctv_cameras WHERE " +
+                (f"id IN ({placeholders})" if camera_ids is not None else "TRUE") +
+                (" AND is_active = 1" if active_only else ""), tuple(camera_ids or []))
             return {row['id']: row for row in cursor.fetchall()}
     finally:
         conn.close()
@@ -86,54 +92,16 @@ def encode_preview(frame, width):
 
 
 
-import subprocess
-
-class FFmpegCapture:
-    def __init__(self, source):
-        self.width, self.height = 1280, 720
-        self.frame_size = self.width * self.height * 3
-        command = [
-            'ffmpeg', '-hide_banner', '-loglevel', 'error',
-            '-hwaccel', 'cuda',
-            '-rtsp_transport', 'tcp',
-            '-timeout', '5000000',
-            '-i', source,
-            '-vf', f'scale={self.width}:{self.height}',
-            '-f', 'image2pipe',
-            '-pix_fmt', 'bgr24',
-            '-vcodec', 'rawvideo',
-            '-r', '15',
-            '-'
-        ]
-        self.pipe = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=10**8)
-
-    def isOpened(self):
-        return self.pipe.poll() is None
-
-    def read(self):
-        raw_image = self.pipe.stdout.read(self.frame_size)
-        if len(raw_image) != self.frame_size:
-            return False, None
-        frame = np.frombuffer(raw_image, dtype='uint8').reshape((self.height, self.width, 3))
-        return True, frame
-
-    def get(self, prop):
-        return 15.0
-
-    def release(self):
-        try:
-            self.pipe.kill()
-            self.pipe.wait(timeout=2)
-        except:
-            pass
-
 class CameraStreamManager:
-    def __init__(self, camera_info, preview=False):
+    def __init__(self, camera_info, preview=False, persistent=False):
         self.camera_id = camera_info['id']
         self.camera_name = camera_info['camera_name'] or f'Camera {self.camera_id}'
         self.rtsp_url = camera_info['rtsp_url']
         self.preview = preview
         self.running = True
+        self.persistent = persistent
+        self.stop_event = threading.Event()
+        self.frame_ready = threading.Event()
         self.lock = threading.Lock()
         self.latest_jpeg = None
         self.latest_frame = None
@@ -144,32 +112,57 @@ class CameraStreamManager:
         self.detail_jpeg = None
         self.source_shape = None
         self.source_fps = None
+        self.reconnects = 0
+        self.connection_state = 'connecting'
         self.source_kind = 'substream' if preview and preview_url(self.rtsp_url) != self.rtsp_url else 'main'
         self.thread = threading.Thread(target=self._update_loop, daemon=True,
                                        name=f"cctv-{self.camera_id}")
         self.thread.start()
 
+    def stop(self):
+        self.running = False
+        self.stop_event.set()
+
+    def _needed(self):
+        return self.running and (self.persistent or time.monotonic() - self.last_used < IDLE_SECONDS)
+
     def _update_loop(self):
         source = preview_url(self.rtsp_url) if self.preview else self.rtsp_url
         failures = 0
-        while self.running and time.monotonic() - self.last_used < IDLE_SECONDS:
+        while self._needed():
             cap = None
             try:
-                cap = FFmpegCapture(source)
+                # FFmpeg runs inside OpenCV: no child console, CUDA dependency,
+                # raw-video pipe or forced upscaling. Preserve native aspect/size.
+                options = [cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, TIMEOUT_MS,
+                           cv2.CAP_PROP_READ_TIMEOUT_MSEC, TIMEOUT_MS,
+                           cv2.CAP_PROP_HW_ACCELERATION, cv2.VIDEO_ACCELERATION_NONE]
+                if hasattr(cv2, 'CAP_PROP_N_THREADS'):
+                    options += [cv2.CAP_PROP_N_THREADS, 1]
+                cap = cv2.VideoCapture(source, cv2.CAP_FFMPEG, options)
                 if not cap.isOpened():
                     raise RuntimeError('RTSP open timed out')
                 self.source_fps = cap.get(cv2.CAP_PROP_FPS) or None
                 pacer = FramePacer(FPS)
+                background_pacer = FramePacer(1)
                 connected_at = time.monotonic()
-                while self.running and time.monotonic() - self.last_used < IDLE_SECONDS:
-                    ok, frame = cap.read()
-                    if not ok or frame is None:
+                while self._needed():
+                    # Decode/drain every source frame, but convert to BGR only
+                    # when needed. Unviewed cameras avoid 20-30 full-size copies/s.
+                    if not cap.grab():
                         raise RuntimeError('RTSP frame read failed')
                     now = time.monotonic()
                     # Drain at source FPS; encode only at preview FPS. Sleeping
                     # after read lets old frames accumulate in the decoder.
                     if not pacer.due(now):
                         continue
+                    # Keep RTSP warm without encoding 30 JPEGs/sec for cameras
+                    # nobody is viewing. Viewers restore the full rate immediately.
+                    if now - self.last_used >= 2 and self.persistent and not background_pacer.due(now):
+                        continue
+                    ok, frame = cap.retrieve()
+                    if not ok or frame is None:
+                        raise RuntimeError('RTSP frame conversion failed')
                     jpeg = encode_preview(frame, WIDTH)
                     if not jpeg:
                         continue
@@ -179,10 +172,16 @@ class CameraStreamManager:
                         self.sequence += 1
                         self.last_frame_at = now
                         self.source_shape = [frame.shape[1], frame.shape[0]]
+                        self.connection_state = 'live'
+                        self.frame_ready.set()
                     if now - connected_at > 10:
                         failures = 0
             except Exception as error:
                 failures += 1
+                self.reconnects += 1
+                self.frame_ready.clear()
+                with self.lock:
+                    self.connection_state = 'offline' if failures >= 2 else 'reconnecting'
                 logging.warning('[CCTV] Camera %s: %s; reconnecting', self.camera_id,
                                 type(error).__name__)
                 if source != self.rtsp_url and failures >= 2:
@@ -192,17 +191,21 @@ class CameraStreamManager:
                 if cap is not None:
                     cap.release()
             if self.running:
-                time.sleep(min(3, max(1, failures)))
+                self.stop_event.wait(min(30, 2 ** min(failures - 1, 5)) + random.random())
         self.running = False
+        self.frame_ready.clear()
         with self.lock:
             self.latest_frame = self.latest_jpeg = self.detail_jpeg = None
 
-    def get_packet(self, detail=False):
-        self.last_used = time.monotonic()
+    def get_packet(self, detail=False, viewing=True):
+        if viewing:
+            self.last_used = time.monotonic()
         with self.lock:
             age = time.monotonic() - self.last_frame_at
             live = self.latest_jpeg is not None and age < STALE_SECONDS
-            status = 'live' if live else ('connecting' if not self.sequence else 'reconnecting')
+            status = 'live' if live else getattr(self, 'connection_state', 'reconnecting' if self.sequence else 'connecting')
+            if not live and status == 'live':
+                status = 'reconnecting'
             meta = {'camera_id': self.camera_id, 'sequence': self.sequence,
                     'status': status, 'age_ms': round(age * 1000) if self.last_frame_at else None}
             jpeg = self.latest_jpeg if live else b''
@@ -227,7 +230,7 @@ class CameraStreamManager:
             return self.latest_frame.copy() if self.latest_frame is not None else None
 
 
-def get_stream_manager(camera_id, preview=False, camera_info=None):
+def get_stream_manager(camera_id, preview=False, camera_info=None, persistent=False):
     info = camera_info or get_camera_info_by_id(camera_id)
     if not info or info.get('is_active', 1) != 1 or not info.get('rtsp_url'):
         raise ValueError(f'Active camera {camera_id} not found')
@@ -238,10 +241,55 @@ def get_stream_manager(camera_id, preview=False, camera_info=None):
                 del _stream_managers[old_key]
         manager = _stream_managers.get(key)
         if manager is None:
-            manager = CameraStreamManager(info, preview)
+            manager = CameraStreamManager(info, preview, persistent=persistent)
             _stream_managers[key] = manager
-        manager.last_used = time.monotonic()
+        if persistent:
+            manager.persistent = True
+        else:
+            manager.last_used = time.monotonic()
         return manager
+
+
+def reconcile_cameras(infos):
+    """Warm new active URLs and retire only removed/edited/disabled sources."""
+    desired = {info['rtsp_url'] for info in infos.values() if info.get('rtsp_url')}
+    with _manager_lock:
+        for (url, preview), manager in list(_stream_managers.items()):
+            if url not in desired:
+                manager.stop()
+                del _stream_managers[(url, preview)]
+    for cid, info in infos.items():
+        if info.get('rtsp_url'):
+            get_stream_manager(cid, preview=True, camera_info=info, persistent=True)
+
+
+def _service_loop():
+    while not _service_stop.is_set():
+        try:
+            reconcile_cameras(get_camera_infos())
+        except Exception as error:
+            logging.warning('[CCTV] Background configuration unavailable (%s); retrying', type(error).__name__)
+        _service_stop.wait(5)
+
+
+def start_cctv_service():
+    global _service_thread
+    with _service_lock:
+        if _service_thread is not None and _service_thread.is_alive():
+            return
+        _service_stop.clear()
+        _service_thread = threading.Thread(target=_service_loop, daemon=True, name='cctv-supervisor')
+        _service_thread.start()
+
+
+def stop_cctv_service():
+    _service_stop.set()
+    with _manager_lock:
+        for manager in _stream_managers.values():
+            manager.stop()
+
+
+atexit.register(stop_cctv_service)
 
 
 def frame_packet(meta, jpeg=b''):
@@ -250,7 +298,7 @@ def frame_packet(meta, jpeg=b''):
     return struct.pack('!I', len(header)) + header + jpeg
 
 
-def generate_combined_stream(camera_ids, camera_infos, focus_id=None):
+def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids=None):
     managers = {cid: get_stream_manager(cid, preview=True, camera_info=camera_infos[cid])
                 for cid in camera_ids if cid in camera_infos}
     last_sent = {}
@@ -284,10 +332,14 @@ def generate_combined_stream(camera_ids, camera_infos, focus_id=None):
             if manager is None:
                 meta, jpeg = {'camera_id': cid, 'status': 'offline', 'sequence': 0}, b''
             else:
-                meta, jpeg = manager.get_packet(detail=cid == focus_id)
+                if viewed_ids is None or cid in viewed_ids:
+                    meta, jpeg = manager.get_packet(detail=cid == focus_id)
+                else:
+                    meta, _ = manager.get_packet(viewing=False)
+                    jpeg = b''
                 meta['camera_id'] = cid  # aliases can share a reader
             previous = last_sent.get(cid)
-            state = (meta['sequence'], meta['status'])
+            state = (meta['sequence'] if viewed_ids is None or cid in viewed_ids else 0, meta['status'])
             if previous and previous[0] == state and started - previous[1] < 1:
                 continue
             # Heartbeats carry status only, never recycled stale video frames.
@@ -306,6 +358,8 @@ def stream_diagnostics():
     return [{'camera_id': m.camera_id, 'preview': m.preview, 'running': m.running,
              'sequence': m.sequence, 'source': m.source_kind, 'resolution': m.source_shape,
              'source_fps': m.source_fps, 'target_fps': FPS,
+             'persistent': m.persistent, 'decoder': 'cpu', 'reconnects': m.reconnects,
+             'status': m.get_packet(viewing=False)[0]['status'],
              'age_ms': round((time.monotonic() - m.last_frame_at) * 1000) if m.last_frame_at else None}
             for m in managers]
 
@@ -321,10 +375,9 @@ def get_camera_status(camera_id):
         manager = _stream_managers.get((info['rtsp_url'], True))
     if manager is None:
         return {'camera_id': camera_id, 'status': 'connecting', 'message': 'No active capture'}
-    with manager.lock:
-        age = time.monotonic() - manager.last_frame_at
-        status = 'live' if manager.latest_jpeg and age < STALE_SECONDS else 'reconnecting'
-    return {'camera_id': camera_id, 'status': status, 'age_ms': round(age * 1000),
+    meta, _ = manager.get_packet(viewing=False)
+    status = meta['status']
+    return {'camera_id': camera_id, 'status': status, 'age_ms': meta['age_ms'],
             'message': '' if status == 'live' else 'Waiting for camera'}
 
 
@@ -337,6 +390,8 @@ def generate_mjpeg_stream_by_id(camera_id=1):
 
 def capture_single_snapshot(camera_id=1):
     manager = get_stream_manager(camera_id)
+    # A newly opened main reader needs its first keyframe before a real snapshot.
+    manager.frame_ready.wait(TIMEOUT_MS / 1000)
     frame = manager.get_latest_frame_mat()
     if frame is None:
         return manager.get_latest_jpeg()

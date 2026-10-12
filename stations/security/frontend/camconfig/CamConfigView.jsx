@@ -26,7 +26,9 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
   const [sortOrder, setSortOrder] = useState(0);
 
   // Available Station Options (Dynamically fetched from Master API /api/config/stations)
-  const [availableStations, setAvailableStations] = useState([]);
+  const [availableStations, setAvailableStations] = useState([
+    { slug: stationSlug || 'security', title: (stationSlug || 'security').replace(/-/g, ' ').toUpperCase() },
+  ]);
 
   useEffect(() => {
     const fetchStationList = async () => {
@@ -35,11 +37,15 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           const activeStations = json.data
-            .filter(s => s.is_active === 1)
+            .filter(s => s.is_active === 1 || s.is_active === true || s.is_active === '1')
             .map(s => ({
               slug: s.slug,
               title: s.title ? s.title.toUpperCase() : s.slug.toUpperCase()
             }));
+          const fallbackSlug = stationSlug || 'security';
+          if (!activeStations.some(station => station.slug === fallbackSlug)) {
+            activeStations.push({ slug: fallbackSlug, title: fallbackSlug.replace(/-/g, ' ').toUpperCase() });
+          }
           setAvailableStations(activeStations);
         }
       } catch (err) {
@@ -97,8 +103,8 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!cameraName.trim() || !rtspUrl.trim()) {
-      alert("Camera name and RTSP URL are required!");
+    if (!rtspUrl.trim()) {
+      alert("RTSP URL is required!");
       return;
     }
 
@@ -135,6 +141,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
       if (res.ok && json.success) {
         setShowCameraModal(false);
         resetForm();
+        window.dispatchEvent(new Event('cctv-cameras-changed'));
         fetchCameras();
       } else {
         alert(json.message || "Failed to save camera data.");
@@ -160,6 +167,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
       });
       const json = await res.json();
       if (json.success) {
+        window.dispatchEvent(new Event('cctv-cameras-changed'));
         fetchCameras();
       } else {
         alert(json.message || "Failed to delete camera.");
@@ -187,6 +195,7 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
       });
       const json = await res.json();
       if (json.success) {
+        window.dispatchEvent(new Event('cctv-cameras-changed'));
         fetchCameras();
       }
     } catch (err) {
@@ -424,14 +433,13 @@ const CamConfigView = ({ user, stationSlug = "security" }) => {
               <div className="som-modal-body">
                 <div className="form-grid-2">
                   <div className="form-group-full">
-                    <label className="som-label">Camera Name *</label>
+                    <label className="som-label">Camera Name (optional)</label>
                     <input
                       type="text"
                       className="som-input"
                       value={cameraName}
                       onChange={(e) => setCameraName(e.target.value)}
-                      placeholder="e.g. Main Gate Camera"
-                      required
+                      placeholder="Leave blank to name automatically"
                     />
                   </div>
 

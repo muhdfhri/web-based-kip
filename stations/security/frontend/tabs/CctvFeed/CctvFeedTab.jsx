@@ -13,9 +13,7 @@ function CctvFeedTab({ cctvCameras, setSelectedCctv }) {
      */
     const getAiStreamUrl = (camera) => {
         if (camera && camera.stream_url) return camera.stream_url;
-        const isDirectDevPort = typeof window !== 'undefined' && (window.location.port === '5173' || window.location.port === '5177');
-        const baseUrl = isDirectDevPort ? 'http://localhost:3101' : '';
-        return `${baseUrl}/api/security/cctv/stream/${camera ? camera.id : ''}`;
+        return `/api/security/cctv/stream/${camera ? camera.id : ''}`;
     };
 
     // Resolve actual column count from gridSize state

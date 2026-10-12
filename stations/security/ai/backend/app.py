@@ -13,6 +13,7 @@ from routes.roi_routes import roi_bp
 from routes.analytics_routes import analytics_bp
 from routes.config_routes import config_bp
 from core.inference_engine import inference_worker
+from core.rtsp_streamer import start_cctv_service
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,6 +50,7 @@ def create_app():
         
     # Start AI Background Worker Thread
     inference_worker.start()
+    start_cctv_service()
     
     return app
 
@@ -56,4 +58,5 @@ app = create_app()
 
 if __name__ == '__main__':
     logging.info(f"🚀 Starting Security AI Flask Server on port {Config.PORT}...")
-    app.run(host='0.0.0.0', port=Config.PORT, debug=(Config.FLASK_ENV == 'development'))
+    # A reloader would create a second set of permanent RTSP readers.
+    app.run(host='0.0.0.0', port=Config.PORT, debug=(Config.FLASK_ENV == 'development'), use_reloader=False)

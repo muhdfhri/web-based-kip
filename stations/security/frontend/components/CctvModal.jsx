@@ -1,15 +1,27 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import SharedCctvStream from './SharedCctvStream.jsx';
 
 function CctvModal({ selectedCctv, setSelectedCctv }) {
+    const isOpen = Boolean(selectedCctv);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setSelectedCctv(null);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, setSelectedCctv]);
+
     if (!selectedCctv) return null;
 
     const getAiStreamUrl = (camera) => {
         if (camera && camera.stream_url) return camera.stream_url;
-        const isDirectDevPort = typeof window !== 'undefined' && (window.location.port === '5173' || window.location.port === '5177');
-        const baseUrl = isDirectDevPort ? 'http://localhost:3101' : '';
-        return `${baseUrl}/api/security/cctv/stream/${camera ? camera.id : ''}`;
+        return `/api/security/cctv/stream/${camera ? camera.id : ''}`;
     };
 
     return createPortal(

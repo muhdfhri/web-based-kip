@@ -66,24 +66,37 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
     }, [])
 
     // Fetch CCTV Cameras dynamically from database
-    const fetchCctvCameras = () => {
-        const token = localStorage.getItem('kip_token');
-        fetch('/api/security/cctv', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-            .then(res => res.json())
-            .then(json => {
-                if (Array.isArray(json)) {
-                    setCctvCameras(json);
-                } else if (json.success && Array.isArray(json.data)) {
-                    setCctvCameras(json.data);
-                }
-            })
-            .catch(err => console.error('[SecurityStationPage] Failed to fetch CCTV:', err));
-    };
-
     useEffect(() => {
-        fetchCctvCameras();
+        let disposed = false;
+        let controller;
+        const fetchCctvCameras = async () => {
+            if (controller) return;
+            controller = new AbortController();
+            try {
+                const token = localStorage.getItem('kip_token');
+                const response = await fetch('/api/security/cctv', {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    signal: controller.signal, cache: 'no-store',
+                });
+                const json = await response.json();
+                const cameras = Array.isArray(json) ? json : json.success ? json.data : null;
+                if (!disposed && response.ok && Array.isArray(cameras)) {
+                    setCctvCameras(previous => JSON.stringify(previous) === JSON.stringify(cameras) ? previous : cameras);
+                    setSelectedCctv(previous => previous ? cameras.find(camera => camera.id === previous.id) || null : null);
+                }
+            } catch (error) {
+                if (!disposed) console.error('[SecurityStationPage] Failed to fetch CCTV:', error.name);
+            } finally { controller = null; }
+        };
+        void fetchCctvCameras();
+        const timer = setInterval(fetchCctvCameras, 5000);
+        window.addEventListener('cctv-cameras-changed', fetchCctvCameras);
+        return () => {
+            disposed = true;
+            clearInterval(timer);
+            controller?.abort();
+            window.removeEventListener('cctv-cameras-changed', fetchCctvCameras);
+        };
     }, []);
 
 

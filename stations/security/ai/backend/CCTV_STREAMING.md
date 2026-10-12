@@ -1,86 +1,115 @@
 # CCTV live preview
 
-The grid and fullscreen view share one binary HTTP connection at
-`/api/security/cctv/live?ids=18,19,...`. The Security gateway forwards it to
-`/api/security-ai/live` on port 4101. This avoids using one permanent HTTP/1.1
-connection per camera and starving the page's ordinary API requests.
+The grid and fullscreen use one binary HTTP connection through
+`/api/security/cctv/live?ids=18,19,...&view=18,19,...&focus=18`.
+The gateway forwards to `/api/security-ai/live` on port 4101. `ids` includes up
+to 256 positive IDs. `view` selects visible tiles; omitting it sends every image,
+and an empty value sends statuses only. `focus` selects a fullscreen JPEG up to
+1280 pixels. Packets contain a 4-byte big-endian JSON-header length, UTF-8 metadata,
+then `length` JPEG bytes. Unchanged frames produce a heartbeat once per second.
 
-Each packet is a 4-byte big-endian JSON-header length, the UTF-8 JSON header,
-then `length` JPEG bytes. Headers identify the camera, frame sequence, freshness,
-and connection status. Offline channels have zero image bytes and do not block
-other channels. Unchanged sequences send a status heartbeat once per second.
+## Server lifecycle
 
-RTSP readers are shared by source URL and preview mode. Hikvision `*01` main
-streams are read as `*02` substreams for preview, independently falling back to
-the stored main URL if a channel's substream fails. Database URLs and NVR settings
-are not modified. Snapshot/AI callers retain access to a main-stream reader.
+The CCTV supervisor starts with Python and warms all enabled cameras from
+`mewah_security.public.cctv_cameras`. Every five seconds it reconciles new URLs,
+edits, deletions and activation changes. Identical URLs share a reader. Database
+outages preserve existing readers and retry. Live CCTV uses this master table
+directly, independently of the secondary AI configuration sync.
 
-Defaults: 640-pixel grid width, at most 15 encoded frames/second, JPEG quality 72,
-one decoder thread per camera. Fullscreen requests up to 1280 pixels from the same
-reader. Configure `CCTV_PREFER_SUBSTREAM`, `CCTV_PREVIEW_WIDTH`,
-`CCTV_PREVIEW_FPS`, and `CCTV_JPEG_QUALITY` in the Python service environment.
+Enabled preview readers continue reading RTSP when users leave the page or close
+the browser, while the project services remain running. Stopping services, the PC,
+or the NVR/network stops delivery. With no viewer for two seconds, RTSP is still
+decoded/drained continuously; only BGR conversion/JPEG encoding drops to 1 FPS.
+Viewers and frame consumers restore the full rate. This does not add recording.
 
-Readers drain source frames without sleeping; only the latest frame is retained.
-Encoding uses fixed monotonic deadlines rather than waiting a full interval after
-each sampled frame. The transmitter polls at twice the target FPS so independent
-camera phases do not unnecessarily discard frames at the transport layer.
-The browser likewise keeps at most one pending JPEG per camera and closes replaced
-ImageBitmaps. A slow renderer skips older frames instead of accumulating latency.
-RTSP open/read timeout is 5 seconds, stale-frame threshold is 4 seconds, and idle
-readers close after 30 seconds. Hidden tabs close their HTTP connection and resume
-on visibility change. Page refresh/unmount aborts fetch and the gateway destroys
-its upstream connection. Startup waits for each NVR channel's first decodable
-frame; refreshing an already-active grid reuses the warmed readers.
+Capture uses OpenCV's in-process FFmpeg backend with CPU decoding explicitly
+selected, one decoder thread, and five-second open/read timeouts. There are no
+FFmpeg child consoles, CUDA requirements, unread stderr pipes or 100 MB Python
+pipe buffers. Native aspect ratio and resolution are retained. The supported
+parameters are in the [OpenCV video I/O reference](https://docs.opencv.org/4.12.0/d4/d15/group__videoio__flags__base.html).
 
-Packets also include the server's monotonic send timestamp. The browser compares
-clock deltas to detect a growing TCP backlog without requiring matching clocks.
-If the connection falls more than 1.5 seconds behind its best observed transit
-time, it reconnects to the newest frames. A single camera whose source frame is
-older than 1.5 seconds is marked reconnecting without resetting healthy cameras.
-This bounds accumulating delay; it does not measure absolute camera-to-screen
-latency, including the camera's own encoding and fixed network transit time.
+Defaults: preview width 640, JPEG quality 72, maximum 30 encoded FPS. Optional
+`CCTV_PREVIEW_FPS` is clamped to 1-30; a 20 FPS source cannot yield 30 unique frames.
+`CCTV_PREVIEW_WIDTH`, `CCTV_JPEG_QUALITY`, and `CCTV_PREFER_SUBSTREAM` remain
+optional service-wide settings. New cameras only require saving a valid RTSP URL
+and enabling the camera; no per-camera process/deployment configuration is needed.
+Camera name/code are optional when adding a camera; saving only a valid RTSP URL
+automatically creates them, defaults to Security, and enables the camera. The
+management form retains a usable default station if the station API is unavailable.
 
-The target project's `/api/security-ai/status` endpoint is retained and never
-opens a reader just to inspect status. Camera URLs/active flags are refreshed in
-one database query every five seconds so saved CCTV edits reach existing viewers.
-Temporary DB errors keep the last configuration and retry on the next poll.
+Hikvision `*01` URLs are tried as `*02` substreams, falling back independently to
+the stored URL after two failures. Other RTSP paths are used as entered. Snapshot
+and AI callers use a shared main reader that closes after 30 idle seconds. Cold
+snapshots wait up to five seconds for the first frame. Reconnects use interruptible
+exponential backoff with jitter, bounded around 30 seconds. Repeated failures show
+`offline` while retrying, without stopping healthy readers.
 
-For browser QA, each canvas exposes `data-cctv-rendered-frames`. Sampling the DOM
-counter at two times measures actual rendered FPS without displaying diagnostic
-details to users. `stream/status` includes source FPS and target FPS as well.
+Some Windows OpenCV builds serialize RTSP opens, so 47 cold readers can take
+roughly a minute to warm. Future viewers reuse warmed readers. FFmpeg safety
+locks remain enabled: disabling them requires a verified threading-capable build
+and OpenCV notes Linux testing in its [environment reference](https://docs.opencv.org/4.12.0/d6/dea/tutorial_env_reference.html).
 
-## Ubuntu server deployment
+PM2 runs `run-service.cjs`, launching Python with `windowsHide: true`, keeping logs
+in PM2 and refusing a duplicate worker on an occupied port. PM2 stop/restart
+terminates the child. `SECURITY_AI_PYTHON` selects the interpreter. The PM2 memory
+restart limit applies to the Node launcher; monitor Python child RSS separately.
+The old root `patch_streamer.py` no longer reinstalls the CUDA/15 FPS path.
 
-The default is a CPU/FFmpeg preview path; an installed NVIDIA GPU is not used
-automatically. Keep the substream/shared-reader configuration when AI Grading and
-AI Vision are enabled. GPU decoding needs a compatible driver and FFmpeg/OpenCV
-integration and should be validated on the actual server before enabling it.
-Run the soak test on Ubuntu with AI workloads active and sample rendered FPS on
-the actual client browser. Use the measured `steadyFps`, `p95GapMs`, bandwidth,
-process memory and restart counts to select a rate. These measurements from a
-development PC are not a benchmark of the future i9-12900K server.
+## Browser behavior
 
-`GET /api/security/cctv/stream/status` reports existing readers, sequence numbers,
-frame age, source type and source resolution, without RTSP credentials. Memory
-restart limits for the Python service and Vite shell are 1 GB to avoid restarting
-them during ordinary 16-camera use; the forwarding gateway has a 256 MB limit.
-Keep one Python service instance on port 4101;
-Windows can leave an old instance bound to the port after an interrupted restart.
+Each camera keeps at most one pending JPEG. Replaced ImageBitmaps are closed and
+painting is coalesced through animation frames. Opaque Canvas2D contexts request
+CPU backing with `willReadFrequently`; actual backing depends on the browser.
+IntersectionObserver skips offscreen decoding/painting and updates `view` so
+those tiles receive status only. Their server readers continue running.
+While fullscreen is open, only the focused camera sends images and the covered
+grid stops painting. Closing fullscreen restores visible grid images.
 
-Verification from the repository root:
+Monotonic send/receive clock deltas detect backlog. Frames over 1.5 seconds behind
+are discarded; only backlog sustained for eight seconds reopens transport.
+Transient backlog no longer reconnects every tile. Actual connection loss or a
+12-second stream stall still retries. An individual stale/offline camera affects
+only itself. Subscription changes retain healthy camera statuses.
 
-```
+Hidden tabs close viewing HTTP connections and resume when visible; unmount
+aborts fetch and the gateway releases upstream. Camera lists refresh every five
+seconds and after camera-management saves. URLs are relative to the app origin
+for local, remote and proxied clients. New cameras appear without page refresh.
+
+## Verification
+
+From the repository root:
+
+```powershell
 node --test stations/security/frontend/components/cctvTransport.test.mjs
-node stations/security/tools/check-cctv-live.mjs http://127.0.0.1:5173 390
+node stations/security/tools/check-cctv-live.mjs http://127.0.0.1:3101 390 stations/security/verification/cctv-soak.json --allow-offline=E19 --view-codes=D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,D11,D12,D13,D14,D15,D16,E1,E2
+node stations/security/tools/serve-cctv-qa.mjs
 ```
+
+The live check records warming separately, tests image changes/stalled frames and
+all camera statuses, reconnects twice, then holds a connection over five minutes.
+Only exclude a confirmed unavailable source with `--allow-offline`. Omit
+`--view-codes` for full-grid stress. Actual FPS depends on source rate, CPU,
+browser and bandwidth. The CCTV-only visual page uses the production transport
+at `http://127.0.0.1:5189`. Canvas `data-cctv-rendered-frames` exposes render counts.
 
 From `stations/security/ai/backend`:
 
-```
+```powershell
 python -B -m unittest discover -s tests -v
 ```
 
-The live check writes `stations/security/verification/cctv-live-verification.json`. It checks all active
-channels, deliberate refreshes, continued JPEG delivery, and missing/stalled frames
-over a period longer than five minutes. Use the browser to verify grid imagery and
-fullscreen as well. It does not guarantee uptime under future NVR/network failures.
+From `stations/security/backend`:
+
+```powershell
+node --test tests/cctv-crud-isolated.test.mjs
+```
+
+The CRUD test creates/drops only `cctv_verify_api_<pid>`. It uses real PostgreSQL
+for identities, imported-code collisions, concurrent saves, URL validation/edits,
+activation and deletion, plus a local mock for secondary AI HTTP sync. It does not
+modify real cameras.
+
+`GET /api/security/cctv/stream/status` reports existing readers, persistence,
+CPU decoding, sequence, status, frame age, resolution, source/target FPS and
+reconnect counts without RTSP credentials.

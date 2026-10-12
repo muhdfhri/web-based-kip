@@ -108,11 +108,12 @@ module.exports = {
     },
     {
       name: "security-ai-service",
-      script: "app.py",
-      interpreter: process.env.SECURITY_AI_PYTHON || (process.platform === "win32" ? "python" : "python3"),
+      script: "run-service.cjs",
       cwd: "./stations/security/ai/backend",
       watch: false,
       autorestart: true,
+      shutdown_with_message: true,
+      kill_timeout: 10000,
       max_memory_restart: "1G",
       env: {
         PORT: 4101,

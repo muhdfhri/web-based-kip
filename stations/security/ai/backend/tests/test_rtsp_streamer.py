@@ -69,6 +69,8 @@ class StreamRegressionTests(unittest.TestCase):
         import numpy as np
         frame = np.zeros((1440, 2560, 3), dtype=np.uint8)
         class Reader:
+            frame_ready = threading.Event()
+            frame_ready.set()
             def get_latest_frame_mat(self): return frame
         with patch.object(streams, 'get_stream_manager', return_value=Reader()):
             jpeg = streams.capture_single_snapshot(1)
@@ -140,15 +142,91 @@ class StreamRegressionTests(unittest.TestCase):
         manager.rtsp_url = 'rtsp://example/Streaming/Channels/101'
         manager.preview = True
         manager.running = True
+        manager.persistent = False
+        manager.stop_event = unittest.mock.Mock()
+        manager.frame_ready = threading.Event()
+        manager.reconnects = 0
         manager.last_used = time.monotonic()
         manager.lock = threading.Lock()
         manager.latest_frame = manager.latest_jpeg = manager.detail_jpeg = b'old'
         def expire(_): manager.last_used = time.monotonic() - 60
-        with patch.object(streams.cv2, 'VideoCapture', return_value=capture), patch.object(streams.time, 'sleep', side_effect=expire):
+        manager.stop_event.wait.side_effect = expire
+        with patch.object(streams.cv2, 'VideoCapture', return_value=capture) as open_capture:
             manager._update_loop()
+        options = open_capture.call_args.args[2]
+        self.assertEqual(options[options.index(streams.cv2.CAP_PROP_HW_ACCELERATION) + 1], streams.cv2.VIDEO_ACCELERATION_NONE)
         self.assertTrue(capture.released)
         self.assertFalse(manager.running)
         self.assertIsNone(manager.latest_jpeg)
+
+    def test_cold_snapshot_waits_for_first_main_frame(self):
+        import numpy as np
+        frame = np.zeros((360, 640, 3), dtype=np.uint8)
+        class Reader:
+            frame_ready = threading.Event()
+            def get_latest_frame_mat(self):
+                return frame if self.frame_ready.is_set() else None
+            def get_latest_jpeg(self): return b'connecting-placeholder'
+        reader = Reader()
+        ready = threading.Timer(.05, reader.frame_ready.set)
+        ready.start()
+        with patch.object(streams, 'get_stream_manager', return_value=reader):
+            jpeg = streams.capture_single_snapshot(1)
+        ready.join()
+        self.assertTrue(jpeg.startswith(b'\xff\xd8'))
+
+    def test_30_fps_limit_never_duplicates_slower_source_frames(self):
+        for source_fps in (15, 20, 25, 30, 60):
+            pacer = streams.FramePacer(30)
+            count = sum(pacer.due(i / source_fps) for i in range(source_fps * 10))
+            self.assertLessEqual(abs(count - min(30, source_fps) * 10), 1)
+
+    def test_persistent_camera_survives_no_viewers_and_can_stop(self):
+        manager = streams.CameraStreamManager.__new__(streams.CameraStreamManager)
+        manager.running = manager.persistent = True
+        manager.stop_event = threading.Event()
+        manager.last_used = time.monotonic() - 3600
+        self.assertTrue(manager._needed())
+        manager.stop()
+        self.assertFalse(manager._needed())
+        self.assertTrue(manager.stop_event.is_set())
+
+    def test_reconcile_add_edit_disable_and_aliases_without_restarting_healthy_source(self):
+        class Reader:
+            running = True
+            def __init__(self, info, preview, persistent=False):
+                self.rtsp_url, self.persistent = info['rtsp_url'], persistent
+                self.stopped = False
+            def stop(self): self.stopped = True; self.running = False
+        def infos(*pairs):
+            return {cid: {'id': cid, 'is_active': 1, 'rtsp_url': url} for cid, url in pairs}
+        with patch.object(streams, '_stream_managers', {}), patch.object(streams, 'CameraStreamManager', Reader):
+            streams.reconcile_cameras(infos((1, 'rtsp://one'), (2, 'rtsp://two'), (3, 'rtsp://one')))
+            self.assertEqual(len(streams._stream_managers), 2)
+            first = streams._stream_managers[('rtsp://one', True)]
+            removed = streams._stream_managers[('rtsp://two', True)]
+            streams.reconcile_cameras(infos((1, 'rtsp://one'), (2, 'rtsp://new'), (4, 'rtsp://added')))
+            self.assertIs(streams._stream_managers[('rtsp://one', True)], first)
+            self.assertTrue(removed.stopped)
+            self.assertTrue(all(m.persistent for m in streams._stream_managers.values()))
+            streams.reconcile_cameras({})
+            self.assertFalse(streams._stream_managers)
+            self.assertTrue(first.stopped)
+
+    def test_offscreen_camera_sends_status_without_video_or_viewer_lease(self):
+        class Reader:
+            running = True
+            def get_packet(self, **kw):
+                self.viewing = kw.get('viewing', True)
+                return {'camera_id': 1, 'sequence': 1, 'status': 'live'}, b'jpeg'
+        reader = Reader()
+        with patch.object(streams, 'get_stream_manager', return_value=reader):
+            generator = streams.generate_combined_stream([1], {1: {'id': 1}}, viewed_ids=set())
+            data = next(generator)
+            size = struct.unpack('!I', data[:4])[0]
+            self.assertEqual(data[4 + size:], b'')
+            self.assertFalse(reader.viewing)
+            generator.close()
 
 
 if __name__ == '__main__':

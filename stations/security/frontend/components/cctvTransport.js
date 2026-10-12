@@ -3,7 +3,6 @@
 export class FrameDecoder {
     constructor() { this.buffer = new Uint8Array(0); this.decoder = new TextDecoder(); }
     push(chunk) {
-        if (this.buffer.length + chunk.length > 4 * 1024 * 1024) throw new Error('CCTV buffer limit');
         const data = new Uint8Array(this.buffer.length + chunk.length);
         data.set(this.buffer); data.set(chunk, this.buffer.length);
         let offset = 0;
@@ -22,6 +21,7 @@ export class FrameDecoder {
             offset = end;
         }
         this.buffer = data.slice(offset);
+        if (this.buffer.length > 2 * 1024 * 1024 + 4100) throw new Error('CCTV buffer limit');
         return packets;
     }
 }
@@ -51,7 +51,8 @@ function notify(source, status) {
 
 function draw(source, target) {
     const image = source.bitmap;
-    if (!image || !target.clientWidth || !target.clientHeight) return;
+    if (!image || target.dataset.cctvVisible === 'false' || document.hidden
+        || !target.clientWidth || !target.clientHeight) return;
     const width = Math.max(1, Math.round(target.clientWidth));
     const height = Math.max(1, Math.round(target.clientHeight));
     if (target.width !== width) target.width = width;
@@ -59,12 +60,46 @@ function draw(source, target) {
     const scale = target.dataset.fit === 'contain'
         ? Math.min(width / image.width, height / image.height)
         : Math.max(width / image.width, height / image.height);
-    const context = target.getContext('2d');
+    // Opaque CPU-backed canvas avoids allocating a GPU surface per CCTV tile.
+    const context = target.getContext('2d', { alpha: false, willReadFrequently: true });
     if (!context) return;
-    context.clearRect(0, 0, width, height);
+    context.fillStyle = '#000';
+    context.fillRect(0, 0, width, height);
     context.drawImage(image, (width - image.width * scale) / 2,
         (height - image.height * scale) / 2, image.width * scale, image.height * scale);
     target.dataset.cctvRenderedFrames = String(source.renderedFrames);
+}
+
+const visible = source => [...source.subscribers.keys()].some(canvas => canvas.dataset.cctvVisible !== 'false');
+const focused = group => [...group.sources].find(([, source]) =>
+    [...source.subscribers.keys()].some(canvas => canvas.dataset.fit === 'contain' && canvas.dataset.cctvVisible !== 'false'));
+const wantsImage = (group, id, source) => {
+    return group.focusId ? group.focusId === id : visible(source);
+};
+
+function scheduleDraw(group, source) {
+    group.dirty.add(source);
+    if (group.paint !== null) return;
+    const paint = () => {
+        group.paint = null;
+        const focus = group.focusId;
+        for (const dirty of group.dirty) {
+            for (const canvas of dirty.subscribers.keys()) {
+                if (!focus || canvas.dataset.fit === 'contain') draw(dirty, canvas);
+            }
+        }
+        group.dirty.clear();
+    };
+    group.paint = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(paint) : setTimeout(paint, 0);
+}
+
+function streamUrl(group) {
+    const url = new URL(group.endpoint);
+    url.searchParams.set('ids', [...group.sources.keys()].join(','));
+    const focus = focused(group);
+    url.searchParams.set('view', focus ? focus[0] : [...group.sources].filter(([, source]) => visible(source)).map(([id]) => id).join(','));
+    if (focus) url.searchParams.set('focus', focus[0]);
+    return url;
 }
 
 async function decodeLatest(group, source) {
@@ -76,13 +111,12 @@ async function decodeLatest(group, source) {
             source.pending = null;
             const bitmap = await createImageBitmap(new Blob([jpeg], { type: 'image/jpeg' }));
             if (generation !== group.generation || frameEpoch !== source.frameEpoch
-                || group.controller?.signal.aborted || !source.subscribers.size) { bitmap.close(); continue; }
+                || group.controller?.signal.aborted || !source.subscribers.size || !visible(source)) { bitmap.close(); continue; }
             source.bitmap?.close();
             source.bitmap = bitmap;
             source.renderedFrames++;
-            source.lastFrameAt = performance.now();
             notify(source, 'live');
-            for (const canvas of source.subscribers.keys()) draw(source, canvas);
+            scheduleDraw(group, source);
         }
     } catch {
         notify(source, 'reconnecting');
@@ -107,12 +141,11 @@ async function connect(group) {
     const generation = group.generation;
     const controller = new AbortController();
     group.controller = controller;
-    const url = new URL(group.endpoint);
-    url.searchParams.set('ids', [...group.sources.keys()].join(','));
-    const focus = [...group.sources].find(([, source]) =>
-        [...source.subscribers.keys()].some(canvas => canvas.dataset.fit === 'contain'));
-    if (focus) url.searchParams.set('focus', focus[0]);
+    const url = streamUrl(group);
+    group.signature = url.href;
+    group.focusId = url.searchParams.get('focus');
     let receivedAt = performance.now();
+    let behindSince = null;
     let reader;
     const watchdog = setInterval(() => {
         if (performance.now() - receivedAt > 12000) controller.abort();
@@ -134,11 +167,13 @@ async function connect(group) {
             receivedAt = performance.now();
             for (const { meta, jpeg } of decoder.push(value)) {
                 if (clock.backlog(meta, receivedAt) > 1500) {
-                    // TCP buffering can deliver old but valid frames continuously.
-                    // Reopen the shared connection to resume from the newest frames.
-                    controller.abort();
-                    throw new Error('CCTV connection behind live video');
+                    // Discard transient backlog without disconnecting every camera.
+                    // Only a sustained backlog needs a fresh TCP connection.
+                    behindSince ??= receivedAt;
+                    if (receivedAt - behindSince > 8000) throw new Error('CCTV connection behind live video');
+                    continue;
                 }
+                behindSince = null;
                 const source = group.sources.get(String(meta.camera_id));
                 if (!source) continue;
                 if (meta.status !== 'live' || (Number.isFinite(meta.age_ms) && meta.age_ms > 1500)) {
@@ -147,7 +182,10 @@ async function connect(group) {
                     notify(source, meta.status !== 'live' && meta.status in messages ? meta.status : 'reconnecting');
                     continue;
                 }
-                if (!jpeg.length || document.hidden) continue;
+                source.lastFrameAt = receivedAt;
+                const display = wantsImage(group, String(meta.camera_id), source);
+                if (!display) notify(source, 'live');
+                if (!jpeg.length || document.hidden || !display) continue;
                 // At most one pending frame per camera. Slow clients drop old frames.
                 source.pending = { jpeg, generation, frameEpoch: source.frameEpoch };
                 void decodeLatest(group, source);
@@ -169,7 +207,10 @@ async function connect(group) {
 
 function schedule(group) {
     clearTimeout(group.changeTimer);
-    group.changeTimer = setTimeout(() => { void connect(group); }, 60);
+    group.changeTimer = setTimeout(() => {
+        if (group.controller && !group.controller.signal.aborted && streamUrl(group).href === group.signature) return;
+        void connect(group);
+    }, 100);
 }
 
 let lifecycleBound = false;
@@ -180,7 +221,7 @@ export function subscribeCctv(src, canvas, listener) {
     const endpoint = new URL(url.pathname.replace(/\/stream\/\d+$/, '/live'), url.origin).href;
     let group = groups.get(endpoint);
     if (!group) {
-        group = { endpoint, sources: new Map(), generation: 0, controller: null };
+        group = { endpoint, sources: new Map(), generation: 0, controller: null, dirty: new Set(), paint: null };
         groups.set(endpoint, group);
     }
     let source = group.sources.get(id);
@@ -191,6 +232,24 @@ export function subscribeCctv(src, canvas, listener) {
         group.sources.set(id, source);
     }
     source.subscribers.set(canvas, listener);
+    let observer;
+    if (typeof IntersectionObserver === 'function') {
+        observer = new IntersectionObserver(entries => {
+            for (const entry of entries) {
+                const state = String(entry.isIntersecting);
+                if (canvas.dataset.cctvVisible === state) continue;
+                canvas.dataset.cctvVisible = state;
+                if (!visible(source)) {
+                    source.pending = null;
+                    source.frameEpoch++;
+                    source.bitmap?.close();
+                    source.bitmap = null;
+                } else draw(source, canvas);
+                schedule(group);
+            }
+        });
+        observer.observe(canvas);
+    }
     listener(source.status, messages[source.status]);
     draw(source, canvas);
     if (isNew || canvas.dataset.fit === 'contain') schedule(group);
@@ -205,6 +264,7 @@ export function subscribeCctv(src, canvas, listener) {
         window.addEventListener('pageshow', () => { for (const active of groups.values()) schedule(active); });
     }
     return () => {
+        observer?.disconnect();
         source.subscribers.delete(canvas);
         if (!source.subscribers.size) {
             source.bitmap?.close();
@@ -216,6 +276,12 @@ export function subscribeCctv(src, canvas, listener) {
             clearTimeout(group.changeTimer);
             stop(group);
             groups.delete(endpoint);
+            if (group.paint !== null) {
+                if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(group.paint);
+                else clearTimeout(group.paint);
+                group.paint = null;
+            }
+            group.dirty.clear();
         } else if (!source.subscribers.size || canvas.dataset.fit === 'contain') schedule(group);
     };
 }

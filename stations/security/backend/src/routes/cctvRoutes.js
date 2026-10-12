@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { pool } from '../config/db.js';
 
 const router = express.Router();
@@ -7,6 +8,12 @@ const aiHost = process.env.SECURITY_AI_HOST || '127.0.0.1';
 const aiPort = Number(process.env.SECURITY_AI_PORT || 4101);
 const validId = value => /^\d+$/.test(String(value)) && Number.isSafeInteger(Number(value)) && Number(value) > 0;
 const active = value => value === true || value === 1 || value === '1';
+function validRtsp(value) {
+  try {
+    const url = new URL(String(value).trim());
+    return ['rtsp:', 'rtsps:'].includes(url.protocol) && !!url.hostname;
+  } catch { return false; }
+}
 
 // One grid/modal connection. Pipe respects backpressure; response close releases upstream.
 function forwardCameraStream(req, res, path) {
@@ -42,17 +49,24 @@ function syncToAiBackend(camera, deleting = false) {
     if (response.statusCode >= 400) console.warn('[CCTV Auto-Sync] HTTP', response.statusCode);
   });
   request.setTimeout(5000, () => request.destroy());
-  request.on('error', () => console.warn('[CCTV Auto-Sync] AI service unavailable; retry camera save after recovery'));
+  request.on('error', () => console.warn('[CCTV Auto-Sync] AI configuration unavailable; live CCTV reads the master camera table'));
   request.end(body);
 }
 
 router.get('/live', (req, res) => {
   const values = String(req.query.ids || '').split(',');
-  if (!values.length || values.length > 64 || values.some(value => !validId(value))) {
+  if (!values.length || values.length > 256 || values.some(value => !validId(value))) {
     return res.status(400).json({ success: false, message: 'Invalid camera IDs' });
   }
   const ids = [...new Set(values.map(Number))];
   const query = new URLSearchParams({ ids: ids.join(',') });
+  if (req.query.view !== undefined) {
+    const viewed = String(req.query.view).split(',').filter(Boolean);
+    if (viewed.some(value => !validId(value) || !ids.includes(Number(value)))) {
+      return res.status(400).json({ success: false, message: 'Invalid viewed camera IDs' });
+    }
+    query.set('view', [...new Set(viewed.map(Number))].join(','));
+  }
   if (validId(req.query.focus) && ids.includes(Number(req.query.focus))) query.set('focus', String(Number(req.query.focus)));
   forwardCameraStream(req, res, `/api/security-ai/live?${query}`);
 });
@@ -88,7 +102,9 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const { camera_name, rtsp_url, location, station_slug, camera_code, is_active = 1, sort_order = 0 } = req.body;
-  if (!camera_name || !rtsp_url) return res.status(400).json({ success: false, message: 'Nama Kamera dan RTSP URL wajib diisi' });
+  const suppliedName = String(camera_name || '').trim();
+  if (!rtsp_url) return res.status(400).json({ success: false, message: 'RTSP URL wajib diisi' });
+  if (!validRtsp(rtsp_url)) return res.status(400).json({ success: false, message: 'Masukkan URL RTSP yang valid (rtsp:// atau rtsps://)' });
   let client;
   try {
     client = await pool.connect();
@@ -96,12 +112,28 @@ router.post('/', async (req, res) => {
     // Use the PostgreSQL identity, never MAX(id)+1 (deletions/concurrent saves).
     const { rows } = await client.query(
       'INSERT INTO public.cctv_cameras (camera_code, camera_name, location, station_slug, rtsp_url, is_active, sort_order, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP) RETURNING *',
-      [String(camera_code || '').trim() || null, camera_name, location || null, station_slug || 'security',
-        rtsp_url, active(is_active) ? 1 : 0, parseInt(sort_order, 10) || 0]);
+      [String(camera_code || '').trim() || null, suppliedName || 'Kamera', location || null, station_slug || 'security',
+        String(rtsp_url).trim(), active(is_active) ? 1 : 0, parseInt(sort_order, 10) || 0]);
     const camera = rows[0];
+    if (!suppliedName) {
+      camera.camera_name = `Kamera ${camera.id}`;
+      await client.query('UPDATE public.cctv_cameras SET camera_name = $1 WHERE id = $2', [camera.camera_name, camera.id]);
+    }
     if (!camera.camera_code) {
-      camera.camera_code = `CAM_${camera.id}`;
-      await client.query('UPDATE public.cctv_cameras SET camera_code = $1 WHERE id = $2', [camera.camera_code, camera.id]);
+      // Imported/manual codes may already use CAM_<new identity> for another row.
+      // Retry only generated codes; an explicitly duplicated code stays a 409.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        camera.camera_code = `CAM_${camera.id}` + (attempt ? `_${randomUUID().slice(0, 8)}` : '');
+        await client.query('SAVEPOINT cctv_generated_code');
+        try {
+          await client.query('UPDATE public.cctv_cameras SET camera_code = $1 WHERE id = $2', [camera.camera_code, camera.id]);
+          await client.query('RELEASE SAVEPOINT cctv_generated_code');
+          break;
+        } catch (error) {
+          await client.query('ROLLBACK TO SAVEPOINT cctv_generated_code');
+          if (error.code !== '23505' || attempt === 3) throw error;
+        }
+      }
     }
     await client.query('COMMIT');
     syncToAiBackend(camera);
@@ -118,15 +150,17 @@ router.put('/:id', async (req, res) => {
   if (!validId(req.params.id)) return res.status(400).json({ success: false, message: 'ID Kamera tidak valid' });
   const id = Number(req.params.id);
   const { camera_name, rtsp_url, location, station_slug, camera_code, is_active, sort_order } = req.body;
-  if (!camera_name || !rtsp_url) return res.status(400).json({ success: false, message: 'Nama Kamera dan RTSP URL wajib diisi' });
+  if (!rtsp_url) return res.status(400).json({ success: false, message: 'RTSP URL wajib diisi' });
+  if (!validRtsp(rtsp_url)) return res.status(400).json({ success: false, message: 'Masukkan URL RTSP yang valid (rtsp:// atau rtsps://)' });
   try {
     const existing = await pool.query('SELECT * FROM public.cctv_cameras WHERE id = $1', [id]);
     if (!existing.rows.length) return res.status(404).json({ success: false, message: 'Kamera CCTV tidak ditemukan' });
     const old = existing.rows[0];
     const { rows } = await pool.query(
       'UPDATE public.cctv_cameras SET camera_code = $1, camera_name = $2, location = $3, station_slug = $4, rtsp_url = $5, is_active = $6, sort_order = $7 WHERE id = $8 RETURNING *',
-      [String(camera_code || '').trim() || old.camera_code || `CAM_${id}`, camera_name, location || null,
-        station_slug || old.station_slug || 'security', rtsp_url, active(is_active ?? old.is_active) ? 1 : 0,
+      [String(camera_code || '').trim() || old.camera_code || `CAM_${id}`, String(camera_name || '').trim() || old.camera_name || `Kamera ${id}`,
+        location === undefined ? old.location : location || null,
+        station_slug || old.station_slug || 'security', String(rtsp_url).trim(), active(is_active ?? old.is_active) ? 1 : 0,
         parseInt(sort_order ?? old.sort_order, 10) || 0, id]);
     if (!rows.length) return res.status(404).json({ success: false, message: 'Kamera CCTV tidak ditemukan' });
     syncToAiBackend(rows[0]);
