@@ -138,6 +138,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
 
     const [showSettings, setShowSettings] = useState(false);
     const [viewMode, setViewMode] = useState('map'); // 'map' or 'logs'
+    const [replayOrigin, setReplayOrigin] = useState(null); // 'logs' or null
     const [tempLat, setTempLat] = useState('');
     const [tempLng, setTempLng] = useState('');
     const [tempZoom, setTempZoom] = useState('');
@@ -299,6 +300,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
 
     const stopReplay = useCallback(() => {
         setReplaySessionId(null);
+        setReplayOrigin(null);
     }, [setReplaySessionId]);
 
     const isReplayMode = !!replayData;
@@ -605,7 +607,16 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
     }
 
     if (viewMode === 'logs') {
-        return <PatrolLogsView onBack={() => setViewMode('map')} />;
+        return (
+            <PatrolLogsView 
+                onBack={() => setViewMode('map')} 
+                onReplaySession={(sessionId) => {
+                    setReplaySessionId(sessionId);
+                    setReplayOrigin('logs');
+                    setViewMode('map');
+                }}
+            />
+        );
     }
 
     if (viewMode === 'settings' || isSettingCheckpointsOpen) {
@@ -705,9 +716,24 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                         </div>
                         <div className="som-map-legend" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             {isReplayMode && (
-                                <button onClick={stopReplay} className="pm-stop-replay-btn">
-                                    <FaStop style={{ marginRight: '5px' }} /> Back to Live
-                                </button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <button onClick={stopReplay} className="pm-stop-replay-btn">
+                                        <FaStop style={{ marginRight: '5px' }} /> Back to Live
+                                    </button>
+                                    {replayOrigin === 'logs' && (
+                                        <button 
+                                            onClick={() => {
+                                                setReplaySessionId(null);
+                                                setReplayOrigin(null);
+                                                setViewMode('logs');
+                                            }} 
+                                            className="pm-stop-replay-btn"
+                                            style={{ background: '#0284c7', borderColor: '#38bdf8', color: '#ffffff' }}
+                                        >
+                                            <FaClipboardList style={{ marginRight: '5px' }} /> Back to Logs
+                                        </button>
+                                    )}
+                                </div>
                             )}
                             {!isReplayMode && (
                                 <>

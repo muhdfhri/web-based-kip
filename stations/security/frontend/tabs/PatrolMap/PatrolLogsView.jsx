@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FaClipboardList, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaCamera, FaCheckCircle, FaFilter, FaSync, FaArrowLeft, FaFileExcel } from 'react-icons/fa';
+import { FaClipboardList, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaCamera, FaCheckCircle, FaFilter, FaSync, FaArrowLeft, FaFileExcel, FaPlay } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 import ProofModal from '../../components/ProofModal.jsx';
 
-function PatrolLogsView({ onBack }) {
+function PatrolLogsView({ onBack, onReplaySession }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -483,13 +483,14 @@ function PatrolLogsView({ onBack }) {
                 <th style={thStyle}>LOCATION CHECKPOINT</th>
                 <th style={thStyle}>GPS COORDINATES</th>
                 <th style={thStyle}>PHOTO PROOF</th>
+                <th style={thStyle}>REPLAY</th>
                 <th style={thStyle}>STATUS</th>
               </tr>
             </thead>
             <tbody>
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+                  <td colSpan="10" style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                       <FaClipboardList style={{ fontSize: '36px', color: '#cbd5e1' }} />
                       <span style={{ fontSize: '14px', fontWeight: '700', color: '#64748b' }}>NO PATROL LOGS FOUND</span>
@@ -634,6 +635,43 @@ function PatrolLogsView({ onBack }) {
                         </button>
                       ) : (
                         <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>No Photo</span>
+                      )}
+                    </td>
+
+                    {/* Replay Patrol */}
+                    <td style={tdStyle}>
+                      {log.sessionId ? (
+                        <button
+                          onClick={() => onReplaySession && onReplaySession(log.sessionId)}
+                          style={{
+                            background: '#0f172a',
+                            border: '1px solid #38bdf8',
+                            color: '#38bdf8',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            fontWeight: '800',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                          }}
+                          title={`Replay patrol round ${log.roundNum} by ${log.officer}`}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#38bdf8';
+                            e.currentTarget.style.color = '#0f172a';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#0f172a';
+                            e.currentTarget.style.color = '#38bdf8';
+                          }}
+                        >
+                          <FaPlay style={{ fontSize: '9px' }} /> Replay
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>-</span>
                       )}
                     </td>
 
