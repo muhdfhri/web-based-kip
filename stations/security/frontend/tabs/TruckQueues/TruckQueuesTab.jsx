@@ -331,12 +331,27 @@ function TruckQueuesTab() {
   const gradingCount = dateFilteredQueues.filter(q => (q.status || '').toUpperCase() === 'GRADING').length;
   const completedCount = dateFilteredQueues.filter(q => ['COMPLETED', 'CHECKED_OUT'].includes((q.status || '').toUpperCase())).length;
 
-  // Calculate Average Handle Time
+  // Calculate Average Handle Time (Always display all transport classifications)
   const averageMetrics = React.useMemo(() => {
+    const predefinedList = [
+      { code: 'SO', label: 'FFB SUPER' },
+      { code: 'U', label: 'FFB UMUM' },
+      { code: 'M', label: 'FFB MITRA' },
+      { code: 'C', label: 'CRUDE PALM OIL' },
+      { code: 'K', label: 'PALM KERNEL' },
+      { code: 'S', label: 'PALM KERNEL SHELL' },
+      { code: 'DLL', label: 'DLL' },
+    ];
+
     const groups = {};
+    predefinedList.forEach(item => {
+      groups[item.code] = { label: item.label, total: 0, sumSeconds: 0 };
+    });
+
     queues.forEach(q => {
       const status = (q.status || q.status_code || '').toUpperCase();
-      if (status === 'COMPLETED' && q.check_out_at && q.check_in_at) {
+      const startTimeVal = q.weighInAt || q.weigh_in_at || q.check_out_at && q.check_in_at;
+      if (status === 'COMPLETED' && q.check_out_at && startTimeVal) {
         // Basic frontend mock filter for the operational date (ignoring exact shift hours for now just for UI demo)
         const checkOutDateStr = new Date(q.check_out_at).toISOString().split('T')[0];
         
@@ -352,34 +367,85 @@ function TruckQueuesTab() {
         }
 
         if (matchDate) {
-          const cls = q.classificationCode || q.classification_name || q.classification || 'OTHER';
-          if (!groups[cls]) groups[cls] = { total: 0, sumSeconds: 0 };
+          const rawCls = (q.classification_id || q.classificationcode || q.classification_code || q.classificationCode || q.classification_name || q.classification || 'OTHER').toUpperCase().trim();
+          let matchedKey = 'OTHER';
+          if (groups[rawCls]) {
+            matchedKey = rawCls;
+          } else if (rawCls.includes('SUPER')) {
+            matchedKey = 'SO';
+          } else if (rawCls.includes('UMUM')) {
+            matchedKey = 'U';
+          } else if (rawCls.includes('MITRA')) {
+            matchedKey = 'M';
+          } else if (rawCls.includes('CPO') || rawCls.includes('CRUDE')) {
+            matchedKey = 'C';
+          } else if (rawCls.includes('KERNEL') && !rawCls.includes('SHELL') && !rawCls.includes('CANGKANG')) {
+            matchedKey = 'K';
+          } else if (rawCls.includes('SHELL') || rawCls.includes('CANGKANG')) {
+            matchedKey = 'S';
+          } else if (rawCls.includes('DLL') || rawCls.includes('LAIN')) {
+            matchedKey = 'DLL';
+          }
+
+          if (!groups[matchedKey]) {
+            groups[matchedKey] = { label: rawCls, total: 0, sumSeconds: 0 };
+          }
           
-          const inTime = new Date(q.check_in_at).getTime();
+          const inTime = new Date(startTimeVal).getTime();
           const outTime = new Date(q.check_out_at).getTime();
           if (outTime > inTime) {
-            groups[cls].total += 1;
-            groups[cls].sumSeconds += (outTime - inTime) / 1000;
+            groups[matchedKey].total += 1;
+            groups[matchedKey].sumSeconds += (outTime - inTime) / 1000;
           }
         }
       }
     });
 
-    return Object.keys(groups).map(cls => {
-      const { total, sumSeconds } = groups[cls];
-      const avgSeconds = sumSeconds / total;
-      
-      let avgText = '';
-      if (avgSeconds < 3600) {
-         avgText = `${Math.floor(avgSeconds / 60)} Menit`;
-      } else {
-         const hrs = Math.floor(avgSeconds / 3600);
-         const mins = Math.floor((avgSeconds % 3600) / 60);
-         avgText = `${hrs} Jam ${mins} Menit`;
+    const results = [];
+    predefinedList.forEach(item => {
+      const g = groups[item.code];
+      let avgText = '-';
+      if (g.total > 0) {
+        const avgSeconds = g.sumSeconds / g.total;
+        if (avgSeconds < 3600) {
+          avgText = `${Math.floor(avgSeconds / 60)} Menit`;
+        } else {
+          const hrs = Math.floor(avgSeconds / 3600);
+          const mins = Math.floor((avgSeconds % 3600) / 60);
+          avgText = `${hrs} Jam ${mins} Menit`;
+        }
       }
-      
-      return { classification: cls, total, avgText };
+      results.push({
+        code: item.code,
+        classification: item.label,
+        total: g.total,
+        avgText
+      });
     });
+
+    // Append any extra groups (e.g. OTHER) if they have data
+    Object.keys(groups).forEach(k => {
+      if (!predefinedList.some(p => p.code === k) && groups[k].total > 0) {
+        const g = groups[k];
+        const avgSeconds = g.sumSeconds / g.total;
+        let avgText = '';
+        if (avgSeconds < 3600) {
+          avgText = `${Math.floor(avgSeconds / 60)} Menit`;
+        } else {
+          const hrs = Math.floor(avgSeconds / 3600);
+          const mins = Math.floor((avgSeconds % 3600) / 60);
+          avgText = `${hrs} Jam ${mins} Menit`;
+        }
+        results.push({
+          code: k,
+          classification: g.label || k,
+          total: g.total,
+          avgText
+        });
+      }
+    });
+
+    return results;
   }, [queues, startDate, endDate]);
 
   if (loading) {
@@ -579,28 +645,53 @@ function TruckQueuesTab() {
           </div>
         ) : (
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {averageMetrics.map((metric, idx) => (
-              <div key={idx} style={{
-                background: '#fff',
-                border: '1px solid #e2e8f0',
-                padding: '10px 14px',
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-              }}>
-                <div style={{ width: '32px', height: '32px', background: '#f8fafc', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: '#64748b' }}>
-                  🚚
-                </div>
-                <div>
-                  <div style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>{metric.classification.toUpperCase()}</div>
-                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                    Total: <strong style={{ color: '#334155' }}>{metric.total} Truk</strong> | Rata-rata: <strong style={{ color: '#059669' }}>{metric.avgText}</strong>
+            {averageMetrics.map((metric, idx) => {
+              const classThemeMap = {
+                'SO': { bg: '#fef3c7', text: '#b45309', border: '#fde68a' },
+                'U': { bg: '#d1fae5', text: '#047857', border: '#a7f3d0' },
+                'M': { bg: '#cffafe', text: '#0369a1', border: '#bae6fd' },
+                'C': { bg: '#ffedd5', text: '#c2410c', border: '#fed7aa' },
+                'K': { bg: '#ffedd5', text: '#c2410c', border: '#fed7aa' },
+                'S': { bg: '#f3e8ff', text: '#7e22ce', border: '#e9d5ff' },
+                'DLL': { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' }
+              };
+              const theme = classThemeMap[metric.code] || { bg: '#f8fafc', text: '#475569', border: '#e2e8f0' };
+
+              return (
+                <div key={idx} style={{
+                  background: '#fff',
+                  border: '1px solid #e2e8f0',
+                  padding: '10px 14px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    background: theme.bg,
+                    color: theme.text,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: '900'
+                  }}>
+                    {metric.code || '🚚'}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>{metric.classification.toUpperCase()}</div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                      Total: <strong style={{ color: '#334155' }}>{metric.total} Truk</strong> | Rata-rata: <strong style={{ color: metric.total > 0 ? '#059669' : '#94a3b8' }}>{metric.avgText}</strong>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -734,13 +825,15 @@ function TruckQueuesTab() {
                   </tr>
                 ) : (
                   filteredQueues.slice(0, visibleCount).map((q, idx) => {
+                    const weighInDate = q.weighInAt || q.weigh_in_at;
                     const checkInDate = q.checkInAt || q.check_in_at;
                     const status = (q.status || 'WAITING').toUpperCase();
                     const checkOutDate = q.checkOutAt || q.check_out_at || (status === 'COMPLETED' ? (q.updatedAt || q.updated_at) : null);
                     
                     let handleTime = '-';
-                    if (checkInDate) {
-                      const start = new Date(checkInDate);
+                    const effectiveStart = weighInDate || (status === 'COMPLETED' ? checkInDate : null);
+                    if (effectiveStart) {
+                      const start = new Date(effectiveStart);
                       const end = checkOutDate ? new Date(checkOutDate) : new Date();
                       const diffMs = end - start;
                       if (diffMs >= 0) {
