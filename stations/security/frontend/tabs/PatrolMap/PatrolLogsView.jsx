@@ -8,6 +8,7 @@ function PatrolLogsView({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStation, setSelectedStation] = useState('ALL');
+  const [selectedOfficer, setSelectedOfficer] = useState('ALL');
   
   const todayStr = new Date().toISOString().split('T')[0];
   const [fromDate, setFromDate] = useState(todayStr);
@@ -63,8 +64,15 @@ function PatrolLogsView({ onBack }) {
         const formatTime = (d) => d ? d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\./g, ':') + ' WIB' : '-';
         const formatDate = (d) => d ? d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
+        const roundNum = item.round_number || 1;
+        const totalMaster = parseInt(item.total_master_stations || stations.length || 20, 10);
+        const orderDone = parseInt(item.checkpoint_order || 1, 10);
+        const sessionTotal = parseInt(item.session_total_scanned || orderDone, 10);
+        const pct = totalMaster > 0 ? Math.min(100, Math.round((orderDone / totalMaster) * 100)) : 0;
+
         parsedLogs.push({
           id: item.id || Math.random(),
+          sessionId: item.session_id,
           dateObj: verifiedAt,
           dateStr: verifiedAt.toISOString().split('T')[0],
           timeStr: formatTime(verifiedAt),
@@ -74,6 +82,11 @@ function PatrolLogsView({ onBack }) {
           endTimeStr: formatTime(completeAt),
           endDateStr: formatDate(completeAt),
           shift: item.shift || '-',
+          roundNum,
+          orderDone,
+          sessionTotal,
+          totalMaster,
+          progressPct: pct,
           officer,
           initial: officer.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
           station,
@@ -97,16 +110,18 @@ function PatrolLogsView({ onBack }) {
 
   useEffect(() => {
     fetchLogs();
-  }, [fromDate, toDate, isAllData]);
+  }, [fromDate, toDate, isAllData, stations.length]);
 
   const exportToExcel = () => {
     if (filteredLogs.length === 0) return alert("No logs to export");
     const exportData = filteredLogs.map((log, index) => ({
       "No": index + 1,
       "PIC Security": log.officer,
+      "Shift": log.shift,
+      "Round": `Round ${log.roundNum}`,
+      "Checkpoint Progress": `${log.orderDone}/${log.totalMaster} (${log.progressPct}%)`,
       "Start Time": log.startTimeStr !== '-' ? `${log.startDateStr} ${log.startTimeStr}` : '-',
       "End Time": log.endTimeStr !== '-' ? `${log.endDateStr} ${log.endTimeStr}` : '-',
-      "Shift": log.shift,
       "Location Checkpoint": log.station,
       "Verified Time": `${log.formattedDate} ${log.timeStr}`,
       "GPS Coordinates": log.coord,
@@ -119,19 +134,25 @@ function PatrolLogsView({ onBack }) {
     XLSX.writeFile(workbook, `PatrolLogs_${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`);
   };
 
+  // Unique officers present in logs
+  const officerList = Array.from(new Set(logs.map(l => l.officer).filter(Boolean))).sort();
+
   const filteredLogs = logs.filter(log => {
     const searchMatch = 
       log.officer.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.station.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.shift && log.shift.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      `round ${log.roundNum}`.includes(searchQuery.toLowerCase()) ||
       log.coord.toLowerCase().includes(searchQuery.toLowerCase());
 
     const stationMatch = selectedStation === 'ALL' || log.station === selectedStation;
+    const officerMatch = selectedOfficer === 'ALL' || log.officer === selectedOfficer;
 
-    return searchMatch && stationMatch;
+    return searchMatch && stationMatch && officerMatch;
   });
 
   const thStyle = {
-    padding: '12px 16px',
+    padding: '12px 14px',
     fontSize: '11px',
     fontWeight: '800',
     color: '#475569',
@@ -140,7 +161,7 @@ function PatrolLogsView({ onBack }) {
   };
 
   const tdStyle = {
-    padding: '12px 16px',
+    padding: '12px 14px',
     verticalAlign: 'middle'
   };
 
@@ -245,6 +266,69 @@ function PatrolLogsView({ onBack }) {
         </div>
       </div>
 
+      {/* ── TOP KPI SUMMARY CARDS ── */}
+      {(() => {
+        const totalMaster = stations.length > 0 ? stations.length : (logs[0]?.totalMaster || 25);
+        // Use filteredLogs for KPI cards so filters accurately reflect on metrics
+        const targetLogs = (selectedOfficer !== 'ALL' || selectedStation !== 'ALL') ? filteredLogs : logs;
+        
+        const uniqueSessions = new Set(targetLogs.map(l => l.sessionId).filter(Boolean));
+        const totalRounds = uniqueSessions.size || (targetLogs.length > 0 ? 1 : 0);
+        
+        // Count distinct officers in the current view
+        const activeOfficers = Array.from(new Set(targetLogs.map(l => l.officer).filter(Boolean)));
+        
+        // Count rounds that reached 100%
+        const completedRounds = Array.from(uniqueSessions).filter(sid => {
+          const sessLogs = targetLogs.filter(l => l.sessionId === sid);
+          return sessLogs.some(l => l.progressPct >= 100 || l.orderDone >= totalMaster);
+        }).length;
+
+        const totalScanned = targetLogs.length;
+
+        return (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '12px',
+            padding: '12px 24px',
+            background: '#ffffff',
+            borderBottom: '1px solid #f1f5f9'
+          }}>
+            <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Master Checkpoints</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>{totalMaster}</span>
+                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Active Stations</span>
+              </div>
+            </div>
+
+            <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {selectedOfficer !== 'ALL' ? `Rounds (${selectedOfficer})` : 'Total Patrol Rounds'}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>{totalRounds}</span>
+                <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700' }}>({completedRounds} Selesai 100%)</span>
+                {selectedOfficer === 'ALL' && activeOfficers.length > 0 && (
+                  <span style={{ fontSize: '11px', color: '#0284c7', fontWeight: '700', background: '#e0f2fe', padding: '1px 6px', borderRadius: '4px' }}>
+                    {activeOfficers.length} Petugas Aktif
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Checkpoints Verified</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>{totalScanned}</span>
+                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Scanned Logs</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── SEARCH & FILTERS BAR ── */}
       <div style={{
         padding: '14px 24px',
@@ -257,11 +341,11 @@ function PatrolLogsView({ onBack }) {
         flexWrap: 'wrap'
       }}>
         {/* Search Input */}
-        <div style={{ position: 'relative', flex: '1', minWidth: '240px' }}>
+        <div style={{ position: 'relative', flex: '1', minWidth: '220px' }}>
           <FaSearch style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '14px' }} />
           <input
             type="text"
-            placeholder="Search officer, station, coordinates..."
+            placeholder="Search officer, station, shift, round..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             style={{
@@ -273,13 +357,37 @@ function PatrolLogsView({ onBack }) {
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: '600',
-              outline: 'none'
+              outline: 'none',
+              boxSizing: 'border-box'
             }}
           />
         </div>
 
         {/* Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {/* PIC Security Officer Filter (Opsi B) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', padding: '4px 10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <span style={{ fontSize: '11px', fontWeight: '800', color: '#0284c7' }}>PIC</span>
+            <select
+              value={selectedOfficer}
+              onChange={e => setSelectedOfficer(e.target.value)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: '#0f172a',
+                fontSize: '13px',
+                fontWeight: '700',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="ALL">All Officers ({officerList.length})</option>
+              {officerList.map(off => (
+                <option key={off} value={off}>{off}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Station Selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', padding: '4px 10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
             <FaFilter style={{ color: '#64748b', fontSize: '12px' }} />
@@ -368,9 +476,10 @@ function PatrolLogsView({ onBack }) {
             <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 10, borderBottom: '2px solid #e2e8f0' }}>
               <tr>
                 <th style={thStyle}>PIC SECURITY</th>
+                <th style={thStyle}>SHIFT & ROUND</th>
+                <th style={{ ...thStyle, minWidth: '150px' }}>CHECKPOINT PROGRESS</th>
                 <th style={thStyle}>START TIME</th>
                 <th style={thStyle}>END TIME</th>
-                <th style={thStyle}>SHIFT</th>
                 <th style={thStyle}>LOCATION CHECKPOINT</th>
                 <th style={thStyle}>GPS COORDINATES</th>
                 <th style={thStyle}>PHOTO PROOF</th>
@@ -380,7 +489,7 @@ function PatrolLogsView({ onBack }) {
             <tbody>
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                       <FaClipboardList style={{ fontSize: '36px', color: '#cbd5e1' }} />
                       <span style={{ fontSize: '14px', fontWeight: '700', color: '#64748b' }}>NO PATROL LOGS FOUND</span>
@@ -389,70 +498,105 @@ function PatrolLogsView({ onBack }) {
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log, idx) => (
-                  <tr key={log.id || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
-                    
-                    {/* Officer / PIC Security */}
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          background: '#0f172a',
-                          color: '#ffdb3b',
-                          border: '1px solid #ffdb3b',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '11px',
-                          fontWeight: '800'
-                        }}>
-                          {log.initial}
+                filteredLogs.map((log, idx) => {
+                  const isComplete = log.progressPct >= 100 || log.orderDone >= log.totalMaster;
+                  const progressColor = isComplete ? '#10b981' : (log.progressPct >= 50 ? '#0284c7' : '#d97706');
+                  const progressBg = isComplete ? '#ecfdf5' : (log.progressPct >= 50 ? '#f0f9ff' : '#fffbeb');
+                  const progressBorder = isComplete ? '#a7f3d0' : (log.progressPct >= 50 ? '#bae6fd' : '#fde68a');
+
+                  return (
+                    <tr key={log.id || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                      
+                      {/* Officer / PIC Security */}
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            background: '#0f172a',
+                            color: '#ffdb3b',
+                            border: '1px solid #ffdb3b',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '11px',
+                            fontWeight: '800'
+                          }}>
+                            {log.initial}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>{log.officer}</div>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>Security Duty</div>
+                          </div>
                         </div>
-                        <div>
-                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>{log.officer}</div>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>Security Duty</div>
+                      </td>
+
+                      {/* Shift & Round */}
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <span style={{ background: '#f1f5f9', color: '#0f172a', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', border: '1px solid #cbd5e1', width: 'fit-content' }}>
+                            {log.shift}
+                          </span>
+                          <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>
+                            Round {log.roundNum}
+                          </span>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Start Time */}
-                    <td style={tdStyle}>
-                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.startTimeStr}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>{log.startDateStr}</div>
-                    </td>
-
-                    {/* End Time */}
-                    <td style={tdStyle}>
-                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.endTimeStr}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>{log.endDateStr}</div>
-                    </td>
-
-                    {/* Shift */}
-                    <td style={tdStyle}>
-                      <span style={{ background: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', border: '1px solid #cbd5e1' }}>
-                        {log.shift}
-                      </span>
-                    </td>
-
-                    {/* Location Checkpoint */}
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <FaMapMarkerAlt style={{ color: '#ef4444', fontSize: '14px' }} />
-                        <div>
-                          <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.station}</div>
-                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Verified: {log.timeStr}</div>
+                      {/* Checkpoint Progress & Percentage */}
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '130px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a', fontFamily: 'monospace' }}>
+                              {log.orderDone}/{log.totalMaster}
+                            </span>
+                            <span style={{ fontSize: '10px', fontWeight: '800', color: progressColor, background: progressBg, padding: '1px 5px', borderRadius: '4px', border: `1px solid ${progressBorder}` }}>
+                              {log.progressPct}% {isComplete ? '✓' : ''}
+                            </span>
+                          </div>
+                          {/* Mini Progress Bar */}
+                          <div style={{ width: '100%', height: '5px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{
+                              width: `${log.progressPct}%`,
+                              height: '100%',
+                              background: progressColor,
+                              borderRadius: '3px',
+                              transition: 'width 0.3s ease'
+                            }} />
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Coordinates */}
-                    <td style={tdStyle}>
-                      <code style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', color: '#334155', fontWeight: '700' }}>
-                        {log.coord}
-                      </code>
-                    </td>
+                      {/* Start Time */}
+                      <td style={tdStyle}>
+                        <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.startTimeStr}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>{log.startDateStr}</div>
+                      </td>
+
+                      {/* End Time */}
+                      <td style={tdStyle}>
+                        <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.endTimeStr}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>{log.endDateStr}</div>
+                      </td>
+
+                      {/* Location Checkpoint */}
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <FaMapMarkerAlt style={{ color: '#ef4444', fontSize: '14px' }} />
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{log.station}</div>
+                            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Verified: {log.timeStr}</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Coordinates */}
+                      <td style={tdStyle}>
+                        <code style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', color: '#334155', fontWeight: '700' }}>
+                          {log.coord}
+                        </code>
+                      </td>
 
                     {/* Photo Proof */}
                     <td style={tdStyle}>
@@ -512,7 +656,8 @@ function PatrolLogsView({ onBack }) {
                     </td>
 
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

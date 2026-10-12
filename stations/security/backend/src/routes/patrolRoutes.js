@@ -326,7 +326,17 @@ router.get('/logs', async (req, res) => {
     }
 
     const [rows] = await dbPool.query(`
-      SELECT c.*, s.guard_name, s.guard_id, s.started_at, s.completed_at, s.shift 
+      SELECT 
+        c.*, 
+        s.guard_name, 
+        s.guard_id, 
+        s.started_at, 
+        s.completed_at, 
+        s.shift,
+        s.round_number,
+        (SELECT COUNT(*) FROM security_session_checkpoints sc WHERE sc.session_id = c.session_id AND sc.verified_at <= c.verified_at) as checkpoint_order,
+        (SELECT COUNT(*) FROM security_session_checkpoints sc WHERE sc.session_id = c.session_id) as session_total_scanned,
+        (SELECT COUNT(*) FROM security_stations WHERE is_active = 1) as total_master_stations
       FROM security_session_checkpoints c
       JOIN security_patrol_sessions s ON c.session_id = s.id
       WHERE c.status = 'verified' 
