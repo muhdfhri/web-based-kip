@@ -58,6 +58,14 @@ router.post('/login', async (req, res) => {
 	console.error('[AuthLog] Error:', err);	
     });
 
+    // Set HTTP-only cookie valid for 30 days (1 month)
+    res.cookie('kip_token', token, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      sameSite: 'lax',
+      path: '/'
+    });
+
     res.json({
       success: true,
       token,
@@ -71,6 +79,7 @@ router.post('/login', async (req, res) => {
 
 // POST /auth/logout
 router.post('/logout', (_req, res) => {
+  res.clearCookie('kip_token', { path: '/' });
   res.json({ success: true, message: 'Logged out' });
 });
 
