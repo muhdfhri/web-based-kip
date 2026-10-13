@@ -148,11 +148,20 @@ router.get('/next-sequence/:code', async (req, res) => {
  */
 const getQueueList = async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, startDate, endDate, start_date, end_date } = req.query;
     let whereClause = '';
     const params = [];
 
-    if (date) {
+    const fromDate = startDate || start_date;
+    const toDate = endDate || end_date;
+
+    if (fromDate && toDate) {
+      whereClause = 'WHERE DATE(COALESCE(q.check_in_at, q.created_at)) >= ? AND DATE(COALESCE(q.check_in_at, q.created_at)) <= ?';
+      params.push(fromDate, toDate);
+    } else if (fromDate) {
+      whereClause = 'WHERE DATE(COALESCE(q.check_in_at, q.created_at)) = ?';
+      params.push(fromDate);
+    } else if (date) {
       whereClause = 'WHERE DATE(COALESCE(q.check_in_at, q.created_at)) = ?';
       params.push(date);
     }
