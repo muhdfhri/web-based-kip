@@ -60,9 +60,16 @@ router.get('/live', (req, res) => {
   }
   const ids = [...new Set(values.map(Number))];
   const query = new URLSearchParams({ ids: ids.join(',') });
+  if (req.query.fps !== undefined) {
+    const fps = String(req.query.fps);
+    if (!/^\d+$/.test(fps) || Number(fps) < 1 || Number(fps) > 30) {
+      return res.status(400).json({ success: false, message: 'Invalid preview FPS' });
+    }
+    query.set('fps', String(Number(fps)));
+  }
   if (req.query.width !== undefined) {
     const width = String(req.query.width);
-    if (!/^\d+$/.test(width) || Number(width) < 320 || Number(width) > 1280) {
+    if (!/^\d+$/.test(width) || Number(width) < 160 || Number(width) > 1280) {
       return res.status(400).json({ success: false, message: 'Invalid preview width' });
     }
     query.set('width', String(Number(width)));

@@ -1,5 +1,58 @@
 # Analisis CCTV feed — 14 Oktober 2026
 
+## Pemeriksaan lanjutan setelah deployment
+
+Pada server pengguna, commit `c42f8e8` sudah di-pull tetapi PM2 masih menjalankan
+entry lama `app.py`. Proses Python lain tetap memegang port 4101 setelah entry
+PM2 dihentikan. Setelah proses itu diidentifikasi dan dihentikan, service
+didaftarkan ulang dari ecosystem menggunakan `run-service.cjs`. Endpoint lalu
+menampilkan diagnostik versi baru; 46 kamera menjadi LIVE dan kamera ID 35
+tetap OFFLINE dengan RTSP 404. Semua reader pada sampel berikutnya masih idle
+ketika layar pengguna menunjukkan seluruh grid RECONNECT. Ini mempersempit
+pemeriksaan ke jalur delivery/subscription, bukan kegagalan seluruh RTSP.
+
+Pemeriksaan langsung melalui domain `kip.premier-engineering.my.id` memakai
+47 ID dan 18 kamera terlihat, preview 320 piksel, selama 20,04 detik. Dengan
+receiver yang membaca binary tanpa decode/render, hasilnya: first byte 0,40
+detik, throughput 1,51 MB/detik, median penerimaan 7,4 FPS per kamera,
+backlog relatif terhadap clock send maksimum 6.554,2 ms, dan 2.759 packet
+melewati ambang backlog 1.500 ms. HTTP mengembalikan 200 dan stream tetap
+mengirim status LIVE. Pengujian sengaja dihentikan setelah 20 detik; exit curl
+28 pada probe ini adalah batas durasi, bukan bukti stream mati sendiri.
+
+Ini membuktikan adanya backlog pada jalur domain dalam kondisi pengukuran
+tersebut. Lokasi hambatan spesifik (proxy/tunnel/jaringan) belum terisolasi, dan
+kapasitas jalur dapat berubah. Backlog seperti ini memicu pemulihan koneksi
+browser. Membuka socket baru dengan beban JPEG yang sama belum cukup.
+
+Patch lanjutan menurunkan ukuran grid saat backlog menetap: dari permintaan
+awal berbasis tile, dibagi dua sampai minimum 160 piksel. Jika masih tertinggal,
+FPS pengiriman diturunkan hanya pada koneksi penonton tersebut. Batas global
+tetap 30; reader kamera, penonton lain, snapshot, dan resolusi fullscreen tetap
+independen. Fullscreen mempunyai budget FPS tersendiri. Resolusi/FPS grid bisa
+lebih rendah ketika koneksi terbatas; ini adalah tradeoff eksplisit untuk
+mengirim gambar terbaru, bukan jaminan 30 FPS pada bandwidth berapa pun.
+
+Regresi lanjutan: 23 tes Python, 10 tes transport browser, dan satu tes
+CRUD/proxy terisolasi. Build frontend juga diuji. Tes transport mencakup
+backlog menetap, pengurangan width, fallback FPS, pemulihan semua kamera,
+berhentinya reconnect berulang, dan pemisahan budget fullscreen. Ada juga
+pemeriksaan throughput dari selisih sequence producer: koneksi yang hanya
+mengirim sebagian kecil frame tanpa timestamp backlog tetap dapat mengurangi
+beban. Producer yang memang lambat tidak otomatis dianggap sebagai masalah
+delivery.
+
+Uji integrasi browser lanjutan menggunakan 47 channel fixture (24 tile
+terlihat), source sequence 30 FPS, dan proxy Transform yang membatasi transfer
+sekitar 1,5 MB/detik. Dalam 30,68 detik, ada dua penyesuaian awal (tiga
+connection attempts total), lalu budget menjadi preview 160 piksel/15 FPS.
+Median FPS paint pada 10 detik terakhir adalah 15; semua 47 channel berstatus
+LIVE pada sampel pengamatan, tanpa error browser. Ini fixture JPEG/sequence,
+bukan jaminan FPS seluruh kamera nyata. Pembatasan hanya digunakan di server
+tes terpisah dan tidak dipasang pada proxy produksi.
+
+Bagian di bawah mencatat analisis dan pengujian awal sebelum follow-up ini.
+
 Perbaikan dibatasi pada jalur CCTV: RTSP preview, pengiriman live, proxy CCTV,
 decoder/renderer browser, diagnostik, dan tesnya. Kode inference AI, logsheet,
 dashboard, database kamera produksi, dan pengaturan rekaman NVR tidak diubah.

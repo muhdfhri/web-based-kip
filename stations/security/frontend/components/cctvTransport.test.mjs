@@ -90,6 +90,97 @@ test('backlog detection ignores clock offset and catches continuously arriving d
     assert.equal(clock.backlog({ age_ms: 20 }, 2400), 0); // older protocol
 });
 
+test('sustained bandwidth backlog reduces grid pixels once and restores healthy playback', async () => {
+    const urls = [], statuses = new Map(), unsubscribe = [];
+    let delayed = false;
+    const server = http.createServer((req, res) => {
+        const url = new URL(req.url, 'http://localhost'); urls.push(url);
+        const width = Number(url.searchParams.get('width'));
+        const fps = Number(url.searchParams.get('fps'));
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+        let sequence = 0;
+        const send = () => {
+            sequence++;
+            for (let id = 1; id <= 18; id++) res.write(packet(id, sequence, {
+                sent_ms: performance.now() - (delayed && sequence > 2 && (width > 160 || fps > 15) ? 2500 : 0),
+                jpeg_width: width, jpeg_height: Math.round(width * 9 / 16),
+            }));
+        };
+        send(); const timer = setInterval(send, 33);
+        res.on('close', () => clearInterval(timer));
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    globalThis.window = { location: { href: origin }, addEventListener() {} };
+    globalThis.document = { hidden: false, addEventListener() {} };
+    globalThis.createImageBitmap = async (_blob, settings) => ({
+        width: settings?.resizeWidth || 320, height: settings?.resizeHeight || 180, close() {},
+    });
+    const canvas = fit => ({ dataset: { fit }, clientWidth: 320, clientHeight: 180,
+        getContext: () => ({ fillRect() {}, drawImage() {} }) });
+    try {
+        for (let id = 1; id <= 18; id++) unsubscribe.push(subscribeCctv(`${origin}/api/security/cctv/stream/${id}`,
+            canvas('cover'), status => statuses.set(id, status)));
+        await waitFor(() => [...statuses.values()].filter(status => status === 'live').length === 18);
+        assert.equal(urls[0].searchParams.get('width'), '320');
+        delayed = true;
+        await waitFor(() => urls.length === 3 && [...statuses.values()].every(status => status === 'live'), 7000);
+        assert.equal(urls[1].searchParams.get('width'), '160');
+        assert.equal(urls[2].searchParams.get('width'), '160');
+        assert.equal(urls[2].searchParams.get('fps'), '15');
+        assert.equal(getCctvDiagnostics()[0].bandwidthAdaptations, 2);
+        const before = getCctvDiagnostics()[0].cameras[0].decodedFrames;
+        await new Promise(resolve => setTimeout(resolve, 400));
+        assert.ok(getCctvDiagnostics()[0].cameras[0].decodedFrames - before >= 8, 'adaptation must retain high decode rate');
+        assert.equal(urls.length, 3, 'adapted preview must stop the reconnect loop');
+        delayed = false;
+        unsubscribe.push(subscribeCctv(`${origin}/api/security/cctv/stream/1`, canvas('contain'), () => {}));
+        await waitFor(() => urls.length === 4);
+        assert.equal(urls[3].searchParams.get('focus'), '1');
+        assert.equal(urls[3].searchParams.get('width'), '320', 'grid bandwidth adaptation must not reduce fullscreen detail');
+        assert.equal(urls[3].searchParams.get('fps'), '30', 'fullscreen has an independent delivery budget');
+    } finally {
+        unsubscribe.forEach(fn => fn());
+        server.closeAllConnections();
+        await new Promise(resolve => server.close(resolve));
+    }
+});
+
+test('backpressure that skips source sequences adapts without timestamp backlog', async () => {
+    const widths = [], unsubscribe = [];
+    let status;
+    const server = http.createServer((req, res) => {
+        const width = Number(new URL(req.url, 'http://localhost').searchParams.get('width'));
+        widths.push(width);
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+        let sequence = 0;
+        const send = () => {
+            sequence += width > 160 ? 3 : 1;
+            res.write(packet(1, sequence, { sent_ms: performance.now(), jpeg_width: width,
+                jpeg_height: Math.round(width * 9 / 16) }));
+        };
+        send(); const timer = setInterval(send, width > 160 ? 100 : 33);
+        res.on('close', () => clearInterval(timer));
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    globalThis.window = { location: { href: origin }, addEventListener() {} };
+    globalThis.document = { hidden: false, addEventListener() {} };
+    globalThis.createImageBitmap = async () => ({ width: 160, height: 90, close() {} });
+    const canvas = { dataset: { fit: 'cover' }, clientWidth: 320, clientHeight: 180,
+        getContext: () => ({ fillRect() {}, drawImage() {} }) };
+    try {
+        unsubscribe.push(subscribeCctv(`${origin}/api/security/cctv/stream/1`, canvas, next => { status = next; }));
+        await waitFor(() => widths.length === 2 && status === 'live', 7500);
+        assert.deepEqual(widths, [320, 160]);
+        assert.equal(getCctvDiagnostics()[0].droppedBacklog, 0);
+        assert.equal(getCctvDiagnostics()[0].requestedFps, 30, 'pixel adaptation is preferred over lowering FPS');
+    } finally {
+        unsubscribe.forEach(fn => fn());server.closeAllConnections();
+        await new Promise(resolve => server.close(resolve));
+    }
+});
+
 test('large coalesced chunks of valid frames do not reset all cameras', () => {
     const jpeg = Buffer.alloc(1024 * 1024);
     const header = Buffer.from(JSON.stringify({ camera_id: 1, length: jpeg.length }));

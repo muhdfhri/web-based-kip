@@ -139,7 +139,9 @@ function streamUrl(group) {
         }
     }
     // Quantize to avoid reconnecting for tiny layout rounding changes.
-    url.searchParams.set('width', String(Math.min(1280, Math.ceil(width / 80) * 80)));
+    const previewWidth = focus ? width : width * group.previewScale;
+    url.searchParams.set('width', String(Math.max(160, Math.min(1280, Math.ceil(previewWidth / 80) * 80))));
+    url.searchParams.set('fps', String(group.transportFps));
     return url;
 }
 
@@ -213,7 +215,16 @@ function stop(group) {
         source.pending = null;
         source.frameEpoch++;
         source.nativeSize = null;
+        source.rateWindow = null;
     }
+}
+
+function adaptDelivery(group, url) {
+    if (!group.focusId && Number(url.searchParams.get('width')) > 160) group.previewScale /= 2;
+    else if (group.transportFps > 1) group.transportFps = Math.max(1, Math.floor(group.transportFps / 2));
+    else return false;
+    group.bandwidthAdaptations++;
+    return true;
 }
 
 async function connect(group) {
@@ -222,12 +233,19 @@ async function connect(group) {
     const generation = group.generation;
     const controller = new AbortController();
     group.controller = controller;
+    const nextFocus = focused(group)?.[0] || null;
+    if (nextFocus !== group.focusId) {
+        if (group.focusId) group.focusFps = group.transportFps;
+        else group.gridFps = group.transportFps;
+        group.transportFps = nextFocus ? group.focusFps : group.gridFps;
+    }
     const url = streamUrl(group);
     group.signature = url.href;
     group.focusId = url.searchParams.get('focus');
     group.connections++;
     let receivedAt = performance.now();
     let behindSince = null;
+    let retryDelay = 1500;
     let reader;
     const watchdog = setInterval(() => {
         if (performance.now() - receivedAt > 12000) {
@@ -256,6 +274,13 @@ async function connect(group) {
                     // Discard transient backlog without disconnecting every camera.
                     // Only a sustained backlog needs a fresh TCP connection.
                     behindSince ??= receivedAt;
+                    if (receivedAt - behindSince > 2000 && adaptDelivery(group, url)) {
+                        // A fresh socket alone cannot fix sustained insufficient
+                        // bandwidth. Reduce grid pixels first, then delivery FPS
+                        // for this viewer only. Fullscreen retains its detail.
+                        retryDelay = 100;
+                        throw new Error('CCTV bandwidth backlog; adapting preview delivery');
+                    }
                     if (receivedAt - behindSince > 8000) throw new Error('CCTV connection behind live video');
                     continue;
                 }
@@ -272,6 +297,24 @@ async function connect(group) {
                 const display = wantsImage(group, String(meta.camera_id), source);
                 if (!display) notify(source, 'live');
                 if (!jpeg.length || document.hidden || !display) continue;
+                if (Number.isSafeInteger(meta.sequence)) {
+                    source.rateWindow ??= { started: receivedAt, sequence: meta.sequence, frames: 0 };
+                    const window = source.rateWindow;
+                    window.frames++;
+                    const seconds = (receivedAt - window.started) / 1000;
+                    if (seconds >= 5) {
+                        const delivered = (window.frames - 1) / seconds;
+                        const produced = (meta.sequence - window.sequence) / seconds;
+                        // TCP backpressure may skip sequences without accumulating
+                        // timestamp backlog. Detect missing delivery capacity too.
+                        if (produced > 0 && delivered < Math.min(produced, group.transportFps) * .7
+                            && adaptDelivery(group, url)) {
+                            retryDelay = 100;
+                            throw new Error('CCTV delivery capacity below producer rate; adapting preview delivery');
+                        }
+                        source.rateWindow = { started: receivedAt, sequence: meta.sequence, frames: 1 };
+                    }
+                }
                 // At most one pending frame per camera. Slow clients drop old frames.
                 if (source.pending) source.droppedFrames++;
                 source.pending = { jpeg, meta, generation, frameEpoch: source.frameEpoch };
@@ -290,7 +333,7 @@ async function connect(group) {
         controller.abort();
         if (reader) { try { await reader.cancel(); } catch { /* already closed */ } }
         if (generation === group.generation && group.sources.size && !document.hidden) {
-            group.retry = setTimeout(() => { void connect(group); }, 1500);
+            group.retry = setTimeout(() => { void connect(group); }, retryDelay);
         }
     }
 }
@@ -312,7 +355,8 @@ export function subscribeCctv(src, canvas, listener) {
     let group = groups.get(endpoint);
     if (!group) {
         group = { endpoint, sources: new Map(), generation: 0, controller: null, dirty: new Set(), paint: null,
-            decodeQueue: new Set(), activeDecodes: 0, connections: 0, droppedBacklog: 0, lastError: null };
+            decodeQueue: new Set(), activeDecodes: 0, connections: 0, droppedBacklog: 0, lastError: null,
+            previewScale: 1, transportFps: 30, gridFps: 30, focusFps: 30, bandwidthAdaptations: 0 };
         groups.set(endpoint, group);
     }
     let source = group.sources.get(id);
@@ -391,7 +435,9 @@ export function getCctvDiagnostics() {
     return [...groups.values()].map(group => ({
         connections: group.connections, activeDecodes: group.activeDecodes,
         queuedDecodes: group.decodeQueue.size, droppedBacklog: group.droppedBacklog,
-        lastError: group.lastError,
+        lastError: group.lastError, bandwidthAdaptations: group.bandwidthAdaptations,
+        requestedWidth: group.signature ? Number(new URL(group.signature).searchParams.get('width')) : null,
+        requestedFps: group.transportFps,
         cameras: [...group.sources.values()].map(source => ({
             cameraId: source.id, status: source.status, decodedFrames: source.frameSerial,
             droppedFrames: source.droppedFrames, decodeErrors: source.decodeErrors,

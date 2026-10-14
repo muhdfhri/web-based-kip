@@ -60,6 +60,49 @@ class StreamRegressionTests(unittest.TestCase):
         self.assertNotIn('large', manager.viewer_widths)
         self.assertEqual(manager.requested_preview_width(11), streams.WIDTH)
 
+    def test_bandwidth_preview_accepts_160_without_affecting_fullscreen_dimensions(self):
+        import numpy as np
+        manager = streams.CameraStreamManager.__new__(streams.CameraStreamManager)
+        manager.camera_id = 1
+        manager.lock = threading.Lock()
+        manager.viewer_widths = {}
+        manager.last_frame_at = time.monotonic()
+        manager.latest_jpeg = b'preview'
+        manager.latest_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        manager.source_shape = [1280, 720]
+        manager.jpeg_shape = [160, 90]
+        manager.sequence = 1
+        manager.detail_sequence = -1
+        manager.detail_jpeg = None
+        meta, _ = manager.get_packet(preview_width=160, viewer_key='slow-viewer')
+        self.assertEqual(manager.requested_preview_width(time.monotonic()), 160)
+        self.assertEqual((meta['jpeg_width'], meta['jpeg_height']), (160, 90))
+        meta, _ = manager.get_packet(detail=True, preview_width=160, viewer_key='slow-viewer')
+        self.assertEqual((meta['jpeg_width'], meta['jpeg_height']), (1280, 720))
+
+    def test_viewer_delivery_fps_samples_latest_sequence_without_changing_global_limit(self):
+        import json
+        clock = [0]
+        class Reader:
+            running = True
+            def get_packet(self, **kw):
+                return {'camera_id': 1, 'sequence': round(clock[0] * 30), 'status': 'live'}, b'jpeg'
+        reader = Reader()
+        def tick(_): clock[0] += 1 / 60
+        with patch.object(streams, 'get_stream_manager', return_value=reader), \
+                patch.object(streams.time, 'monotonic', side_effect=lambda: clock[0]), \
+                patch.object(streams.time, 'sleep', side_effect=tick):
+            generator = streams.generate_combined_stream([1], {1: {'id': 1}}, preview_fps=15)
+            sequences = []
+            for _ in range(76):
+                data = next(generator)
+                size = struct.unpack('!I', data[:4])[0]
+                sequences.append(json.loads(data[4:4 + size])['sequence'])
+            generator.close()
+        self.assertEqual(len(set(sequences)), 76)
+        self.assertAlmostEqual(clock[0], 5, places=5)
+        self.assertEqual(sequences[-1], 150)
+
     def test_batched_delivery_preserves_all_47_packet_boundaries(self):
         import json
         class Reader:
@@ -127,6 +170,9 @@ class StreamRegressionTests(unittest.TestCase):
         self.assertEqual(client.get('/api/security-ai/live?ids=1,-2').status_code, 400)
         self.assertEqual(client.get('/api/security-ai/live?ids=1&width=bad').status_code, 400)
         self.assertEqual(client.get('/api/security-ai/live?ids=1&width=2000').status_code, 400)
+        self.assertEqual(client.get('/api/security-ai/live?ids=1&width=159').status_code, 400)
+        self.assertEqual(client.get('/api/security-ai/live?ids=1&fps=0').status_code, 400)
+        self.assertEqual(client.get('/api/security-ai/live?ids=1&fps=31').status_code, 400)
         with patch('routes.stream_routes.get_camera_info_by_id', return_value={'is_active': 0}):
             self.assertEqual(client.get('/api/security-ai/stream?camera_id=1').status_code, 409)
 

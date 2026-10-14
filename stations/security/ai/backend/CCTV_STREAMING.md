@@ -1,7 +1,7 @@
 # CCTV live preview
 
 The grid and fullscreen use one binary HTTP connection through
-`/api/security/cctv/live?ids=18,19,...&view=18,19,...&focus=18&width=320`.
+`/api/security/cctv/live?ids=18,19,...&view=18,19,...&focus=18&width=320&fps=30`.
 The gateway forwards to `/api/security-ai/live` on port 4101. `ids` includes up
 to 256 positive IDs. `view` selects visible tiles; omitting it sends every image,
 and an empty value sends statuses only. `focus` selects a fullscreen JPEG up to
@@ -42,13 +42,16 @@ and enabling the camera; no per-camera process/deployment configuration is neede
 Camera name/code are optional when adding a camera; saving only a valid RTSP URL
 automatically creates them, defaults to Security, and enables the camera. The
 management form retains a usable default station if the station API is unavailable.
-The browser sends a grid preview `width` between 320 and 1280 based on visible
+The browser initially sends a grid preview `width` between 320 and 1280 based on visible
 tile dimensions, rounded up in 80-pixel increments. Readers use the largest active
 viewer's requested width, capped by `CCTV_PREVIEW_WIDTH`; viewer requests expire
 after two seconds. This reduces grid JPEG size without reducing the source frame,
 fullscreen detail, or main-stream snapshots. Existing clients without `width`
 retain the configured preview size. A ResizeObserver updates the subscription
 when the grid layout changes.
+The endpoint also accepts widths down to 160 for bandwidth adaptation, and an
+optional per-viewer `fps` from 1 to 30. Lower delivery rates sample the newest
+shared frame; they do not change capture FPS, snapshots, or other viewers.
 
 Hikvision `*01` URLs are tried as `*02` substreams, falling back independently to
 the stored URL after two failures. Other RTSP paths are used as entered. Snapshot
@@ -89,6 +92,19 @@ are discarded; only backlog sustained for eight seconds reopens transport.
 Transient backlog no longer reconnects every tile. Actual connection loss or a
 12-second stream stall still retries. An individual stale/offline camera affects
 only itself. Subscription changes retain healthy camera statuses.
+If backlog exceeds 1.5 seconds continuously for two seconds, grid width is
+halved first, down to 160 pixels. If that is still insufficient, only this
+connection's delivery FPS is halved, down to 1 FPS. Each adaptation reopens the
+connection after 100 ms to discard the obsolete TCP backlog. The chosen budget
+is retained for the current group rather than repeatedly retrying the same
+overloaded resolution/rate. Grid and fullscreen have separate FPS budgets;
+fullscreen detail resolution is retained. This trades grid detail/rate for
+freshness only when the delivery path cannot sustain the initial request.
+Backpressure can also discard producer sequences without a growing timestamp
+backlog. A five-second receive window compares unique received JPEGs against
+the producer sequence rate and current delivery limit. Below 70% of that rate,
+the same adaptation is applied. Low camera/producer FPS by itself is not treated
+as insufficient delivery capacity.
 
 Hidden tabs close viewing HTTP connections and resume when visible; unmount
 aborts fetch and the gateway releases upstream. Camera lists refresh every five
@@ -109,7 +125,8 @@ These are actual unique bitmap paints rather than completed JPEG decode counts.
 Measure the difference in counts over elapsed seconds to obtain displayed FPS.
 The `getCctvDiagnostics()` export from `cctvTransport.js` reports decode queue
 sizes, connection attempts, decode errors, dropped frames/backlog, bitmap sizes,
-and the last transport error, without RTSP credentials.
+and the last transport error, without RTSP credentials. It also includes
+`bandwidthAdaptations`, `requestedWidth`, and `requestedFps`.
 
 From `stations/security/ai/backend`:
 

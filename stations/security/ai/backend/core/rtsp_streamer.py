@@ -230,7 +230,7 @@ class CameraStreamManager:
             self.last_used = time.monotonic()
         with self.lock:
             if viewing and hasattr(self, 'viewer_widths'):
-                width = WIDTH if preview_width is None else max(320, min(WIDTH, preview_width))
+                width = WIDTH if preview_width is None else max(160, min(WIDTH, preview_width))
                 self.viewer_widths[viewer_key] = (self.last_used + 2, width)
             age = time.monotonic() - self.last_frame_at
             live = self.latest_jpeg is not None and age < STALE_SECONDS
@@ -352,17 +352,20 @@ def frame_packet(meta, jpeg=b''):
     return struct.pack('!I', len(header)) + header + jpeg
 
 
-def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids=None, batch=False, preview_width=None):
+def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids=None, batch=False, preview_width=None, preview_fps=None):
     managers = {cid: get_stream_manager(cid, preview=True, camera_info=camera_infos[cid])
                 for cid in camera_ids if cid in camera_infos}
     last_sent = {}
     refresh_at = time.monotonic() + 5
     viewer_key = object()
     config_snapshot = None
+    delivery_fps = min(FPS, preview_fps or FPS)
+    delivery_pacer = FramePacer(delivery_fps)
     while True:
         started = time.monotonic()
         packets = []
         packet_bytes = 0
+        images_due = delivery_pacer.due(started)
         if started >= refresh_at or _camera_infos_cache is not config_snapshot:
             # Preserve target functionality: saved URL/activation edits reach existing viewers.
             # A transient DB outage keeps the last configuration until the next retry.
@@ -400,6 +403,11 @@ def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids
                     meta, _ = manager.get_packet(viewing=False)
                     jpeg = b''
                 meta['camera_id'] = cid  # aliases can share a reader
+            if delivery_fps < FPS and not images_due and meta['status'] == 'live' \
+                    and (viewed_ids is None or cid in viewed_ids):
+                # Per-viewer delivery pacing never changes the shared reader,
+                # snapshots, or other viewers. Sample the newest frame when due.
+                continue
             previous = last_sent.get(cid)
             state = (meta['sequence'] if viewed_ids is None or cid in viewed_ids else 0, meta['status'])
             if previous and previous[0] == state and started - previous[1] < 1:
