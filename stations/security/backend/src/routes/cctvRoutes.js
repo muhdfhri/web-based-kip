@@ -60,6 +60,13 @@ router.get('/live', (req, res) => {
   }
   const ids = [...new Set(values.map(Number))];
   const query = new URLSearchParams({ ids: ids.join(',') });
+  if (req.query.width !== undefined) {
+    const width = String(req.query.width);
+    if (!/^\d+$/.test(width) || Number(width) < 320 || Number(width) > 1280) {
+      return res.status(400).json({ success: false, message: 'Invalid preview width' });
+    }
+    query.set('width', String(Number(width)));
+  }
   if (req.query.view !== undefined) {
     const viewed = String(req.query.view).split(',').filter(Boolean);
     if (viewed.some(value => !validId(value) || !ids.includes(Number(value)))) {

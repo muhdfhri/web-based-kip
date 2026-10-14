@@ -7,6 +7,83 @@ from core import rtsp_streamer as streams
 
 
 class StreamRegressionTests(unittest.TestCase):
+    def test_live_config_snapshot_avoids_database_in_delivery_loop_and_preserves_aliases(self):
+        cached = {1: {'id': 1, 'rtsp_url': 'rtsp://one'}, 2: {'id': 2, 'rtsp_url': 'rtsp://one'}}
+        supervisor = unittest.mock.Mock()
+        supervisor.is_alive.return_value = True
+        with patch.object(streams, '_camera_infos_cache', cached), \
+                patch.object(streams, '_service_thread', supervisor), \
+                patch.object(streams, 'get_camera_infos', side_effect=RuntimeError('database unavailable')) as database:
+            self.assertEqual(streams.get_live_camera_infos([1, 2, 3]), cached)
+            database.assert_not_called()
+            cached.pop(1)
+            self.assertEqual(streams.get_live_camera_infos([1, 2]), {2: cached[2]})
+
+    def test_measured_fps_reports_unique_encodes_including_idle_and_stalled(self):
+        from collections import deque
+        manager = streams.CameraStreamManager.__new__(streams.CameraStreamManager)
+        manager.lock = threading.Lock()
+        with patch.object(streams.time, 'monotonic', return_value=10):
+            manager.recent_frames = deque(9 + i / 20 for i in range(21))
+            self.assertEqual(manager.measured_fps(), 20)
+            manager.recent_frames = deque([7, 8, 9, 10])
+            self.assertEqual(manager.measured_fps(), 1)
+            manager.recent_frames = deque([1, 2])
+            self.assertEqual(manager.measured_fps(), 0)
+
+    def test_preview_metadata_preserves_aspect_and_fullscreen_resolution(self):
+        import numpy as np
+        manager = streams.CameraStreamManager.__new__(streams.CameraStreamManager)
+        manager.camera_id = 1
+        manager.lock = threading.Lock()
+        manager.last_frame_at = time.monotonic()
+        manager.latest_jpeg = b'preview'
+        manager.latest_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        manager.source_shape = [1280, 720]
+        manager.sequence = 1
+        manager.detail_sequence = -1
+        manager.detail_jpeg = None
+        meta, _ = manager.get_packet()
+        width = min(1280, streams.WIDTH)
+        self.assertEqual((meta['jpeg_width'], meta['jpeg_height']), (width, round(720 * width / 1280)))
+        meta, jpeg = manager.get_packet(detail=True)
+        self.assertEqual((meta['jpeg_width'], meta['jpeg_height']), (1280, 720))
+        decoded = streams.cv2.imdecode(np.frombuffer(jpeg, dtype=np.uint8), streams.cv2.IMREAD_COLOR)
+        self.assertEqual(decoded.shape[:2], (720, 1280))
+
+    def test_preview_width_uses_largest_active_viewer_and_expires_closed_viewers(self):
+        manager = streams.CameraStreamManager.__new__(streams.CameraStreamManager)
+        manager.lock = threading.Lock()
+        manager.viewer_widths = {'small': (10, 320), 'large': (8, streams.WIDTH)}
+        self.assertEqual(manager.requested_preview_width(7), max(320, streams.WIDTH))
+        self.assertEqual(manager.requested_preview_width(9), 320)
+        self.assertNotIn('large', manager.viewer_widths)
+        self.assertEqual(manager.requested_preview_width(11), streams.WIDTH)
+
+    def test_batched_delivery_preserves_all_47_packet_boundaries(self):
+        import json
+        class Reader:
+            running = True
+            def __init__(self, cid): self.cid = cid
+            def get_packet(self, **kw):
+                self.preview_width = kw['preview_width']
+                return {'camera_id': self.cid, 'sequence': 1, 'status': 'live'}, b'jpeg'
+        ids = list(range(1, 48))
+        readers = {cid: Reader(cid) for cid in ids}
+        with patch.object(streams, 'get_stream_manager', side_effect=lambda cid, **kw: readers[cid]):
+            generator = streams.generate_combined_stream(ids, {cid: {'id': cid} for cid in ids}, batch=True, preview_width=320)
+            data = next(generator)
+            generator.close()
+        received = []
+        while data:
+            size = struct.unpack('!I', data[:4])[0]
+            meta = json.loads(data[4:4 + size])
+            self.assertEqual(data[4 + size:4 + size + meta['length']], b'jpeg')
+            received.append(meta['camera_id'])
+            data = data[4 + size + meta['length']:]
+        self.assertEqual(received, ids)
+        self.assertTrue(all(reader.preview_width == 320 for reader in readers.values()))
+
     def test_status_inspection_does_not_start_disabled_or_idle_camera(self):
         row = {'id': 1, 'is_active': 0, 'rtsp_url': 'rtsp://example/test'}
         with patch.object(streams, 'get_camera_info_by_id', return_value=row), \
@@ -48,6 +125,8 @@ class StreamRegressionTests(unittest.TestCase):
         client = app.test_client()
         self.assertEqual(client.get('/api/security-ai/stream?camera_id=bad').status_code, 400)
         self.assertEqual(client.get('/api/security-ai/live?ids=1,-2').status_code, 400)
+        self.assertEqual(client.get('/api/security-ai/live?ids=1&width=bad').status_code, 400)
+        self.assertEqual(client.get('/api/security-ai/live?ids=1&width=2000').status_code, 400)
         with patch('routes.stream_routes.get_camera_info_by_id', return_value={'is_active': 0}):
             self.assertEqual(client.get('/api/security-ai/stream?camera_id=1').status_code, 409)
 

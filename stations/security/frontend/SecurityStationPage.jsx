@@ -239,6 +239,7 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
             />
 
             <CctvModal
+                cctvCameras={cctvCameras}
                 selectedCctv={selectedCctv}
                 setSelectedCctv={setSelectedCctv}
             />

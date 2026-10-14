@@ -72,6 +72,8 @@ test('RTSP CRUD, imported code collisions and concurrent saves need no per-camer
     assert.equal((await request(`/${saved.id}`, 'DELETE')).status, 200);
     assert.equal((await request(`/${saved.id}`, 'DELETE')).status, 404);
     assert.equal((await request('/live?ids=1&view=2')).status, 400);
+    assert.equal((await request('/live?ids=1&width=bad')).status, 400);
+    assert.equal((await request('/live?ids=1&width=2000')).status, 400);
     const rtspOnly = await request('', 'POST', { rtsp_url: 'rtsp://example.invalid/rtsp-only' });
     assert.equal(rtspOnly.status, 201);
     const automatic = (await request()).data.find(item => item.id === rtspOnly.id);

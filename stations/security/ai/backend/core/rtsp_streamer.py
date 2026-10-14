@@ -9,6 +9,7 @@ import threading
 import time
 import random
 import atexit
+from collections import deque
 
 import cv2
 import numpy as np
@@ -27,6 +28,7 @@ _manager_lock = threading.Lock()
 _service_lock = threading.Lock()
 _service_stop = threading.Event()
 _service_thread = None
+_camera_infos_cache = None
 
 
 class FramePacer:
@@ -65,6 +67,16 @@ def get_camera_infos(camera_ids=None, active_only=True):
 
 def get_camera_info_by_id(camera_id):
     return get_camera_infos([camera_id], active_only=False).get(camera_id)
+
+
+def get_live_camera_infos(camera_ids):
+    # The supervisor refreshes this snapshot away from the delivery loop. A slow
+    # database query must not pause the shared connection for every healthy tile.
+    with _manager_lock:
+        cached = _camera_infos_cache
+    if cached is not None and _service_thread is not None and _service_thread.is_alive():
+        return {cid: cached[cid] for cid in camera_ids if cid in cached}
+    return get_camera_infos(camera_ids)
 
 
 def preview_url(url):
@@ -112,6 +124,9 @@ class CameraStreamManager:
         self.detail_jpeg = None
         self.source_shape = None
         self.source_fps = None
+        self.recent_frames = deque(maxlen=FPS * 5 + 1)
+        self.viewer_widths = {}
+        self.jpeg_shape = None
         self.reconnects = 0
         self.connection_state = 'connecting'
         self.source_kind = 'substream' if preview and preview_url(self.rtsp_url) != self.rtsp_url else 'main'
@@ -143,6 +158,10 @@ class CameraStreamManager:
                 if not cap.isOpened():
                     raise RuntimeError('RTSP open timed out')
                 self.source_fps = cap.get(cv2.CAP_PROP_FPS) or None
+                if self.source_fps is not None and not math.isfinite(self.source_fps):
+                    self.source_fps = None
+                with self.lock:
+                    self.recent_frames.clear()
                 pacer = FramePacer(FPS)
                 background_pacer = FramePacer(1)
                 connected_at = time.monotonic()
@@ -163,7 +182,8 @@ class CameraStreamManager:
                     ok, frame = cap.retrieve()
                     if not ok or frame is None:
                         raise RuntimeError('RTSP frame conversion failed')
-                    jpeg = encode_preview(frame, WIDTH)
+                    width = self.requested_preview_width(now) if self.preview else WIDTH
+                    jpeg = encode_preview(frame, width)
                     if not jpeg:
                         continue
                     with self.lock:
@@ -171,7 +191,10 @@ class CameraStreamManager:
                         self.latest_frame = frame
                         self.sequence += 1
                         self.last_frame_at = now
+                        self.recent_frames.append(now)
                         self.source_shape = [frame.shape[1], frame.shape[0]]
+                        self.jpeg_shape = [min(frame.shape[1], width),
+                                           max(1, round(frame.shape[0] * min(frame.shape[1], width) / frame.shape[1]))]
                         self.connection_state = 'live'
                         self.frame_ready.set()
                     if now - connected_at > 10:
@@ -197,10 +220,18 @@ class CameraStreamManager:
         with self.lock:
             self.latest_frame = self.latest_jpeg = self.detail_jpeg = None
 
-    def get_packet(self, detail=False, viewing=True):
+    def requested_preview_width(self, now):
+        with self.lock:
+            self.viewer_widths = {key: value for key, value in self.viewer_widths.items() if value[0] > now}
+            return max((value[1] for value in self.viewer_widths.values()), default=WIDTH)
+
+    def get_packet(self, detail=False, viewing=True, preview_width=None, viewer_key=None):
         if viewing:
             self.last_used = time.monotonic()
         with self.lock:
+            if viewing and hasattr(self, 'viewer_widths'):
+                width = WIDTH if preview_width is None else max(320, min(WIDTH, preview_width))
+                self.viewer_widths[viewer_key] = (self.last_used + 2, width)
             age = time.monotonic() - self.last_frame_at
             live = self.latest_jpeg is not None and age < STALE_SECONDS
             status = 'live' if live else getattr(self, 'connection_state', 'reconnecting' if self.sequence else 'connecting')
@@ -208,6 +239,15 @@ class CameraStreamManager:
                 status = 'reconnecting'
             meta = {'camera_id': self.camera_id, 'sequence': self.sequence,
                     'status': status, 'age_ms': round(age * 1000) if self.last_frame_at else None}
+            shape = getattr(self, 'source_shape', None)
+            if live and shape:
+                if detail:
+                    width = min(shape[0], 1280)
+                    jpeg_shape = [width, max(1, round(shape[1] * width / shape[0]))]
+                else:
+                    jpeg_shape = getattr(self, 'jpeg_shape', None) or [min(shape[0], WIDTH),
+                                  max(1, round(shape[1] * min(shape[0], WIDTH) / shape[0]))]
+                meta.update(jpeg_width=jpeg_shape[0], jpeg_height=jpeg_shape[1])
             jpeg = self.latest_jpeg if live else b''
             frame = self.latest_frame if live and detail else None
             sequence = self.sequence
@@ -228,6 +268,16 @@ class CameraStreamManager:
             if time.monotonic() - self.last_frame_at >= STALE_SECONDS:
                 return None
             return self.latest_frame.copy() if self.latest_frame is not None else None
+
+    def measured_fps(self):
+        """Recent encoded rate, distinct from the configured limit/source rate."""
+        now = time.monotonic()
+        with self.lock:
+            samples = [stamp for stamp in self.recent_frames if now - stamp <= 5]
+        if len(samples) < 2 or now - samples[-1] > 2:
+            return 0.0
+        elapsed = samples[-1] - samples[0]
+        return round((len(samples) - 1) / elapsed, 1) if elapsed > 0 else 0.0
 
 
 def get_stream_manager(camera_id, preview=False, camera_info=None, persistent=False):
@@ -264,9 +314,13 @@ def reconcile_cameras(infos):
 
 
 def _service_loop():
+    global _camera_infos_cache
     while not _service_stop.is_set():
         try:
-            reconcile_cameras(get_camera_infos())
+            infos = get_camera_infos()
+            reconcile_cameras(infos)
+            with _manager_lock:
+                _camera_infos_cache = infos
         except Exception as error:
             logging.warning('[CCTV] Background configuration unavailable (%s); retrying', type(error).__name__)
         _service_stop.wait(5)
@@ -298,18 +352,22 @@ def frame_packet(meta, jpeg=b''):
     return struct.pack('!I', len(header)) + header + jpeg
 
 
-def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids=None):
+def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids=None, batch=False, preview_width=None):
     managers = {cid: get_stream_manager(cid, preview=True, camera_info=camera_infos[cid])
                 for cid in camera_ids if cid in camera_infos}
     last_sent = {}
     refresh_at = time.monotonic() + 5
+    viewer_key = object()
+    config_snapshot = None
     while True:
         started = time.monotonic()
-        if started >= refresh_at:
+        packets = []
+        packet_bytes = 0
+        if started >= refresh_at or _camera_infos_cache is not config_snapshot:
             # Preserve target functionality: saved URL/activation edits reach existing viewers.
             # A transient DB outage keeps the last configuration until the next retry.
             try:
-                updated = get_camera_infos(camera_ids)
+                updated = get_live_camera_infos(camera_ids)
                 for cid in camera_ids:
                     info = updated.get(cid)
                     manager = managers.get(cid)
@@ -321,6 +379,7 @@ def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids
                 camera_infos = updated
             except Exception:
                 logging.warning('[CCTV] Configuration refresh unavailable; retrying')
+            config_snapshot = _camera_infos_cache
             refresh_at = started + 5
         for cid in camera_ids:
             manager = managers.get(cid)
@@ -333,7 +392,10 @@ def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids
                 meta, jpeg = {'camera_id': cid, 'status': 'offline', 'sequence': 0}, b''
             else:
                 if viewed_ids is None or cid in viewed_ids:
-                    meta, jpeg = manager.get_packet(detail=cid == focus_id)
+                    if preview_width is None:
+                        meta, jpeg = manager.get_packet(detail=cid == focus_id)
+                    else:
+                        meta, jpeg = manager.get_packet(detail=cid == focus_id, preview_width=preview_width, viewer_key=viewer_key)
                 else:
                     meta, _ = manager.get_packet(viewing=False)
                     jpeg = b''
@@ -346,7 +408,20 @@ def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids
             if previous and previous[0] == state:
                 jpeg = b''
             last_sent[cid] = (state, started)
-            yield frame_packet(meta, jpeg)
+            packet = frame_packet(meta, jpeg)
+            if not batch:
+                yield packet
+            else:
+                # Bound each write, and flush this sweep immediately. Hundreds
+                # of small WSGI/HTTP writes per second add overhead and amplify
+                # backpressure across the proxy when many cameras are visible.
+                if packets and packet_bytes + len(packet) > 2 * 1024 * 1024:
+                    yield b''.join(packets)
+                    packets, packet_bytes = [], 0
+                packets.append(packet)
+                packet_bytes += len(packet)
+        if packets:
+            yield b''.join(packets)
         # Poll faster than producers so unrelated camera phases do not halve FPS.
         # No extra JPEGs are sent unless a camera's frame sequence has changed.
         time.sleep(max(.002, 1 / (FPS * 2) - (time.monotonic() - started)))
@@ -358,6 +433,9 @@ def stream_diagnostics():
     return [{'camera_id': m.camera_id, 'preview': m.preview, 'running': m.running,
              'sequence': m.sequence, 'source': m.source_kind, 'resolution': m.source_shape,
              'source_fps': m.source_fps, 'target_fps': FPS,
+             'preview_resolution': m.jpeg_shape,
+             'encoded_fps': m.measured_fps(),
+             'encoding_mode': 'idle' if m.persistent and time.monotonic() - m.last_used >= 2 else 'viewing',
              'persistent': m.persistent, 'decoder': 'cpu', 'reconnects': m.reconnects,
              'status': m.get_packet(viewing=False)[0]['status'],
              'age_ms': round((time.monotonic() - m.last_frame_at) * 1000) if m.last_frame_at else None}

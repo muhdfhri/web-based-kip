@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import http from 'node:http';
-import { FrameDecoder, StreamClock, subscribeCctv } from './cctvTransport.js';
+import { FrameDecoder, StreamClock, subscribeCctv, getCctvDiagnostics } from './cctvTransport.js';
 
 function packet(id, sequence = 1, extra = {}, jpeg = Buffer.from([255, 216, id, 255, 217])) {
     const header = Buffer.from(JSON.stringify({ camera_id: id, sequence, status: 'live', length: jpeg.length, ...extra }));
@@ -25,7 +25,7 @@ test('fragmented binary packets retain all 16 channels without mixing JPEG bytes
     received.forEach(({ meta, jpeg }, i) => {
         assert.equal(meta.camera_id, i + 1); assert.equal(jpeg[2], i + 1);
     });
-    assert.equal(decoder.buffer.length, 0);
+    assert.equal(decoder.bufferedBytes, 0);
     assert.throws(() => new FrameDecoder().push(Buffer.from([255, 255, 255, 255])));
 });
 
@@ -96,6 +96,139 @@ test('large coalesced chunks of valid frames do not reset all cameras', () => {
     const prefix = Buffer.alloc(4); prefix.writeUInt32BE(header.length);
     const frame = Buffer.concat([prefix, header, jpeg]);
     assert.equal(new FrameDecoder().push(Buffer.concat(Array(5).fill(frame))).length, 5);
+});
+
+test('fragmented large JPEG uses one payload allocation and rejects oversized payloads', () => {
+    const jpeg = Buffer.alloc(1024 * 1024, 17);
+    const data = packet(47, 3, {}, jpeg);
+    const decoder = new FrameDecoder();
+    const received = [];
+    let payload;
+    for (let offset = 0; offset < data.length; offset += 1024) {
+        received.push(...decoder.push(data.subarray(offset, offset + 1024)));
+        if (decoder.stage === 'jpeg') {
+            payload ??= decoder.part;
+            assert.equal(decoder.part, payload, 'fragment arrival must not reallocate the partial JPEG');
+        }
+    }
+    assert.equal(received.length, 1);
+    assert.deepEqual(Buffer.from(received[0].jpeg), jpeg);
+    assert.equal(decoder.bufferedBytes, 0);
+    assert.throws(() => new FrameDecoder().push(packet(1, 1, { length: 3 * 1024 * 1024 })), /Invalid CCTV frame length/);
+    assert.equal(new FrameDecoder().push(packet(1, 1, {}, Buffer.alloc(0))).length, 1);
+});
+
+test('47 cameras bound concurrent decodes, coalesce before paint and isolate bad JPEGs', async () => {
+    const statuses = new Map(), canvases = [], releases = [], unsubscribe = [];
+    let inFlight = 0, maxInFlight = 0, decodes = 0, paints = 0, send;
+    let failCamera = true;
+    const server = http.createServer((req, res) => {
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+        send = sequence => res.write(Buffer.concat(Array.from({ length: 47 }, (_, i) => packet(i + 1, sequence))));
+        send(1);
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    globalThis.window = { location: { href: origin }, addEventListener() {} };
+    globalThis.document = { hidden: false, addEventListener() {} };
+    const animationFrames = new Map(); let animationId = 0;
+    globalThis.requestAnimationFrame = callback => { animationFrames.set(++animationId, callback); return animationId; };
+    globalThis.cancelAnimationFrame = id => animationFrames.delete(id);
+    globalThis.createImageBitmap = async blob => {
+        decodes++; inFlight++; maxInFlight = Math.max(maxInFlight, inFlight);
+        const id = new Uint8Array(await blob.arrayBuffer())[2];
+        await new Promise(resolve => releases.push(resolve));
+        inFlight--;
+        if (id === 7 && failCamera) throw new Error('corrupt JPEG');
+        return { width: 640, height: 360, close() {} };
+    };
+    const releaseWave = async () => {
+        releases.splice(0).forEach(resolve => resolve());
+        await new Promise(resolve => setTimeout(resolve, 20));
+    };
+    const paint = () => {
+        const callbacks = [...animationFrames.values()]; animationFrames.clear();
+        callbacks.forEach(callback => callback());
+    };
+    try {
+        for (let id = 1; id <= 47; id++) {
+            const canvas = { dataset: { fit: 'cover' }, clientWidth: 320, clientHeight: 180,
+                getContext: () => ({ fillRect() {}, drawImage() { paints++; } }) };
+            canvases.push(canvas);
+            unsubscribe.push(subscribeCctv(`${origin}/api/security/cctv/stream/${id}`, canvas, status => statuses.set(id, status)));
+        }
+        await waitFor(() => releases.length === 8);
+        for (let sequence = 2; sequence <= 20; sequence++) send(sequence);
+        await new Promise(resolve => setTimeout(resolve, 60));
+        for (let wave = 0; wave < 8; wave++) await releaseWave();
+        assert.equal(maxInFlight, 8);
+        assert.ok(decodes <= 48, 'unpainted cameras must not repeatedly decode queued frames');
+        assert.equal(paints, 0);
+        assert.equal(statuses.get(7), 'connecting', 'bad JPEG must not reset all statuses');
+        assert.equal([...statuses.values()].filter(status => status === 'live').length, 46);
+        assert.equal(getCctvDiagnostics()[0].connections, 1);
+        assert.ok(getCctvDiagnostics()[0].cameras.some(camera => camera.decodeErrors > 0));
+        failCamera = false;
+        send(21);
+        paint();
+        for (let wave = 0; wave < 8; wave++) await releaseWave();
+        paint();
+        assert.equal([...statuses.values()].filter(status => status === 'live').length, 47);
+        assert.ok(canvases.every(canvas => Number(canvas.dataset.cctvRenderedFrames) > 0));
+    } finally {
+        unsubscribe.forEach(fn => fn());
+        await releaseWave();
+        server.closeAllConnections();
+        await new Promise(resolve => server.close(resolve));
+        delete globalThis.requestAnimationFrame;
+        delete globalThis.cancelAnimationFrame;
+    }
+    assert.equal(getCctvDiagnostics().length, 0);
+});
+
+test('bitmap resolution follows grid dimensions and restores fullscreen detail', async () => {
+    const options = [], connections = [];
+    const server = http.createServer((req, res) => {
+        const focus = new URL(req.url, 'http://localhost').searchParams.has('focus');
+        connections.push(focus);
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+        let sequence = 0;
+        const send = () => res.write(packet(1, ++sequence,
+            { jpeg_width: focus ? 1280 : 640, jpeg_height: focus ? 720 : 360 }));
+        send(); const timer = setInterval(send, 50);
+        res.on('close', () => clearInterval(timer));
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    globalThis.window = { location: { href: origin }, addEventListener() {} };
+    globalThis.document = { hidden: false, addEventListener() {} };
+    globalThis.createImageBitmap = async (_blob, settings) => {
+        options.push(settings);
+        return { width: settings?.resizeWidth || 1280, height: settings?.resizeHeight || 720, close() {} };
+    };
+    const grid = { dataset: { fit: 'cover' }, clientWidth: 320, clientHeight: 180,
+        getContext: () => ({ fillRect() {}, drawImage() {} }) };
+    const modal = { dataset: { fit: 'contain' }, clientWidth: 1920, clientHeight: 1080,
+        getContext: grid.getContext };
+    const unsubscribe = [];
+    try {
+        unsubscribe.push(subscribeCctv(`${origin}/api/security/cctv/stream/1`, grid, () => {}));
+        await waitFor(() => Number(grid.dataset.cctvRenderedFrames) > 2);
+        assert.deepEqual(options.at(-1), { resizeWidth: 320, resizeHeight: 180, resizeQuality: 'medium' });
+        const gridFrames = grid.dataset.cctvRenderedFrames;
+        unsubscribe.push(subscribeCctv(`${origin}/api/security/cctv/stream/1`, modal, () => {}));
+        await waitFor(() => connections.length === 2 && connections[1]);
+        const modalFrames = Number(modal.dataset.cctvRenderedFrames || 0);
+        await waitFor(() => Number(modal.dataset.cctvRenderedFrames) > modalFrames + 2);
+        assert.equal(options.at(-1), undefined, 'fullscreen must retain the 1280px source detail');
+        assert.equal(getCctvDiagnostics()[0].cameras[0].bitmapResolution[0], 1280);
+        assert.ok(Number(grid.dataset.cctvRenderedFrames) <= Number(gridFrames) + 2);
+        assert.deepEqual(connections, [false, true]);
+    } finally {
+        unsubscribe.forEach(fn => fn());
+        server.closeAllConnections();
+        await new Promise(resolve => server.close(resolve));
+    }
 });
 
 test('16 cameras and modal share one connection, reconnect on disconnect, and release it on unmount', async () => {
