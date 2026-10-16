@@ -130,7 +130,27 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
         };
         fetchPatrolData();
         const interval = setInterval(fetchPatrolData, 5000);
-        return () => clearInterval(interval);
+
+        // ⚡ Real-time WebSocket: Langsung refresh data ketika ada perubahan checkpoints/patroli tanpa nunggu interval
+        let ws;
+        try {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.hostname}:3200/ws`;
+            ws = new WebSocket(wsUrl);
+            ws.onmessage = (event) => {
+                try {
+                    const parsed = JSON.parse(event.data);
+                    if (parsed.event === 'patrol_checkpoints_updated' || parsed.event === 'checkpoint_verified' || parsed.event === 'patrol_session_started' || parsed.event === 'patrol_session_ended') {
+                        fetchPatrolData();
+                    }
+                } catch (e) {}
+            };
+        } catch (e) {}
+
+        return () => {
+            clearInterval(interval);
+            if (ws) ws.close();
+        };
     }, []);
 
     // ══════════════════════════════════════════════════════════════

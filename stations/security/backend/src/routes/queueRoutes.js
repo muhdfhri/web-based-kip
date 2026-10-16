@@ -212,6 +212,28 @@ const getQueueList = async (req, res) => {
        ORDER BY q.check_in_at DESC`,
       params
     );
+
+    // Enrich registeredByName with full_name from mewah_main users table
+    try {
+      const [userRows] = await dbMainPool.query('SELECT id, username, full_name FROM users');
+      const userMapById = new Map();
+      const userMapByName = new Map();
+      for (const u of userRows) {
+        if (u.full_name) {
+          userMapById.set(Number(u.id), u.full_name);
+          userMapByName.set(String(u.username).toLowerCase(), u.full_name);
+        }
+      }
+
+      for (const r of rows) {
+        const enrichedName = userMapById.get(Number(r.registeredBy)) || 
+                             userMapByName.get(String(r.registeredByName).toLowerCase()) || 
+                             r.registeredByName;
+        r.registeredByName = enrichedName;
+        r.registered_by_name = enrichedName;
+      }
+    } catch (_) {}
+
     res.json({ success: true, data: rows });
   } catch (error) {
     console.error('Error fetching truck queues:', error);
@@ -288,17 +310,17 @@ const createQueueHandler = async (req, res) => {
   }
 
   try {
-    if (!registeredByName && registeredBy) {
+    if (registeredBy || registeredByName) {
       try {
-        const [userRows] = await dbMainPool.query('SELECT username FROM users WHERE id = ?', [registeredBy]);
+        const [userRows] = await dbMainPool.query('SELECT username, full_name FROM users WHERE id = ? OR username = ?', [registeredBy, registeredByName]);
         if (userRows && userRows.length > 0) {
-          registeredByName = userRows[0].username;
-        } else {
+          registeredByName = userRows[0].full_name || userRows[0].username || registeredByName || 'System';
+        } else if (!registeredByName) {
           registeredByName = 'System';
         }
       } catch (e) {
-        console.error('Error fetching username:', e);
-        registeredByName = 'System';
+        console.error('Error fetching user full_name:', e);
+        if (!registeredByName) registeredByName = 'System';
       }
     } else if (!registeredByName) {
       registeredByName = 'System';

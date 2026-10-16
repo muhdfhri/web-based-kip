@@ -52,7 +52,7 @@ function PatrolLogsView({ onBack, onReplaySession }) {
       rawLogs.forEach(item => {
         if (!item.verified_at && !item.created_at) return;
         const verifiedAt = new Date(item.verified_at || item.created_at);
-        const officer = item.guard_name || item.verified_by_name || item.officer_name || 'Security Officer';
+        const officer = item.full_name || item.fullName || item.guard_name || item.verified_by_name || item.officer_name || 'Security Officer';
         const station = item.station_name || item.station || 'Station';
         const lat = parseFloat(item.latitude || 0).toFixed(5);
         const lng = parseFloat(item.longitude || 0).toFixed(5);

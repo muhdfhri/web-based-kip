@@ -1,5 +1,5 @@
 import express from 'express';
-import { dbPool } from '../config/db.js';
+import { dbPool, dbMainPool } from '../config/db.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -200,7 +200,25 @@ const getActiveGuardsHandler = async (req, res) => {
       WHERE s.status = 'active' 
       ORDER BY s.started_at DESC
     `);
-    res.json(rows);
+
+    let finalRows = rows;
+    try {
+      const [userRows] = await dbMainPool.query('SELECT id, username, full_name FROM users');
+      const userMapById = new Map();
+      const userMapByName = new Map();
+      for (const u of userRows) {
+        if (u.full_name) {
+          userMapById.set(Number(u.id), u.full_name);
+          userMapByName.set(String(u.username).toLowerCase(), u.full_name);
+        }
+      }
+      finalRows = rows.map(r => ({
+        ...r,
+        name: userMapById.get(Number(r.guard_id)) || userMapByName.get(String(r.name).toLowerCase()) || r.name
+      }));
+    } catch (_) {}
+
+    res.json(finalRows);
   } catch (error) {
     console.error('Error fetching active guards:', error);
     res.status(500).json({ error: 'Failed to fetch active guards' });
@@ -328,7 +346,7 @@ router.get('/logs', async (req, res) => {
     const [rows] = await dbPool.query(`
       SELECT 
         c.*, 
-        s.guard_name, 
+        COALESCE(u.full_name, s.guard_name) AS guard_name, 
         s.guard_id, 
         s.started_at, 
         s.completed_at, 
@@ -339,11 +357,51 @@ router.get('/logs', async (req, res) => {
         (SELECT COUNT(*) FROM security_stations WHERE is_active = 1) as total_master_stations
       FROM security_session_checkpoints c
       JOIN security_patrol_sessions s ON c.session_id = s.id
+      LEFT JOIN dblink('dbname=mewah_main', 'SELECT id, full_name, username FROM users') AS u(id INT, full_name TEXT, username TEXT) ON s.guard_id = u.id OR s.guard_name = u.username
       WHERE c.status = 'verified' 
       ${dateFilter}
       ORDER BY c.verified_at DESC 
       LIMIT 1000
-    `, queryParams);
+    `, queryParams).catch(async (dbLinkErr) => {
+      // Fallback jika dblink extension belum aktif di database
+      const [baseRows] = await dbPool.query(`
+        SELECT 
+          c.*, 
+          s.guard_name, 
+          s.guard_id, 
+          s.started_at, 
+          s.completed_at, 
+          s.shift,
+          s.round_number,
+          (SELECT COUNT(*) FROM security_session_checkpoints sc WHERE sc.session_id = c.session_id AND sc.verified_at <= c.verified_at) as checkpoint_order,
+          (SELECT COUNT(*) FROM security_session_checkpoints sc WHERE sc.session_id = c.session_id) as session_total_scanned,
+          (SELECT COUNT(*) FROM security_stations WHERE is_active = 1) as total_master_stations
+        FROM security_session_checkpoints c
+        JOIN security_patrol_sessions s ON c.session_id = s.id
+        WHERE c.status = 'verified' 
+        ${dateFilter}
+        ORDER BY c.verified_at DESC 
+        LIMIT 1000
+      `, queryParams);
+
+      try {
+        const [userRows] = await dbMainPool.query('SELECT id, username, full_name FROM users');
+        const userMapById = new Map();
+        const userMapByName = new Map();
+        for (const u of userRows) {
+          if (u.full_name) {
+            userMapById.set(Number(u.id), u.full_name);
+            userMapByName.set(String(u.username).toLowerCase(), u.full_name);
+          }
+        }
+        return [baseRows.map(r => ({
+          ...r,
+          guard_name: userMapById.get(Number(r.guard_id)) || userMapByName.get(String(r.guard_name).toLowerCase()) || r.guard_name
+        }))];
+      } catch (_) {
+        return [baseRows];
+      }
+    });
 
     res.json(rows);
   } catch (error) {
@@ -370,13 +428,19 @@ router.post('/sessions/start', async (req, res) => {
   try {
     let full_name = 'Security Officer';
     try {
-      const [userRows] = await dbPool.query('SELECT name, fullName FROM security_guards_status WHERE user_id = ?', [user_id]);
-      if (userRows.length > 0) {
-        guard_name = userRows[0].name || guard_name;
-        full_name = userRows[0].fullName || guard_name;
+      const [uMain] = await dbMainPool.query('SELECT username, full_name FROM users WHERE id = ?', [user_id]);
+      if (uMain && uMain.length > 0) {
+        full_name = uMain[0].full_name || guard_name || uMain[0].username;
+        guard_name = full_name;
       } else {
-        if (!guard_name) guard_name = `Guard-${user_id}`;
-        full_name = guard_name;
+        const [userRows] = await dbPool.query('SELECT name, fullName FROM security_guards_status WHERE user_id = ?', [user_id]);
+        if (userRows.length > 0) {
+          guard_name = userRows[0].fullName || userRows[0].name || guard_name;
+          full_name = guard_name;
+        } else {
+          if (!guard_name) guard_name = `Guard-${user_id}`;
+          full_name = guard_name;
+        }
       }
     } catch (err) {
       if (!guard_name) guard_name = `Guard-${user_id}`;
@@ -899,7 +963,7 @@ const getReplayHandler = async (req, res) => {
     const realSessionId = sessions[0].id;
 
     // Get all GPS tracks for this session
-    const [tracks] = await dbPool.query(
+    let [tracks] = await dbPool.query(
       'SELECT latitude, longitude, recorded_at FROM security_patrol_tracks WHERE session_id = ? ORDER BY recorded_at ASC',
       [realSessionId]
     );
@@ -909,6 +973,17 @@ const getReplayHandler = async (req, res) => {
       'SELECT station_name, latitude, longitude, verified_at, verification_photo FROM security_session_checkpoints WHERE session_id = ? ORDER BY verified_at ASC',
       [realSessionId]
     );
+
+    // 🛡️ Smart Fallback: Jika session offline dan tracks GPS kosong, gunakan checkpoints sebagai rute tracking replay!
+    if ((!tracks || tracks.length === 0) && checkpoints.length > 0) {
+      tracks = checkpoints
+        .filter(cp => cp.latitude && cp.longitude)
+        .map(cp => ({
+          latitude: cp.latitude,
+          longitude: cp.longitude,
+          recorded_at: cp.verified_at
+        }));
+    }
 
     res.json({
       session: sessions[0],
@@ -925,14 +1000,49 @@ router.get('/replay/:sessionId', getReplayHandler);
 router.get('/sessions/:sessionId/replay', getReplayHandler);
 
 /**
+ * POST /api/security/patrol/tracks/batch
+ * Menerima batch titik GPS track dari mobile app (terutama saat sync offline)
+ */
+router.post('/tracks/batch', async (req, res) => {
+  const { session_id, tracks } = req.body;
+  if (!session_id || !Array.isArray(tracks) || tracks.length === 0) {
+    return res.status(400).json({ error: 'session_id and tracks array are required' });
+  }
+
+  try {
+    const validRows = [];
+    for (const t of tracks) {
+      const lat = parseFloat(t.latitude);
+      const lng = parseFloat(t.longitude);
+      const recordedAt = t.recorded_at || t.timestamp || new Date().toISOString();
+      if (!isNaN(lat) && !isNaN(lng)) {
+        validRows.push([session_id, lat, lng, recordedAt]);
+      }
+    }
+
+    if (validRows.length > 0) {
+      await dbPool.query(
+        'INSERT INTO security_patrol_tracks (session_id, latitude, longitude, recorded_at) VALUES ?',
+        [validRows]
+      );
+    }
+
+    res.json({ success: true, count: validRows.length });
+  } catch (error) {
+    console.error('Error saving batch tracks:', error);
+    res.status(500).json({ error: 'Failed to save batch tracks' });
+  }
+});
+
+/**
  * GET /api/security/patrol/history
  * Fetch today's patrol sessions for the sidebar (active + completed)
  */
 router.get('/history', async (req, res) => {
   try {
-    const [rows] = await dbPool.query(`
+    const [baseRows] = await dbPool.query(`
       SELECT 
-        s.id, s.guard_name, s.status, s.started_at, s.completed_at, s.shift, s.round_number,
+        s.id, s.guard_id, s.guard_name, s.status, s.started_at, s.completed_at, s.shift, s.round_number,
         (SELECT COUNT(*) FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_count,
         (SELECT STRING_AGG(DISTINCT c.station_name, ', ') FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_names,
         (SELECT COUNT(*) FROM security_patrol_tracks t WHERE t.session_id = s.id) as track_count
@@ -940,7 +1050,25 @@ router.get('/history', async (req, res) => {
       WHERE s.started_at >= ?
       ORDER BY s.started_at DESC
     `, [getShiftStartTimeStr()]);
-    res.json(rows);
+
+    let finalRows = baseRows;
+    try {
+      const [userRows] = await dbMainPool.query('SELECT id, username, full_name FROM users');
+      const userMapById = new Map();
+      const userMapByName = new Map();
+      for (const u of userRows) {
+        if (u.full_name) {
+          userMapById.set(Number(u.id), u.full_name);
+          userMapByName.set(String(u.username).toLowerCase(), u.full_name);
+        }
+      }
+      finalRows = baseRows.map(r => ({
+        ...r,
+        guard_name: userMapById.get(Number(r.guard_id)) || userMapByName.get(String(r.guard_name).toLowerCase()) || r.guard_name
+      }));
+    } catch (_) {}
+
+    res.json(finalRows);
   } catch (error) {
     console.error('Error fetching patrol history:', error);
     res.status(500).json({ error: 'Failed to fetch patrol history' });
@@ -1287,6 +1415,7 @@ router.post('/master-checkpoints', async (req, res) => {
        VALUES (?, ?, ?, ?, 0.5, 0.5, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       [newId, checkpoint_code.toLowerCase().replace(/[^a-z0-9]/g, '_'), checkpoint_code, label, latitude, longitude, radius_meters || 30, seq]
     );
+    broadcastPatrolEvent('patrol_checkpoints_updated', { action: 'created', id: newId });
     res.json({ success: true, message: 'Checkpoint created successfully' });
   } catch (error) {
     console.error('Error creating checkpoint:', error);
@@ -1306,6 +1435,7 @@ router.put('/master-checkpoints/:id', async (req, res) => {
        WHERE id = ?`,
       [checkpoint_code, label, latitude, longitude, radius_meters, seq, id]
     );
+    broadcastPatrolEvent('patrol_checkpoints_updated', { action: 'updated', id: parseInt(id, 10) });
     res.json({ success: true, message: 'Checkpoint updated successfully' });
   } catch (error) {
     console.error('Error updating checkpoint:', error);
@@ -1322,10 +1452,24 @@ router.put('/master-checkpoints/:id/toggle', async (req, res) => {
       'UPDATE security_stations SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [is_active ? 1 : 0, id]
     );
+    broadcastPatrolEvent('patrol_checkpoints_updated', { action: 'toggled', id: parseInt(id, 10), is_active: !!is_active });
     res.json({ success: true, message: 'Checkpoint status updated' });
   } catch (error) {
     console.error('Error toggling checkpoint status:', error);
     res.status(500).json({ error: 'Failed to toggle status' });
+  }
+});
+
+// 5. DELETE hard delete checkpoint
+router.delete('/master-checkpoints/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await dbPool.query('DELETE FROM security_stations WHERE id = ?', [id]);
+    broadcastPatrolEvent('patrol_checkpoints_updated', { action: 'deleted', id: parseInt(id, 10) });
+    res.json({ success: true, message: 'Checkpoint deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting checkpoint:', error);
+    res.status(500).json({ error: 'Failed to delete checkpoint' });
   }
 });
 

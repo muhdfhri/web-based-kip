@@ -14,12 +14,19 @@ import CheckpointSettingsView from './CheckpointSettingsView.jsx';
 //   "updateGuardLocation(userId, lat, lng, guardName)")
 // ═══════════════════════════════════════════════════════════════
 const _mobileGuardUpdater = { fn: null };
+const _mobileGuardRemover = { fn: null };
 const _mobileRotate = { fn: null };
 
 if (typeof window !== 'undefined') {
   window.updateGuardLocation = (userId, lat, lng, guardName) => {
     if (_mobileGuardUpdater.fn) {
       _mobileGuardUpdater.fn(userId, parseFloat(lat), parseFloat(lng), guardName || 'Guard Mobile');
+    }
+  };
+
+  window.removeGuardMarker = (userId) => {
+    if (_mobileGuardRemover.fn) {
+      _mobileGuardRemover.fn(userId);
     }
   };
 
@@ -165,7 +172,18 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                 [userId]: { userId, lat, lng, name: guardName, lastUpdate: Date.now() }
             }));
         };
-        return () => { _mobileGuardUpdater.fn = null; };
+        _mobileGuardRemover.fn = (userId) => {
+            setMobileGuards(prev => {
+                if (!userId) return {};
+                const next = { ...prev };
+                delete next[userId];
+                return next;
+            });
+        };
+        return () => { 
+            _mobileGuardUpdater.fn = null; 
+            _mobileGuardRemover.fn = null;
+        };
     }, []);
 
     // Wire rotate map bridge
@@ -270,8 +288,18 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
         })
         .then(r => r.json())
         .then(data => {
-            if (data.tracks && data.tracks.length > 0) {
-                setReplayData(data);
+            let effectiveTracks = data.tracks || [];
+            if (effectiveTracks.length === 0 && data.checkpoints && data.checkpoints.length > 0) {
+                effectiveTracks = data.checkpoints
+                    .filter(cp => cp.latitude && cp.longitude)
+                    .map(cp => ({
+                        latitude: cp.latitude,
+                        longitude: cp.longitude,
+                        recorded_at: cp.verified_at
+                    }));
+            }
+            if (effectiveTracks.length > 0) {
+                setReplayData({ ...data, tracks: effectiveTracks });
                 setReplayIndex(0);
                 setReplayPlaying(true);
             }

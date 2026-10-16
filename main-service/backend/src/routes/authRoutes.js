@@ -38,10 +38,11 @@ router.post('/login', async (req, res) => {
     const systemPermissions = mapMenuPermissionsToSystemPermissions(permissions);
 
     const tokenPayload = {
-      userId:      user.id,
-      username:    user.username,
-      userRole:    user.role_name || 'operator',
-      permissions: [...permissions, ...systemPermissions],
+      userId:        user.id,
+      username:      user.username,
+      fullName:      user.full_name,
+      userRole:      user.role_name || 'operator',
+      permissions:   [...permissions, ...systemPermissions],
       positionTitle: user.position_title,
       companyName:   user.company_name,
       mustChangePassword: user.must_change_password === 1,
@@ -84,7 +85,34 @@ router.post('/logout', (_req, res) => {
 });
 
 // GET /auth/me
-router.get('/me', requireAuth, (req, res) => {
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.userId || req.user.id;
+    const [[user]] = await dbPool.query(
+      `SELECT u.id, u.username, u.full_name, u.position_title, u.company_name, u.role_id, r.name as role_name
+       FROM users u
+       LEFT JOIN roles r ON u.role_id = r.id
+       WHERE u.id = ?`,
+      [userId]
+    );
+
+    if (user) {
+      return res.json({
+        success: true,
+        user: {
+          ...req.user,
+          username: user.username,
+          fullName: user.full_name,
+          full_name: user.full_name,
+          positionTitle: user.position_title,
+          companyName: user.company_name,
+          userRole: user.role_name || req.user.userRole,
+        }
+      });
+    }
+  } catch (err) {
+    console.error('[auth] /me error:', err.message);
+  }
   res.json({ success: true, user: req.user });
 });
 
@@ -184,10 +212,11 @@ router.put('/profile', requireAuth, async (req, res) => {
     const systemPermissions = mapMenuPermissionsToSystemPermissions(permissions);
 
     const tokenPayload = {
-      userId:      user.id,
-      username:    user.username,
-      userRole:    user.role_name || 'operator',
-      permissions: [...permissions, ...systemPermissions],
+      userId:        user.id,
+      username:      user.username,
+      fullName:      user.full_name,
+      userRole:      user.role_name || 'operator',
+      permissions:   [...permissions, ...systemPermissions],
       positionTitle: user.position_title,
       companyName:   user.company_name,
       mustChangePassword: user.must_change_password === 1,

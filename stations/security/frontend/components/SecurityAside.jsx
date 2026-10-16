@@ -65,7 +65,7 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                                 <div className="history-left">
                                     <div className={`history-status-dot ${isActive ? 'active' : 'completed'}`}></div>
                                     <div className="history-info">
-                                        <div className="history-name">{session.guard_name}</div>
+                                        <div className="history-name">{session.full_name || session.guard_name}</div>
                                         {session.shift && (
                                             <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', marginTop: '2px', letterSpacing: '0.02em' }}>
                                                 {session.shift.startsWith('Shift') ? session.shift : `Shift ${session.shift}`} • Round {session.round_number}
