@@ -14,12 +14,19 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                     {patrolGuards.length === 0 && <div style={{color: '#64748b', fontSize: '12px', padding: '15px', textAlign: 'center'}}>No active guards</div>}
                     {patrolGuards.map(guard => {
                         const gColor = '#f59e0b';
+                        const avatarSrc = guard.avatar_photo || guard.photo || null;
                         return (
                             <div key={guard.id || guard.session_id}
                                 className="som-guard-item"
                                 style={{ transition: 'all 0.2s', padding: '10px', borderRadius: '8px' }}
                             >
-                                <div className="guard-initials" style={{color: '#fff', background: gColor, border: `1px solid ${gColor}`}}>{guard.name ? guard.name.charAt(0).toUpperCase() : '?'}</div>
+                                <div className="guard-initials" style={{color: '#fff', background: gColor, border: `1px solid ${gColor}`, overflow: 'hidden', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                    {avatarSrc ? (
+                                        <img src={avatarSrc} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        (guard.name ? guard.name.charAt(0).toUpperCase() : '?')
+                                    )}
+                                </div>
                                 <div className="guard-info">
                                     <div className="guard-name-row"><span className="guard-name">{guard.name || `ID: ${guard.session_id}`}</span></div>
                                     <div className="guard-location">
@@ -63,7 +70,31 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                         return (
                             <div key={session.id} className={`som-history-item ${isReplaying ? 'replaying' : ''}`}>
                                 <div className="history-left">
-                                    <div className={`history-status-dot ${isActive ? 'active' : 'completed'}`}></div>
+                                    <div 
+                                        className="guard-initials" 
+                                        style={{
+                                            width: '28px',
+                                            height: '28px',
+                                            minWidth: '28px',
+                                            borderRadius: '50%',
+                                            overflow: 'hidden',
+                                            background: '#1e293b',
+                                            border: '1px solid #ffdb3b',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#ffdb3b',
+                                            fontSize: '11px',
+                                            fontWeight: '800',
+                                            flexShrink: 0
+                                        }}
+                                    >
+                                        {session.avatar_photo ? (
+                                            <img src={session.avatar_photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        ) : (
+                                            (session.full_name || session.guard_name || '?').charAt(0).toUpperCase()
+                                        )}
+                                    </div>
                                     <div className="history-info">
                                         <div className="history-name">{session.full_name || session.guard_name}</div>
                                         {session.shift && (
@@ -73,9 +104,13 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                                         )}
                                         <div className="history-meta" style={{ marginTop: '2px' }}>
                                             {startTime}{endTime ? ` — ${endTime} WIB` : ' WIB (active)'}
-                                            <span className="history-cp-count" title={session.checkpoint_names || `${session.checkpoint_count} Checkpoints`}>
-                                                <FaMapMarkerAlt style={{ fontSize: '9px', marginLeft: '4px', marginRight: '3px' }} /> 
-                                                {session.checkpoint_names ? `${session.checkpoint_count} (${session.checkpoint_names})` : session.checkpoint_count}
+                                            <span 
+                                                className="history-cp-count" 
+                                                title={session.checkpoint_names ? `${session.checkpoint_count} Checkpoints: ${session.checkpoint_names}` : `${session.checkpoint_count} Checkpoints`}
+                                                style={{ marginLeft: '4px' }}
+                                            >
+                                                <FaMapMarkerAlt style={{ fontSize: '9px', marginRight: '2px' }} /> 
+                                                {session.checkpoint_count}
                                             </span>
                                         </div>
                                     </div>

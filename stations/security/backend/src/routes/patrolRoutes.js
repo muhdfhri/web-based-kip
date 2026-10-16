@@ -188,8 +188,10 @@ const getActiveGuardsHandler = async (req, res) => {
       SELECT 
         s.id as session_id,
         s.session_code,
+        s.guard_id,
         s.guard_name as name,
         s.status,
+        COALESCE(s.avatar_photo, gs.avatar_photo) as avatar_photo,
         (SELECT station_name FROM security_session_checkpoints c WHERE c.session_id = s.id ORDER BY verified_at DESC LIMIT 1) as current_station_key,
         (SELECT verified_at FROM security_session_checkpoints c WHERE c.session_id = s.id ORDER BY verified_at DESC LIMIT 1) as last_update,
         (SELECT verification_photo FROM security_session_checkpoints c WHERE c.session_id = s.id AND verification_photo IS NOT NULL ORDER BY verified_at DESC LIMIT 1) as latest_photo,
@@ -203,19 +205,34 @@ const getActiveGuardsHandler = async (req, res) => {
 
     let finalRows = rows;
     try {
-      const [userRows] = await dbMainPool.query('SELECT id, username, full_name FROM users');
+      const [userRows] = await dbMainPool.query('SELECT id, username, full_name, avatar_photo FROM users');
       const userMapById = new Map();
       const userMapByName = new Map();
+      const avatarMapById = new Map();
+      const avatarMapByName = new Map();
       for (const u of userRows) {
         if (u.full_name) {
           userMapById.set(Number(u.id), u.full_name);
           userMapByName.set(String(u.username).toLowerCase(), u.full_name);
         }
+        if (u.avatar_photo) {
+          avatarMapById.set(Number(u.id), u.avatar_photo);
+          avatarMapByName.set(String(u.username).toLowerCase(), u.avatar_photo);
+        }
       }
-      finalRows = rows.map(r => ({
-        ...r,
-        name: userMapById.get(Number(r.guard_id)) || userMapByName.get(String(r.name).toLowerCase()) || r.name
-      }));
+      finalRows = rows.map(r => {
+        const guardIdNum = Number(r.guard_id);
+        const guardNameLower = String(r.name).toLowerCase();
+        const userAvatar = avatarMapById.get(guardIdNum) || avatarMapByName.get(guardNameLower);
+        const resolvedAvatar = userAvatar || r.avatar_photo || null;
+        return {
+          ...r,
+          name: userMapById.get(guardIdNum) || avatarMapByName.get(guardNameLower) || r.name,
+          avatar_photo: resolvedAvatar,
+          // Prioritaskan avatar profile tab di atas checkpoint photo
+          photo: resolvedAvatar || r.latest_photo || null
+        };
+      });
     } catch (_) {}
 
     res.json(finalRows);
@@ -347,6 +364,7 @@ router.get('/logs', async (req, res) => {
       SELECT 
         c.*, 
         COALESCE(u.full_name, s.guard_name) AS guard_name, 
+        COALESCE(u.avatar_photo, s.avatar_photo) AS avatar_photo,
         s.guard_id, 
         s.started_at, 
         s.completed_at, 
@@ -357,7 +375,7 @@ router.get('/logs', async (req, res) => {
         (SELECT COUNT(*) FROM security_stations WHERE is_active = 1) as total_master_stations
       FROM security_session_checkpoints c
       JOIN security_patrol_sessions s ON c.session_id = s.id
-      LEFT JOIN dblink('dbname=mewah_main', 'SELECT id, full_name, username FROM users') AS u(id INT, full_name TEXT, username TEXT) ON s.guard_id = u.id OR s.guard_name = u.username
+      LEFT JOIN dblink('dbname=mewah_main', 'SELECT id, full_name, username, avatar_photo FROM users') AS u(id INT, full_name TEXT, username TEXT, avatar_photo TEXT) ON s.guard_id = u.id OR s.guard_name = u.username
       WHERE c.status = 'verified' 
       ${dateFilter}
       ORDER BY c.verified_at DESC 
@@ -368,10 +386,11 @@ router.get('/logs', async (req, res) => {
         SELECT 
           c.*, 
           s.guard_name, 
+          s.avatar_photo,
           s.guard_id, 
           s.started_at, 
           s.completed_at, 
-          s.shift,
+          s.shift, 
           s.round_number,
           (SELECT COUNT(*) FROM security_session_checkpoints sc WHERE sc.session_id = c.session_id AND sc.verified_at <= c.verified_at) as checkpoint_order,
           (SELECT COUNT(*) FROM security_session_checkpoints sc WHERE sc.session_id = c.session_id) as session_total_scanned,
@@ -385,18 +404,25 @@ router.get('/logs', async (req, res) => {
       `, queryParams);
 
       try {
-        const [userRows] = await dbMainPool.query('SELECT id, username, full_name FROM users');
+        const [userRows] = await dbMainPool.query('SELECT id, username, full_name, avatar_photo FROM users');
         const userMapById = new Map();
         const userMapByName = new Map();
+        const avatarMapById = new Map();
+        const avatarMapByName = new Map();
         for (const u of userRows) {
           if (u.full_name) {
             userMapById.set(Number(u.id), u.full_name);
             userMapByName.set(String(u.username).toLowerCase(), u.full_name);
           }
+          if (u.avatar_photo) {
+            avatarMapById.set(Number(u.id), u.avatar_photo);
+            avatarMapByName.set(String(u.username).toLowerCase(), u.avatar_photo);
+          }
         }
         return [baseRows.map(r => ({
           ...r,
-          guard_name: userMapById.get(Number(r.guard_id)) || userMapByName.get(String(r.guard_name).toLowerCase()) || r.guard_name
+          guard_name: userMapById.get(Number(r.guard_id)) || userMapByName.get(String(r.guard_name).toLowerCase()) || r.guard_name,
+          avatar_photo: avatarMapById.get(Number(r.guard_id)) || avatarMapByName.get(String(r.guard_name).toLowerCase()) || r.avatar_photo || null
         }))];
       } catch (_) {
         return [baseRows];
@@ -427,16 +453,23 @@ router.post('/sessions/start', async (req, res) => {
   
   try {
     let full_name = 'Security Officer';
+    let avatar_photo = req.body.avatar_photo || null;
     try {
-      const [uMain] = await dbMainPool.query('SELECT username, full_name FROM users WHERE id = ?', [user_id]);
+      const [uMain] = await dbMainPool.query('SELECT username, full_name, avatar_photo FROM users WHERE id = ?', [user_id]);
       if (uMain && uMain.length > 0) {
         full_name = uMain[0].full_name || guard_name || uMain[0].username;
         guard_name = full_name;
+        if (!avatar_photo && uMain[0].avatar_photo) {
+          avatar_photo = uMain[0].avatar_photo;
+        }
       } else {
-        const [userRows] = await dbPool.query('SELECT name, fullName FROM security_guards_status WHERE user_id = ?', [user_id]);
+        const [userRows] = await dbPool.query('SELECT name, fullName, avatar_photo FROM security_guards_status WHERE user_id = ?', [user_id]);
         if (userRows.length > 0) {
           guard_name = userRows[0].fullName || userRows[0].name || guard_name;
           full_name = guard_name;
+          if (!avatar_photo && userRows[0].avatar_photo) {
+            avatar_photo = userRows[0].avatar_photo;
+          }
         } else {
           if (!guard_name) guard_name = `Guard-${user_id}`;
           full_name = guard_name;
@@ -461,8 +494,8 @@ router.post('/sessions/start', async (req, res) => {
 
     const session_code = `PTR-${Date.now()}`;
     const [result] = await dbPool.query(
-      "INSERT INTO security_patrol_sessions (session_code, guard_id, guard_name, shift, work_date, round_number, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id",
-      [session_code, user_id, guard_name, finalShift, workDate, roundNum]
+      "INSERT INTO security_patrol_sessions (session_code, guard_id, guard_name, shift, work_date, round_number, status, avatar_photo, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) RETURNING id",
+      [session_code, user_id, guard_name, finalShift, workDate, roundNum, avatar_photo]
     );
 
     const newSessionId = result.insertId || (result.length > 0 && result[0].id) || 0;
@@ -477,8 +510,8 @@ router.post('/sessions/start', async (req, res) => {
             const initLngNum = parseFloat(initial_lng);
             
             await dbPool.query(
-              "INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP) ON CONFLICT (user_id) DO UPDATE SET status='active', latitude=EXCLUDED.latitude, longitude=EXCLUDED.longitude, last_update=CURRENT_TIMESTAMP",
-              [user_id, guard_name, full_name, initLatNum, initLngNum]
+              "INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, avatar_photo, last_update) VALUES (?, ?, ?, 'active', ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT (user_id) DO UPDATE SET status='active', latitude=EXCLUDED.latitude, longitude=EXCLUDED.longitude, avatar_photo=COALESCE(EXCLUDED.avatar_photo, security_guards_status.avatar_photo), last_update=CURRENT_TIMESTAMP",
+              [user_id, guard_name, full_name, initLatNum, initLngNum, avatar_photo]
             );
 
             // Simpan sebagai titik PERTAMA di tracks untuk sesi baru ini
@@ -489,8 +522,8 @@ router.post('/sessions/start', async (req, res) => {
         } else {
             // Jika belum ada koordinat saat tekan start: RESET lat & lng ke NULL agar tidak memakai lokasi sesi lama!
             await dbPool.query(
-              "INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) VALUES (?, ?, ?, 'active', NULL, NULL, CURRENT_TIMESTAMP) ON CONFLICT (user_id) DO UPDATE SET status='active', latitude=NULL, longitude=NULL, last_update=CURRENT_TIMESTAMP",
-              [user_id, guard_name, full_name]
+              "INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, avatar_photo, last_update) VALUES (?, ?, ?, 'active', NULL, NULL, ?, CURRENT_TIMESTAMP) ON CONFLICT (user_id) DO UPDATE SET status='active', latitude=NULL, longitude=NULL, avatar_photo=COALESCE(EXCLUDED.avatar_photo, security_guards_status.avatar_photo), last_update=CURRENT_TIMESTAMP",
+              [user_id, guard_name, full_name, avatar_photo]
             );
         }
     } catch (e) {
@@ -899,23 +932,34 @@ router.post('/location', async (req, res) => {
 
     // Selalu update guard status/posisi avatar (bahkan jika track di-skip)
     // sehingga icon security SELALU muncul di peta
-    const [sessions] = await dbPool.query('SELECT guard_id, guard_name FROM security_patrol_sessions WHERE id = ?', [session_id]);
+    const [sessions] = await dbPool.query('SELECT guard_id, guard_name, avatar_photo FROM security_patrol_sessions WHERE id = ?', [session_id]);
     if (sessions.length > 0) {
        const guard_id = sessions[0].guard_id;
        const guard_name = sessions[0].guard_name || 'Security Officer';
+       let avatar_photo = req.body.avatar_photo || sessions[0].avatar_photo || null;
        let full_name = guard_name;
         try {
-            const [userRows] = await dbPool.query('SELECT fullName, name FROM security_guards_status WHERE user_id = ?', [guard_id]);
-            if (userRows.length > 0 && (userRows[0].fullName || userRows[0].name)) {
-                full_name = userRows[0].fullName || userRows[0].name;
+            const [userRows] = await dbPool.query('SELECT fullName, name, avatar_photo FROM security_guards_status WHERE user_id = ?', [guard_id]);
+            if (userRows.length > 0) {
+                if (userRows[0].fullName || userRows[0].name) {
+                    full_name = userRows[0].fullName || userRows[0].name;
+                }
+                if (!avatar_photo && userRows[0].avatar_photo) {
+                    avatar_photo = userRows[0].avatar_photo;
+                }
             }
         } catch (_) {}
        
        await dbPool.query(`
-          INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, last_update) 
-          VALUES (?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP)
-          ON CONFLICT (user_id) DO UPDATE SET status='active', latitude=EXCLUDED.latitude, longitude=EXCLUDED.longitude, last_update=CURRENT_TIMESTAMP
-        `, [guard_id, guard_name, full_name, lat, lng]);
+          INSERT INTO security_guards_status (user_id, name, fullName, status, latitude, longitude, avatar_photo, last_update) 
+          VALUES (?, ?, ?, 'active', ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT (user_id) DO UPDATE SET 
+            status='active', 
+            latitude=EXCLUDED.latitude, 
+            longitude=EXCLUDED.longitude, 
+            avatar_photo=COALESCE(EXCLUDED.avatar_photo, security_guards_status.avatar_photo),
+            last_update=CURRENT_TIMESTAMP
+        `, [guard_id, guard_name, full_name, lat, lng, avatar_photo]);
     }
 
     res.status(201).json({ success: true, message: shouldSaveToTrack ? 'Location track recorded' : 'Guard position updated (track filtered)' });
@@ -953,14 +997,28 @@ const getReplayHandler = async (req, res) => {
 
     // Get session info (support integer id OR string session_code)
     const [sessions] = await dbPool.query(
-      'SELECT id, guard_name, status, started_at, completed_at FROM security_patrol_sessions WHERE id = ? OR session_code = ? ORDER BY id DESC LIMIT 1',
+      'SELECT id, guard_id, guard_name, status, started_at, completed_at, avatar_photo FROM security_patrol_sessions WHERE id = ? OR session_code = ? ORDER BY id DESC LIMIT 1',
       [queryId, String(sessionId)]
     );
     if (sessions.length === 0) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    const realSessionId = sessions[0].id;
+    const sessionObj = { ...sessions[0] };
+    try {
+      let resolvedAvatar = sessionObj.avatar_photo || null;
+      if (sessionObj.guard_id) {
+        const [uMain] = await dbMainPool.query('SELECT avatar_photo, full_name FROM users WHERE id = ?', [sessionObj.guard_id]);
+        if (uMain && uMain.length > 0) {
+          if (uMain[0].avatar_photo) resolvedAvatar = uMain[0].avatar_photo;
+          if (uMain[0].full_name) sessionObj.guard_name = uMain[0].full_name;
+        }
+      }
+      sessionObj.avatar_photo = resolvedAvatar;
+      sessionObj.photo = resolvedAvatar;
+    } catch (_) {}
+
+    const realSessionId = sessionObj.id;
 
     // Get all GPS tracks for this session
     let [tracks] = await dbPool.query(
@@ -986,7 +1044,7 @@ const getReplayHandler = async (req, res) => {
     }
 
     res.json({
-      session: sessions[0],
+      session: sessionObj,
       tracks,
       checkpoints
     });
@@ -1042,7 +1100,7 @@ router.get('/history', async (req, res) => {
   try {
     const [baseRows] = await dbPool.query(`
       SELECT 
-        s.id, s.guard_id, s.guard_name, s.status, s.started_at, s.completed_at, s.shift, s.round_number,
+        s.id, s.guard_id, s.guard_name, s.status, s.started_at, s.completed_at, s.shift, s.round_number, s.avatar_photo,
         (SELECT COUNT(*) FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_count,
         (SELECT STRING_AGG(DISTINCT c.station_name, ', ') FROM security_session_checkpoints c WHERE c.session_id = s.id) as checkpoint_names,
         (SELECT COUNT(*) FROM security_patrol_tracks t WHERE t.session_id = s.id) as track_count
@@ -1053,18 +1111,25 @@ router.get('/history', async (req, res) => {
 
     let finalRows = baseRows;
     try {
-      const [userRows] = await dbMainPool.query('SELECT id, username, full_name FROM users');
+      const [userRows] = await dbMainPool.query('SELECT id, username, full_name, avatar_photo FROM users');
       const userMapById = new Map();
       const userMapByName = new Map();
+      const avatarMapById = new Map();
+      const avatarMapByName = new Map();
       for (const u of userRows) {
         if (u.full_name) {
           userMapById.set(Number(u.id), u.full_name);
           userMapByName.set(String(u.username).toLowerCase(), u.full_name);
         }
+        if (u.avatar_photo) {
+          avatarMapById.set(Number(u.id), u.avatar_photo);
+          avatarMapByName.set(String(u.username).toLowerCase(), u.avatar_photo);
+        }
       }
       finalRows = baseRows.map(r => ({
         ...r,
-        guard_name: userMapById.get(Number(r.guard_id)) || userMapByName.get(String(r.guard_name).toLowerCase()) || r.guard_name
+        guard_name: userMapById.get(Number(r.guard_id)) || userMapByName.get(String(r.guard_name).toLowerCase()) || r.guard_name,
+        avatar_photo: avatarMapById.get(Number(r.guard_id)) || avatarMapByName.get(String(r.guard_name).toLowerCase()) || r.avatar_photo || null
       }));
     } catch (_) {}
 
@@ -1470,6 +1535,67 @@ router.delete('/master-checkpoints/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting checkpoint:', error);
     res.status(500).json({ error: 'Failed to delete checkpoint' });
+  }
+});
+
+// 6. POST /avatar: Update profile avatar for current user/guard in database
+router.post('/avatar', async (req, res) => {
+  try {
+    let guard_id = req.body.user_id || null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      try {
+        const decoded = jwt.decode(token);
+        if (decoded && (decoded.userId || decoded.id)) guard_id = decoded.userId || decoded.id;
+      } catch (_) {}
+    }
+
+    const { photo_url, avatar_photo } = req.body;
+    const finalPhoto = photo_url || avatar_photo || null;
+
+    if (!guard_id && req.body.username) {
+      try {
+        const [u] = await dbMainPool.query('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', [req.body.username]);
+        if (u.length > 0) guard_id = u[0].id;
+      } catch (_) {}
+    }
+
+    if (!guard_id) {
+      return res.status(400).json({ error: 'User ID or valid token required' });
+    }
+
+    // 1. Update di mewah_main.users
+    try {
+      await dbMainPool.query('UPDATE users SET avatar_photo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [finalPhoto, guard_id]);
+    } catch (e) {
+      console.warn('Failed updating avatar in mewah_main users:', e.message);
+    }
+
+    // 2. Update di mewah_security.security_guards_status
+    try {
+      await dbPool.query('UPDATE security_guards_status SET avatar_photo = ?, last_update = CURRENT_TIMESTAMP WHERE user_id = ?', [finalPhoto, guard_id]);
+    } catch (e) {
+      console.warn('Failed updating avatar in security_guards_status:', e.message);
+    }
+
+    // 3. Update di active patrol session (jika sedang patrol)
+    try {
+      await dbPool.query("UPDATE security_patrol_sessions SET avatar_photo = ?, updated_at = CURRENT_TIMESTAMP WHERE guard_id = ? AND status = 'active'", [finalPhoto, guard_id]);
+    } catch (e) {
+      console.warn('Failed updating avatar in active session:', e.message);
+    }
+
+    // Broadcast ke frontend web patrol map realtime
+    broadcastPatrolEvent('guard_avatar_updated', {
+      user_id: guard_id,
+      avatar_photo: finalPhoto
+    });
+
+    res.json({ success: true, message: 'Avatar updated successfully', avatar_photo: finalPhoto });
+  } catch (error) {
+    console.error('Error updating avatar:', error);
+    res.status(500).json({ error: 'Failed to update avatar: ' + error.message });
   }
 });
 

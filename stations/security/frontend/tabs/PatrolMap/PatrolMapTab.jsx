@@ -18,9 +18,9 @@ const _mobileGuardRemover = { fn: null };
 const _mobileRotate = { fn: null };
 
 if (typeof window !== 'undefined') {
-  window.updateGuardLocation = (userId, lat, lng, guardName) => {
+  window.updateGuardLocation = (userId, lat, lng, guardName, photoUrl) => {
     if (_mobileGuardUpdater.fn) {
-      _mobileGuardUpdater.fn(userId, parseFloat(lat), parseFloat(lng), guardName || 'Guard Mobile');
+      _mobileGuardUpdater.fn(userId, parseFloat(lat), parseFloat(lng), guardName || 'Guard Mobile', photoUrl || null);
     }
   };
 
@@ -33,9 +33,9 @@ if (typeof window !== 'undefined') {
   // Flutter can also call this with JSON string
   window.updateGuardLocationJson = (jsonStr) => {
     try {
-      const { userId, lat, lng, guardName } = JSON.parse(jsonStr);
+      const { userId, lat, lng, guardName, photoUrl, photo } = JSON.parse(jsonStr);
       if (_mobileGuardUpdater.fn) {
-        _mobileGuardUpdater.fn(userId, parseFloat(lat), parseFloat(lng), guardName || 'Guard Mobile');
+        _mobileGuardUpdater.fn(userId, parseFloat(lat), parseFloat(lng), guardName || 'Guard Mobile', photoUrl || photo || null);
       }
     } catch (e) { console.warn('updateGuardLocationJson parse error:', e); }
   };
@@ -137,7 +137,22 @@ function MapUpdater({ center, zoom, bearing, isFullscreen }) {
     return null;
 }
 
-function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = [], stationCheckpoints = [], patrolTracks = [], cctvCameras = [], setProofIndex, setActiveProof, replaySessionId, setReplaySessionId, isSettingCheckpointsOpen, setIsSettingCheckpointsOpen }) {
+function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGuards = [], stationCheckpoints = [], patrolTracks = [], cctvCameras = [], setProofIndex, setActiveProof, replaySessionId, setReplaySessionId, isSettingCheckpointsOpen, setIsSettingCheckpointsOpen }) {
+    // Check if user is 'dev' role with role_id = 4
+    const isDevRole = (() => {
+        let u = user;
+        if (!u || (!u.role && !u.userRole && !u.role_id && !u.roleId)) {
+            try {
+                u = JSON.parse(localStorage.getItem('kip_user') || '{}');
+            } catch (_) {
+                u = {};
+            }
+        }
+        const roleId = Number(u?.role_id ?? u?.roleId ?? 0);
+        const roleName = String(u?.role || u?.userRole || u?.role_name || '').toLowerCase().trim();
+        return roleId === 4 && (roleName === 'dev' || roleName === 'developer');
+    })();
+
     const [center, setCenter] = useState([3.683095, 98.704352]);
     const [zoom, setZoom] = useState(18);
     const [bearing, setBearing] = useState(0);
@@ -166,10 +181,17 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
     const [mobileGuards, setMobileGuards] = useState({});
 
     useEffect(() => {
-        _mobileGuardUpdater.fn = (userId, lat, lng, guardName) => {
+        _mobileGuardUpdater.fn = (userId, lat, lng, guardName, photoUrl) => {
             setMobileGuards(prev => ({
                 ...prev,
-                [userId]: { userId, lat, lng, name: guardName, lastUpdate: Date.now() }
+                [userId]: { 
+                    userId, 
+                    lat, 
+                    lng, 
+                    name: guardName, 
+                    avatar_photo: photoUrl || (prev[userId] && prev[userId].avatar_photo) || null,
+                    lastUpdate: Date.now() 
+                }
             }));
         };
         _mobileGuardRemover.fn = (userId) => {
@@ -377,8 +399,9 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
 
     const createGuardIcon = (guard, color = '#fbbf24', searching = false) => {
         const initial = (guard.name || guard.guard_name || '?').charAt(0).toUpperCase();
-        const photoHtml = guard.latest_photo
-            ? `<img src="${guard.latest_photo}" alt="G" style="width:100%;height:100%;object-fit:cover;border-radius:50% !important;" />`
+        const avatarImg = guard.avatar_photo || guard.photo || guard.photo_url || guard.latest_photo || null;
+        const photoHtml = avatarImg
+            ? `<img src="${avatarImg}" alt="G" style="width:100%;height:100%;object-fit:cover;border-radius:50% !important;" />`
             : `<span style="color:#fff;font-size:15px;font-weight:800;">${initial}</span>`;
         const borderColor = searching ? '#ef4444' : color;
         const tagExtra = searching ? `<div style="font-size:8px;color:#ef4444;font-weight:700;margin-top:2px;">📡 Searching GPS...</div>` : '';
@@ -444,7 +467,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
             <div style={{ width: '100vw', height: '100vh', background: '#0f172a', margin: 0, padding: 0, overflow: 'hidden' }}>
                 <MapContainer center={center} zoom={zoom} rotate={true} bearing={bearing} touchRotate={true} style={{ width: '100%', height: '100%', zIndex: 1 }} zoomControl={true} dragging={true} touchZoom={true} doubleClickZoom={true} scrollWheelZoom={true}>
                     <MapUpdater center={center} zoom={zoom} bearing={bearing} />
-                    <TileLayer url="http://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} />
+                    <TileLayer url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} />
 
                     {isReplayMode ? (
                         <>
@@ -468,25 +491,55 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                 const nextReplayTarget = sortedReplayStations.find(s => replayVisibleCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
                                 const isNextTarget = nextReplayTarget && nextReplayTarget.id === station.id;
 
+                                const stLat = parseFloat(station.latitude) + 0;
+                                const stLng = parseFloat(station.longitude) + 0;
+                                const radiusM = parseFloat(station.radius_meters) > 0 ? parseFloat(station.radius_meters) : 30;
+                                
+                                let isInsideRadius = false;
+                                if (replayCurrentPos) {
+                                    const dist = calculateHaversine(replayCurrentPos[0], replayCurrentPos[1], stLat, stLng);
+                                    isInsideRadius = dist <= radiusM;
+                                }
+
+                                const circleColor = isVerified ? '#10b981' : (isNextTarget ? (isInsideRadius ? '#10b981' : '#ef4444') : '#64748b');
+                                const circleOpacity = (isNextTarget || isInsideRadius) ? 0.35 : 0.15;
+
                                 return (
-                                    <Marker
-                                        key={`rcp-m-${i}`}
-                                        position={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]}
-                                        icon={createCheckpointIcon(station, isVerified, isNextTarget)}
-                                    >
-                                        <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
-                                            <div className="pm-tooltip-card">
-                                                <div className="pm-tooltip-title">{station.station_name}</div>
-                                                <div className="pm-tooltip-meta">{sData.lastCheck}</div>
-                                            </div>
-                                        </Tooltip>
-                                    </Marker>
+                                    <React.Fragment key={`rcp-m-frag-${station.id || i}`}>
+                                        {/* Dynamic Checkpoint Radius Circle */}
+                                        <Circle
+                                            center={[stLat, stLng]}
+                                            radius={radiusM}
+                                            pathOptions={{
+                                                color: circleColor,
+                                                fillColor: circleColor,
+                                                fillOpacity: circleOpacity,
+                                                weight: isNextTarget ? 2.5 : 1.5,
+                                                dashArray: isVerified ? undefined : '4, 4'
+                                            }}
+                                        />
+                                        <Marker
+                                            key={`rcp-m-${i}`}
+                                            position={[stLat, stLng]}
+                                            icon={createCheckpointIcon(station, isVerified, isNextTarget)}
+                                        >
+                                            <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
+                                                <div className="pm-tooltip-card">
+                                                    <div className="pm-tooltip-title">{station.station_name}</div>
+                                                    <div className="pm-tooltip-meta">
+                                                        Radius: {radiusM}m • {isInsideRadius ? 'Guard Inside Radius' : sData.lastCheck}
+                                                    </div>
+                                                </div>
+                                            </Tooltip>
+                                        </Marker>
+                                    </React.Fragment>
                                 );
                             })}
 
                             {/* Replay guard avatar */}
                             {replayCurrentPos && (
                                 <Marker
+                                    key={`replay-avatar-${replayData.session?.id || 'rep'}-${replayData.session?.avatar_photo || 'init'}`}
                                     position={replayCurrentPos}
                                     icon={createGuardIcon(replayData.session, '#ff0055')}
                                 />
@@ -601,10 +654,17 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                             guard_name: mg.name || 'Guard Mobile',
                                             latitude: mg.lat,
                                             longitude: mg.lng,
+                                            avatar_photo: mg.avatar_photo || null,
+                                            photo: mg.avatar_photo || null,
                                             status: 'active'
                                         };
                                         if (existingIdx >= 0) {
-                                            merged[existingIdx] = { ...merged[existingIdx], ...guardItem };
+                                            merged[existingIdx] = { 
+                                                ...merged[existingIdx], 
+                                                ...guardItem,
+                                                avatar_photo: mg.avatar_photo || merged[existingIdx].avatar_photo || null,
+                                                photo: mg.avatar_photo || merged[existingIdx].photo || null
+                                            };
                                         } else {
                                             merged.push(guardItem);
                                         }
@@ -615,8 +675,9 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                     const hasGps = !!(guard.latitude && guard.longitude);
                                     if (!hasGps) return null;
                                     const pos = [parseFloat(guard.latitude), parseFloat(guard.longitude)];
+                                    const avatarId = guard.avatar_photo || guard.photo || guard.latest_photo || 'initial';
                                     return (
-                                        <Marker key={`guard-m-${guard.session_id || idx}`} position={pos} icon={createGuardIcon(guard)} zIndexOffset={10000}>
+                                        <Marker key={`guard-m-${guard.session_id || idx}-${avatarId}`} position={pos} icon={createGuardIcon(guard)} zIndexOffset={10000}>
                                             <Tooltip direction="top" offset={[0, -45]} opacity={1} className="pm-hover-tooltip">
                                                 <div className="pm-tooltip-card">
                                                     <div className="pm-tooltip-title">{guard.guard_name || guard.name || 'Guard Mobile'}</div>
@@ -672,8 +733,8 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                 overflow: 'hidden'
             } : { position: 'relative' }}
         >
-            {/* Settings Modal */}
-            {showSettings && (
+            {/* Settings Modal (Only accessible for role 'dev' with role_id = 4) */}
+            {isDevRole && showSettings && (
                 <div className="pm-settings-overlay">
                     <div className="pm-settings-modal">
                         <h3 className="pm-settings-title">Factory Location Settings</h3>
@@ -745,6 +806,8 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                         <div className="som-map-legend" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             {isReplayMode && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className="legend-item" title="Verified checkpoint"><span className="dot selesai"></span> COMPLETED</span>
+                                    <span className="legend-item" title="Target checkpoint radius"><span className="dot target"></span> TARGET RADIUS</span>
                                     <button onClick={stopReplay} className="pm-stop-replay-btn">
                                         <FaStop style={{ marginRight: '5px' }} /> Back to Live
                                     </button>
@@ -765,21 +828,23 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                             )}
                             {!isReplayMode && (
                                 <>
-                                    <span className="legend-item"><span className="dot selesai"></span> SELESAI</span>
+                                    <span className="legend-item"><span className="dot selesai"></span> COMPLETED</span>
                                     <span className="legend-item"><span className="dot target"></span> TARGET</span>
                                     <span className="legend-item"><span className="dot pending"></span> PENDING</span>
                                     <span className="legend-item"><span className="dot guard"></span> GUARD</span>
                                 </>
                             )}
-                            <button 
-                                onClick={() => setShowSettings(true)} 
-                                title="Factory Location Settings"
-                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '14px', padding: '0 5px', transition: 'color 0.2s' }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = '#ffdb3b'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
-                            >
-                                <FaCog />
-                            </button>
+                            {isDevRole && (
+                                <button 
+                                    onClick={() => setShowSettings(true)} 
+                                    title="Factory Location Settings"
+                                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '14px', padding: '0 5px', transition: 'color 0.2s' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = '#ffdb3b'}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                                >
+                                    <FaCog />
+                                </button>
+                            )}
                             <button 
                                 onClick={() => setIsFullscreen(!isFullscreen)} 
                                 title={isFullscreen ? "Exit Full Screen" : "Full Screen Map"}
@@ -870,7 +935,7 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
 
                     <MapContainer center={center} zoom={zoom} rotate={true} bearing={bearing} touchRotate={true} style={{ width: '100%', height: '100%', zIndex: 1 }} zoomControl={true} attributionControl={false} dragging={true} touchZoom={true} doubleClickZoom={true} scrollWheelZoom={true}>
                         <MapUpdater center={center} zoom={zoom} bearing={bearing} isFullscreen={isFullscreen} />
-                        <TileLayer url="http://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" maxZoom={22} />
+                        <TileLayer url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" maxZoom={22} />
 
                         {isReplayMode ? (
                             <>
@@ -893,33 +958,63 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                     const sortedReplayStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
                                     const nextReplayTarget = sortedReplayStations.find(s => replayVisibleCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
                                     const isNextTarget = nextReplayTarget && nextReplayTarget.id === station.id;
+
+                                    const stLat = parseFloat(station.latitude) + 0;
+                                    const stLng = parseFloat(station.longitude) + 0;
+                                    const radiusM = parseFloat(station.radius_meters) > 0 ? parseFloat(station.radius_meters) : 30;
+                                    
+                                    let isInsideRadius = false;
+                                    if (replayCurrentPos) {
+                                        const dist = calculateHaversine(replayCurrentPos[0], replayCurrentPos[1], stLat, stLng);
+                                        isInsideRadius = dist <= radiusM;
+                                    }
+
+                                    const circleColor = isVerified ? '#10b981' : (isNextTarget ? (isInsideRadius ? '#10b981' : '#ef4444') : '#64748b');
+                                    const circleOpacity = (isNextTarget || isInsideRadius) ? 0.35 : 0.15;
                                     
                                     return (
-                                        <Marker
-                                            key={`rcp-${i}`}
-                                            position={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]}
-                                            icon={createCheckpointIcon(station, isVerified, isNextTarget)}
-                                            eventHandlers={{ click: () => { setProofIndex(0); setActiveProof({ name: station.station_name, ...sData }); } }}
-                                        >
-                                            <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
-                                                <div className="pm-tooltip-card">
-                                                    <div className="pm-tooltip-title">{station.station_name}</div>
-                                                    <div className="pm-tooltip-meta">{sData.lastCheck}</div>
-                                                    {sData.activeProofImg && (
-                                                        <div className="pm-tooltip-photo">
-                                                            <img src={sData.activeProofImg} alt="Bukti" />
-                                                            <div className="pm-click-hint">Klik untuk perbesar</div>
+                                        <React.Fragment key={`rcp-frag-${station.id || i}`}>
+                                            {/* Dynamic Radius Circle */}
+                                            <Circle
+                                                center={[stLat, stLng]}
+                                                radius={radiusM}
+                                                pathOptions={{
+                                                    color: circleColor,
+                                                    fillColor: circleColor,
+                                                    fillOpacity: circleOpacity,
+                                                    weight: isNextTarget ? 2.5 : 1.5,
+                                                    dashArray: isVerified ? undefined : '4, 4'
+                                                }}
+                                            />
+                                            <Marker
+                                                key={`rcp-${i}`}
+                                                position={[stLat, stLng]}
+                                                icon={createCheckpointIcon(station, isVerified, isNextTarget)}
+                                                eventHandlers={{ click: () => { setProofIndex(0); setActiveProof({ name: station.station_name, ...sData }); } }}
+                                            >
+                                                <Tooltip direction="top" offset={[0, -10]} opacity={1} className="pm-hover-tooltip">
+                                                    <div className="pm-tooltip-card">
+                                                        <div className="pm-tooltip-title">{station.station_name}</div>
+                                                        <div className="pm-tooltip-meta">
+                                                            Radius: {radiusM}m • {isInsideRadius ? 'Guard Inside Radius' : sData.lastCheck}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            </Tooltip>
-                                        </Marker>
+                                                        {sData.activeProofImg && (
+                                                            <div className="pm-tooltip-photo">
+                                                                <img src={sData.activeProofImg} alt="Proof" />
+                                                                <div className="pm-click-hint">Click to enlarge</div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </Tooltip>
+                                            </Marker>
+                                        </React.Fragment>
                                     );
                                 })}
 
                                 {/* Replay guard avatar */}
                                 {replayCurrentPos && (
                                     <Marker
+                                        key={`replay-avatar-${replayData.session?.id || 'rep'}-${replayData.session?.avatar_photo || 'init'}`}
                                         position={replayCurrentPos}
                                         icon={createGuardIcon(replayData.session, '#f59e0b')}
                                     />
@@ -1070,9 +1165,10 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                                             lng += Math.cos(angle) * 0.00005;
                                         }
 
+                                        const avatarId = guard.avatar_photo || guard.photo || guard.latest_photo || 'initial';
                                         return (
                                             <Marker 
-                                                key={`g-${guard.session_id || idx}`} 
+                                                key={`g-${guard.session_id || idx}-${avatarId}`} 
                                                 position={[lat, lng]} 
                                                 icon={createGuardIcon(guard, '#fbbf24', !hasGps)} 
                                                 zIndexOffset={hasGps ? (10000 - idx) : 5000}
@@ -1110,6 +1206,52 @@ function PatrolMapTab({ isMobileEmbed = false, mapStations = [], patrolGuards = 
                             <div className="pm-replay-progress-text">
                                 {replayIndex + 1} / {replayData.tracks.length}
                             </div>
+                            {(() => {
+                                if (!replayCurrentPos) return null;
+                                const sortedReplayStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
+                                const nextReplayTarget = sortedReplayStations.find(s => replayVisibleCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
+                                if (!nextReplayTarget) {
+                                    return (
+                                        <div style={{ marginLeft: 'auto', background: '#10b981', color: '#fff', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            ✓ ALL CHECKPOINTS REACHED
+                                        </div>
+                                    );
+                                }
+                                const dist = Math.round(calculateHaversine(
+                                    replayCurrentPos[0], 
+                                    replayCurrentPos[1], 
+                                    parseFloat(nextReplayTarget.latitude), 
+                                    parseFloat(nextReplayTarget.longitude)
+                                ));
+                                const rM = parseFloat(nextReplayTarget.radius_meters) > 0 ? parseFloat(nextReplayTarget.radius_meters) : 30;
+                                const inRadius = dist <= rM;
+                                return (
+                                    <div style={{ 
+                                        marginLeft: 'auto', 
+                                        background: inRadius ? '#10b981' : '#0f172a', 
+                                        border: `1px solid ${inRadius ? '#059669' : '#334155'}`,
+                                        color: '#fff', 
+                                        padding: '3px 10px', 
+                                        borderRadius: '6px', 
+                                        fontSize: '11px', 
+                                        fontWeight: '700',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}>
+                                        <span>Target: <b>{nextReplayTarget.station_name}</b></span>
+                                        <span style={{ 
+                                            background: inRadius ? '#059669' : '#ef4444', 
+                                            padding: '1px 6px', 
+                                            borderRadius: '4px', 
+                                            fontSize: '10px',
+                                            fontWeight: '800'
+                                        }}>
+                                            {inRadius ? `INSIDE RADIUS (${dist}m / ${rM}m)` : `${dist}m (Radius: ${rM}m)`}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     ) : (
                         <div className="pm-hud">

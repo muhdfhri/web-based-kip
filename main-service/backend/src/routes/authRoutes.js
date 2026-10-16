@@ -21,10 +21,10 @@ router.post('/login', async (req, res) => {
       [username]
     );
 
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user) return res.status(401).json({ message: 'Incorrect username or password' });
 
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!valid) return res.status(401).json({ message: 'Incorrect username or password' });
 
     // Get permissions for user
     const [perms] = await dbPool.query(
@@ -42,6 +42,8 @@ router.post('/login', async (req, res) => {
       username:      user.username,
       fullName:      user.full_name,
       userRole:      user.role_name || 'operator',
+      roleId:        user.role_id,
+      role_id:       user.role_id,
       permissions:   [...permissions, ...systemPermissions],
       positionTitle: user.position_title,
       companyName:   user.company_name,
@@ -104,6 +106,8 @@ router.get('/me', requireAuth, async (req, res) => {
           username: user.username,
           fullName: user.full_name,
           full_name: user.full_name,
+          roleId: user.role_id || req.user.roleId || req.user.role_id,
+          role_id: user.role_id || req.user.role_id || req.user.roleId,
           positionTitle: user.position_title,
           companyName: user.company_name,
           userRole: user.role_name || req.user.userRole,

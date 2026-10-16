@@ -88,7 +88,7 @@ function ProofModal({ activeProof, setActiveProof, proofIndex, setProofIndex, cu
         <div className="som-proof-modal-overlay">
             <div className="som-proof-modal-content animate-in">
                 <div className="som-proof-modal-header">
-                    <h2>AI VERIFIED PATROL PROOF</h2>
+                    <h2>VERIFIED PATROL PROOF</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                         <span className="live-tag">LIVE SYNCED</span>
                         <button className="som-close-modal" onClick={() => setActiveProof(null)}>×</button>

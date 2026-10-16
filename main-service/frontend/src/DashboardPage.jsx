@@ -157,8 +157,8 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
     if (stations.length === 0) return;
 
     const roleLower = user?.userRole?.toLowerCase() || user?.role?.toLowerCase() || "";
-    if (["developer", "admin", "mill_manager"].includes(roleLower)) {
-      // If admin, at least ensure activeMenu is somewhat correct for stations if stuck on Dashboard
+    if (["developer", "admin", "mill_manager", "general_manager", "asisten_manager", "manager"].includes(roleLower) || roleLower.includes("manager")) {
+      // If admin/manager, at least ensure activeMenu is somewhat correct for stations if stuck on Dashboard
       if (activeMenu === "Dashboard" && STATION_PAGE_MAP[activeSubmenu]) {
         setActiveMenu("Station View");
       }
@@ -500,8 +500,16 @@ function DashboardPage({ user, onLogoutSuccess, onProfileUpdate }) {
     }
 
     // Non-station pages (alarm, report, etc) — tetap hardcoded
-    if (activeSubmenu === "User Management")
+    if (activeSubmenu === "User Management") {
+      const isDevUser =
+        user?.username?.toLowerCase() === "dev" &&
+        (Number(user?.roleId || user?.role_id) === 4 ||
+          ["developer"].includes(
+            user?.userRole?.toLowerCase() || user?.role?.toLowerCase() || "",
+          ));
+      if (!isDevUser) return <ComingSoonPage title="Access Denied" />;
       return <UserManagementPage user={user} />;
+    }
     if (activeSubmenu === "PLC Configuration") {
       if (
         user?.userRole?.toLowerCase() !== "developer" &&

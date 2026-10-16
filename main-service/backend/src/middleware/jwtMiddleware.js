@@ -62,7 +62,7 @@ export function authorizePermission(permission) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
     const userRole = (req.user.userRole || '').toLowerCase();
-    if (['developer', 'admin', 'mill_manager'].includes(userRole)) return next();
+    if (['developer', 'admin', 'mill_manager', 'general_manager', 'asisten_manager', 'manager'].includes(userRole) || userRole.includes('manager')) return next();
     const perms = req.user.permissions || [];
     if (!perms.includes(permission)) {
       return res.status(403).json({ message: `Forbidden: Missing permission [${permission}]` });

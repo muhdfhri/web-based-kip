@@ -78,6 +78,13 @@ function DashboardHeader({
   // Build dynamic dropdown items from stations data
   const stationTitles = stations.map((s) => s.title);
 
+  // User Role checks: khusus akun 'dev' dengan role_id 4
+  const isDevUser = 
+    (user?.username?.toLowerCase() === "dev") && 
+    (Number(user?.roleId || user?.role_id) === 4 || ["developer"].includes(user?.userRole?.toLowerCase() || user?.role?.toLowerCase() || ""));
+
+  const canManageUsers = isDevUser;
+
   const DROPDOWN_ITEMS = {
     "Station View": stationTitles,
     Maintenance: [
@@ -103,17 +110,17 @@ function DashboardHeader({
       "Daily Report Mill Stability",
     ],
     Contacts: ["Developer", "Site Owner"],
-    System: ["User Management", "System Configuration"],
+    System: canManageUsers ? ["User Management", "System Configuration"] : ["System Configuration"],
   };
 
   const DROPDOWN_GROUPS = new Set(Object.keys(DROPDOWN_ITEMS));
 
-  const isDev = ["developer"].includes(user?.userRole?.toLowerCase() || user?.role?.toLowerCase() || "");
+  const isDev = isDevUser;
   const dynamicMenuItems = (isDev || isSystemMenuUnlocked) ? [...MENU_ITEMS, "System"] : MENU_ITEMS;
 
   const hasPermission = (parent, submenu) => {
     const roleLower = user?.userRole?.toLowerCase() || user?.role?.toLowerCase() || "";
-    if (["developer", "admin", "mill_manager"].includes(roleLower)) return true;
+    if (["developer", "admin", "mill_manager", "general_manager", "asisten_manager", "manager"].includes(roleLower) || roleLower.includes("manager")) return true;
     
     const key = `${parent}:${submenu}`;
     const perms = user?.permissions || [];
@@ -122,7 +129,7 @@ function DashboardHeader({
 
   const isMenuLocked = (menuName) => {
     const roleLower = user?.userRole?.toLowerCase() || user?.role?.toLowerCase() || "";
-    if (["developer", "admin", "mill_manager"].includes(roleLower)) return false;
+    if (["developer", "admin", "mill_manager", "general_manager", "asisten_manager", "manager"].includes(roleLower) || roleLower.includes("manager")) return false;
 
     if (menuName === "Dashboard") {
       return !hasPermission("Dashboard", "Production Dashboard");
@@ -134,8 +141,6 @@ function DashboardHeader({
     // Do not lock main menus that have submenus. 
     return false;
   };
-
-  const canManageUsers = ["developer", "admin", "mill_manager"].includes(user?.userRole?.toLowerCase() || user?.role?.toLowerCase() || "");
 
   const LockIcon = () => (
     <svg

@@ -255,7 +255,10 @@ function DashboardHeader({
                         }
                         const isLocked = isHardLocked || !hasPerm;
 
-                        if (['User Management', 'PLC Configuration', 'System Configuration'].includes(label)) {
+                        if (label === 'User Management') {
+                          const isDev = user?.username?.toLowerCase() === 'dev' && (Number(user?.roleId || user?.role_id) === 4 || ['developer'].includes(user?.role?.toLowerCase() || user?.userRole?.toLowerCase() || ''));
+                          if (!isDev) return null;
+                        } else if (['PLC Configuration', 'System Configuration'].includes(label)) {
                           if (user?.role?.toLowerCase() !== 'developer' && user?.userRole?.toLowerCase() !== 'developer') return null;
                         }
 

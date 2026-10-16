@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { FaClipboardList, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaCamera, FaCheckCircle, FaFilter, FaSync, FaArrowLeft, FaFileExcel, FaPlay } from 'react-icons/fa';
+import React, { useState, useEffect, useMemo } from 'react';
+import { FaClipboardList, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaCamera, FaCheckCircle, FaFilter, FaSync, FaArrowLeft, FaFileExcel, FaPlay, FaChevronDown, FaChevronRight, FaClock, FaShieldAlt } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 import ProofModal from '../../components/ProofModal.jsx';
 
@@ -14,10 +14,19 @@ function PatrolLogsView({ onBack, onReplaySession }) {
   const [fromDate, setFromDate] = useState(todayStr);
   const [toDate, setToDate] = useState(todayStr);
   const [isAllData, setIsAllData] = useState(false);
+  const [expandedSessions, setExpandedSessions] = useState({});
+  const [logViewMode, setLogViewMode] = useState('session'); // 'session' (Grouped) or 'checkpoint' (Flat)
 
   const [stations, setStations] = useState([]);
   const [activeProof, setActiveProof] = useState(null);
   const [proofIndex, setProofIndex] = useState(0);
+
+  const toggleSessionExpand = (sessId) => {
+    setExpandedSessions(prev => ({
+      ...prev,
+      [sessId]: !prev[sessId]
+    }));
+  };
 
   const fetchStations = async () => {
     try {
@@ -92,7 +101,8 @@ function PatrolLogsView({ onBack, onReplaySession }) {
           station,
           coord: `${lat}, ${lng}`,
           status: (item.status || 'VERIFIED').toUpperCase(),
-          photo
+          photo,
+          avatar_photo: item.avatar_photo || null
         });
       });
 
@@ -113,25 +123,87 @@ function PatrolLogsView({ onBack, onReplaySession }) {
   }, [fromDate, toDate, isAllData, stations.length]);
 
   const exportToExcel = () => {
-    if (filteredLogs.length === 0) return alert("No logs to export");
-    const exportData = filteredLogs.map((log, index) => ({
-      "No": index + 1,
-      "PIC Security": log.officer,
-      "Shift": log.shift,
-      "Round": `Round ${log.roundNum}`,
-      "Checkpoint Progress": `${log.orderDone}/${log.totalMaster} (${log.progressPct}%)`,
-      "Start Time": log.startTimeStr !== '-' ? `${log.startDateStr} ${log.startTimeStr}` : '-',
-      "End Time": log.endTimeStr !== '-' ? `${log.endDateStr} ${log.endTimeStr}` : '-',
-      "Location Checkpoint": log.station,
-      "Verified Time": `${log.formattedDate} ${log.timeStr}`,
-      "GPS Coordinates": log.coord,
-      "Status": log.status
-    }));
+    if (filteredLogs.length === 0) {
+      alert("No data to export");
+      return;
+    }
+    
+    const headers = [
+      "No", "PIC Security", "Shift", "Round", "Checkpoint Progress",
+      "Start Time", "End Time", "Location Checkpoint", "GPS Coordinates",
+      "Verified Timestamp", "Status"
+    ];
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "PatrolLogs");
-    XLSX.writeFile(workbook, `PatrolLogs_${new Date().toISOString().replace(/[:.]/g, '-')}.xlsx`);
+    let tableHTML = '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+    tableHTML += '<head><meta charset="UTF-8"></head><body>';
+    tableHTML += '<table border="1" style="font-family: Arial, sans-serif; border-collapse: collapse;">';
+    
+    // Styled Header Row (Matching Truck Queues #1e293b dark header)
+    tableHTML += '<tr>';
+    headers.forEach(h => {
+      tableHTML += `<th style="background-color: #1e293b; color: #ffffff; font-weight: bold; padding: 10px; border: 1px solid #cbd5e1;">${h}</th>`;
+    });
+    tableHTML += '</tr>';
+
+    // Data Rows
+    filteredLogs.forEach((log, index) => {
+      const no = index + 1;
+      const pic = log.officer || '-';
+      const shift = log.shift || '-';
+      const round = `Round ${log.roundNum}`;
+      const progress = `${log.orderDone}/${log.totalMaster} (${log.progressPct}%)`;
+      const startTime = log.startTimeStr !== '-' ? `${log.startDateStr} ${log.startTimeStr}` : '-';
+      const endTime = log.endTimeStr !== '-' ? `${log.endDateStr} ${log.endTimeStr}` : '-';
+      const station = log.station || '-';
+      const coord = log.coord || '-';
+      const verifiedTime = `${log.formattedDate} ${log.timeStr}`;
+      const status = (log.status || 'VERIFIED').toUpperCase();
+
+      // Basic styling for status (matching Truck Queues style palette)
+      let statusColor = '#15803d'; // Green for verified
+      if (status.includes('PENDING') || status.includes('PROGRESS')) {
+        statusColor = '#b45309'; // Amber
+      } else if (status.includes('MISSING') || status.includes('ALERT')) {
+        statusColor = '#b91c1c'; // Red
+      }
+
+      tableHTML += '<tr>';
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1; text-align: center;">${no}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1; font-weight: bold;">${pic}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${shift}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${round}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${progress}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${startTime}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${endTime}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1; font-weight: 500;">${station}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1; mso-number-format:'\\@'; font-family: monospace;">${coord}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1;">${verifiedTime}</td>`;
+      tableHTML += `<td style="padding: 6px; border: 1px solid #cbd5e1; color: ${statusColor}; font-weight: bold; text-align: center;">${status}</td>`;
+      tableHTML += '</tr>';
+    });
+
+    tableHTML += '</table></body></html>';
+
+    const blob = new Blob([tableHTML], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    
+    let dateStr = 'ALL_DATA';
+    if (!isAllData) {
+      if (fromDate && toDate) {
+        dateStr = `${fromDate}_to_${toDate}`;
+      } else if (fromDate) {
+        dateStr = `From_${fromDate}`;
+      } else if (toDate) {
+        dateStr = `To_${toDate}`;
+      }
+    }
+    
+    link.setAttribute("download", `patrol_logs_${dateStr}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Unique officers present in logs
@@ -150,6 +222,49 @@ function PatrolLogsView({ onBack, onReplaySession }) {
 
     return searchMatch && stationMatch && officerMatch;
   });
+
+  // ── GROUPING PER SESI PATROLI ──
+  const groupedSessions = useMemo(() => {
+    const sessionMap = new Map();
+
+    filteredLogs.forEach(log => {
+      const sId = log.sessionId || `adhoc-${log.officer}-${log.dateStr}-${log.roundNum}`;
+      if (!sessionMap.has(sId)) {
+        sessionMap.set(sId, {
+          sessionId: log.sessionId,
+          officer: log.officer,
+          avatar_photo: log.avatar_photo,
+          initial: log.initial,
+          shift: log.shift,
+          roundNum: log.roundNum,
+          startTimeStr: log.startTimeStr,
+          startDateStr: log.startDateStr,
+          endTimeStr: log.endTimeStr,
+          endDateStr: log.endDateStr,
+          totalMaster: log.totalMaster,
+          completedAt: log.completedAt,
+          checkpoints: []
+        });
+      }
+      sessionMap.get(sId).checkpoints.push(log);
+    });
+
+    return Array.from(sessionMap.values()).map(sess => {
+      // Sort checkpoints by order / verified time ascending
+      sess.checkpoints.sort((a, b) => new Date(a.dateObj) - new Date(b.dateObj));
+      const scannedCount = sess.checkpoints.length;
+      const totalTarget = sess.totalMaster || stations.length || 20;
+      const isComplete = sess.endTimeStr !== '-' || scannedCount >= totalTarget;
+      const progressPct = totalTarget > 0 ? Math.min(100, Math.round((scannedCount / totalTarget) * 100)) : 0;
+      return {
+        ...sess,
+        scannedCount,
+        totalTarget,
+        isComplete,
+        progressPct
+      };
+    });
+  }, [filteredLogs, stations.length]);
 
   const thStyle = {
     padding: '12px 14px',
@@ -226,22 +341,21 @@ function PatrolLogsView({ onBack, onReplaySession }) {
           <button
             onClick={exportToExcel}
             style={{
-              background: '#10b981',
+              padding: '6px 14px',
+              background: '#16a34a',
+              color: '#fff',
               border: 'none',
-              color: '#ffffff',
-              padding: '8px 14px',
-              borderRadius: '8px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: '800',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              fontSize: '12px',
-              fontWeight: '700',
-              transition: 'all 0.2s',
-              boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)'
+              boxShadow: '0 2px 4px rgba(22, 163, 74, 0.2)'
             }}
           >
-            <FaFileExcel style={{ fontSize: '14px' }} /> Export Excel
+            <FaFileExcel style={{ fontSize: '14px' }} /> EXPORT EXCEL
           </button>
           
           <button
@@ -309,10 +423,10 @@ function PatrolLogsView({ onBack, onReplaySession }) {
               </span>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a' }}>{totalRounds}</span>
-                <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700' }}>({completedRounds} Selesai 100%)</span>
+                <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700' }}>({completedRounds} Completed 100%)</span>
                 {selectedOfficer === 'ALL' && activeOfficers.length > 0 && (
                   <span style={{ fontSize: '11px', color: '#0284c7', fontWeight: '700', background: '#e0f2fe', padding: '1px 6px', borderRadius: '4px' }}>
-                    {activeOfficers.length} Petugas Aktif
+                    {activeOfficers.length} Active Officers
                   </span>
                 )}
               </div>
@@ -462,6 +576,44 @@ function PatrolLogsView({ onBack, onReplaySession }) {
           >
             All Data
           </button>
+
+          {/* View Mode Toggle: By Session (Grouped) vs All Checkpoints */}
+          <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <button
+              onClick={() => setLogViewMode('session')}
+              style={{
+                background: logViewMode === 'session' ? '#0f172a' : 'transparent',
+                color: logViewMode === 'session' ? '#ffdb3b' : '#64748b',
+                border: 'none',
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+              title="Summarize by Patrol Session (Expandable)"
+            >
+              By Session ({groupedSessions.length})
+            </button>
+            <button
+              onClick={() => setLogViewMode('checkpoint')}
+              style={{
+                background: logViewMode === 'checkpoint' ? '#0f172a' : 'transparent',
+                color: logViewMode === 'checkpoint' ? '#ffdb3b' : '#64748b',
+                border: 'none',
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+              title="Individual checkpoint details"
+            >
+              All Checkpoints ({filteredLogs.length})
+            </button>
+          </div>
         </div>
       </div>
 
@@ -471,7 +623,336 @@ function PatrolLogsView({ onBack, onReplaySession }) {
           <div style={{ padding: '60px', textAlign: 'center', color: '#64748b', fontWeight: '600' }}>
             Loading patrol logs...
           </div>
+        ) : logViewMode === 'session' ? (
+          /* ═══════════════════════════════════════════════════════
+             VIEW A: GROUPED BY PATROL SESSION (HIERARCHICAL / ACCORDION)
+             ═══════════════════════════════════════════════════════ */
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 10, borderBottom: '2px solid #e2e8f0' }}>
+              <tr>
+                <th style={{ ...thStyle, width: '40px', textAlign: 'center' }}></th>
+                <th style={thStyle}>PIC SECURITY</th>
+                <th style={thStyle}>SHIFT & ROUND</th>
+                <th style={{ ...thStyle, minWidth: '170px' }}>CHECKPOINT PROGRESS</th>
+                <th style={thStyle}>START TIME</th>
+                <th style={thStyle}>END TIME</th>
+                <th style={thStyle}>CHECKPOINTS</th>
+                <th style={thStyle}>REPLAY</th>
+                <th style={thStyle}>SESSION STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupedSessions.length === 0 ? (
+                <tr>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <FaClipboardList style={{ fontSize: '36px', color: '#cbd5e1' }} />
+                      <span style={{ fontSize: '14px', fontWeight: '700', color: '#64748b' }}>NO PATROL SESSIONS FOUND</span>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Try adjusting your search filters or selected date</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                groupedSessions.map((sess, idx) => {
+                  const isExpanded = !!expandedSessions[sess.sessionId || idx];
+                  const isFullComplete = sess.scannedCount >= sess.totalTarget;
+                  const isSessionEnded = sess.endTimeStr !== '-';
+                  
+                  // Progress color calculation
+                  const progressColor = isFullComplete ? '#10b981' : (isSessionEnded ? '#f59e0b' : '#0284c7');
+                  const progressBg = isFullComplete ? '#ecfdf5' : (isSessionEnded ? '#fffbeb' : '#f0f9ff');
+                  const progressBorder = isFullComplete ? '#a7f3d0' : (isSessionEnded ? '#fde68a' : '#bae6fd');
+
+                  return (
+                    <React.Fragment key={sess.sessionId || idx}>
+                      {/* Main Session Row */}
+                      <tr 
+                        style={{ 
+                          borderBottom: isExpanded ? '1px dashed #cbd5e1' : '1px solid #f1f5f9', 
+                          background: isExpanded ? '#f8fafc' : (idx % 2 === 0 ? '#ffffff' : '#fafafa'),
+                          transition: 'background 0.15s'
+                        }}
+                      >
+                        {/* Expand / Collapse Button */}
+                        <td style={{ ...tdStyle, textAlign: 'center', cursor: 'pointer', padding: '12px 6px' }} onClick={() => toggleSessionExpand(sess.sessionId || idx)}>
+                          <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '6px',
+                            background: isExpanded ? '#0f172a' : '#e2e8f0',
+                            color: isExpanded ? '#ffdb3b' : '#475569',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '11px',
+                            transition: 'all 0.2s',
+                            margin: '0 auto'
+                          }}>
+                            {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
+                          </div>
+                        </td>
+
+                        {/* Officer */}
+                        <td style={tdStyle} onClick={() => toggleSessionExpand(sess.sessionId || idx)}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                            <div style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: '#0f172a',
+                              color: '#ffdb3b',
+                              border: '1px solid #ffdb3b',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '11px',
+                              fontWeight: '800',
+                              overflow: 'hidden',
+                              flexShrink: 0
+                            }}>
+                              {sess.avatar_photo ? (
+                                <img src={sess.avatar_photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                sess.initial
+                              )}
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{sess.officer}</div>
+                              <div style={{ fontSize: '11px', color: '#64748b' }}>Security Duty</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Shift & Round */}
+                        <td style={tdStyle}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <span style={{ background: '#f1f5f9', color: '#0f172a', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '800', border: '1px solid #cbd5e1', width: 'fit-content' }}>
+                              {sess.shift}
+                            </span>
+                            <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>
+                              Round {sess.roundNum}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Checkpoint Progress */}
+                        <td style={tdStyle}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a', fontFamily: 'monospace' }}>
+                                {sess.scannedCount}/{sess.totalTarget} Points
+                              </span>
+                              <span style={{ fontSize: '10px', fontWeight: '800', color: progressColor, background: progressBg, padding: '2px 6px', borderRadius: '4px', border: `1px solid ${progressBorder}` }}>
+                                {sess.progressPct}% {isFullComplete ? '✓ Complete' : (isSessionEnded ? 'Completed' : 'In Progress')}
+                              </span>
+                            </div>
+                            <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                              <div style={{
+                                width: `${sess.progressPct}%`,
+                                height: '100%',
+                                background: progressColor,
+                                borderRadius: '3px',
+                                transition: 'width 0.3s ease'
+                              }} />
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Start Time */}
+                        <td style={tdStyle}>
+                          <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{sess.startTimeStr}</div>
+                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>{sess.startDateStr}</div>
+                        </td>
+
+                        {/* End Time */}
+                        <td style={tdStyle}>
+                          <div style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>{sess.endTimeStr}</div>
+                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginTop: '2px' }}>{sess.endDateStr}</div>
+                        </td>
+
+                        {/* Checkpoint list preview pill */}
+                        <td style={tdStyle}>
+                          <button
+                            onClick={() => toggleSessionExpand(sess.sessionId || idx)}
+                            style={{
+                              background: isExpanded ? '#0f172a' : '#f1f5f9',
+                              color: isExpanded ? '#ffdb3b' : '#334155',
+                              border: '1px solid #cbd5e1',
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px'
+                            }}
+                          >
+                            <FaMapMarkerAlt style={{ color: isExpanded ? '#ffdb3b' : '#ef4444' }} />
+                            {sess.scannedCount} Points {isExpanded ? '▲ Collapse' : '▼ View Details'}
+                          </button>
+                        </td>
+
+                        {/* Replay */}
+                        <td style={tdStyle}>
+                          {sess.sessionId ? (
+                            <button
+                              onClick={() => onReplaySession && onReplaySession(sess.sessionId)}
+                              style={{
+                                background: '#0f172a',
+                                border: '1px solid #38bdf8',
+                                color: '#38bdf8',
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '11px',
+                                fontWeight: '800',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                transition: 'all 0.2s',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                              }}
+                              title={`Replay patrol round ${sess.roundNum} by ${sess.officer}`}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#38bdf8';
+                                e.currentTarget.style.color = '#0f172a';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#0f172a';
+                              }}
+                            >
+                              <FaPlay style={{ fontSize: '9px' }} /> Replay
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>-</span>
+                          )}
+                        </td>
+
+                        {/* Status Sesi */}
+                        <td style={tdStyle}>
+                          <span style={{
+                            background: isSessionEnded ? '#ecfdf5' : '#eff6ff',
+                            color: isSessionEnded ? '#059669' : '#0284c7',
+                            border: `1px solid ${isSessionEnded ? '#a7f3d0' : '#bfdbfe'}`,
+                            padding: '4px 10px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: '800',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px'
+                          }}>
+                            <FaCheckCircle /> {isSessionEnded ? 'COMPLETED' : 'ACTIVE'}
+                          </span>
+                        </td>
+                      </tr>
+
+                      {/* Expandable Sub-Table: Checkpoint Details */}
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan="9" style={{ padding: '0', background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                            <div style={{ padding: '16px 20px 20px 48px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                <div style={{ fontSize: '12px', fontWeight: '800', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <FaShieldAlt style={{ color: '#0284c7' }} /> Details: {sess.checkpoints.length} Verified Checkpoints (Session #{sess.sessionId})
+                                </div>
+                                <span style={{ fontSize: '11px', color: '#64748b' }}>
+                                  Duration: {sess.startTimeStr} – {sess.endTimeStr}
+                                </span>
+                              </div>
+
+                              <table style={{ width: '100%', borderCollapse: 'collapse', background: '#ffffff', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                                <thead>
+                                  <tr style={{ background: '#0f172a', color: '#ffffff' }}>
+                                    <th style={{ padding: '8px 12px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.04em' }}>#</th>
+                                    <th style={{ padding: '8px 12px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.04em' }}>CHECKPOINT</th>
+                                    <th style={{ padding: '8px 12px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.04em' }}>TIMESTAMP</th>
+                                    <th style={{ padding: '8px 12px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.04em' }}>GPS COORDINATES</th>
+                                    <th style={{ padding: '8px 12px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.04em' }}>PHOTO PROOF</th>
+                                    <th style={{ padding: '8px 12px', fontSize: '10px', fontWeight: '800', letterSpacing: '0.04em' }}>STATUS</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {sess.checkpoints.map((cp, cpIdx) => (
+                                    <tr key={cp.id || cpIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                      <td style={{ padding: '8px 12px', fontSize: '11px', fontWeight: '800', color: '#64748b' }}>
+                                        #{cpIdx + 1}
+                                      </td>
+                                      <td style={{ padding: '8px 12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <FaMapMarkerAlt style={{ color: '#ef4444', fontSize: '12px' }} />
+                                          <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a' }}>{cp.station}</span>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '8px 12px', fontSize: '11px', fontWeight: '700', color: '#334155' }}>
+                                        {cp.timeStr} ({cp.formattedDate})
+                                      </td>
+                                      <td style={{ padding: '8px 12px' }}>
+                                        <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', color: '#475569', fontWeight: '700' }}>
+                                          {cp.coord}
+                                        </code>
+                                      </td>
+                                      <td style={{ padding: '8px 12px' }}>
+                                        {cp.photo ? (
+                                          <button
+                                            onClick={() => {
+                                              const imgUrl = cp.photo.startsWith('http') ? cp.photo : `/uploads/${cp.photo.replace(/^\/+uploads\/+/, '')}`;
+                                              setProofIndex(0);
+                                              setActiveProof({
+                                                name: cp.station,
+                                                proofs: [{
+                                                  img: imgUrl,
+                                                  guard: cp.officer,
+                                                  id: cp.id,
+                                                  time: cp.timeStr,
+                                                  date: cp.formattedDate
+                                                }]
+                                              });
+                                            }}
+                                            style={{
+                                              background: '#eff6ff',
+                                              border: '1px solid #bfdbfe',
+                                              color: '#2563eb',
+                                              padding: '4px 8px',
+                                              borderRadius: '4px',
+                                              cursor: 'pointer',
+                                              fontSize: '11px',
+                                              fontWeight: '700',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '4px'
+                                            }}
+                                          >
+                                            <FaCamera /> View Photo
+                                          </button>
+                                        ) : (
+                                          <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>No Photo</span>
+                                        )}
+                                      </td>
+                                      <td style={{ padding: '8px 12px' }}>
+                                        <span style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: '800' }}>
+                                          ✓ VERIFIED
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         ) : (
+          /* ═══════════════════════════════════════════════════════
+             VIEW B: FLAT LIST PER CHECKPOINT (DETAIL LENGKAP)
+             ═══════════════════════════════════════════════════════ */
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 10, borderBottom: '2px solid #e2e8f0' }}>
               <tr>
@@ -522,9 +1003,15 @@ function PatrolLogsView({ onBack, onReplaySession }) {
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '11px',
-                            fontWeight: '800'
+                            fontWeight: '800',
+                            overflow: 'hidden',
+                            flexShrink: 0
                           }}>
-                            {log.initial}
+                            {log.avatar_photo ? (
+                              <img src={log.avatar_photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              log.initial
+                            )}
                           </div>
                           <div>
                             <div style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>{log.officer}</div>
@@ -714,7 +1201,13 @@ function PatrolLogsView({ onBack, onReplaySession }) {
         color: '#64748b',
         fontWeight: '600'
       }}>
-        <span>Total Logs: <strong>{filteredLogs.length}</strong> {filteredLogs.length !== logs.length && `(Filtered from ${logs.length})`}</span>
+        <span>
+          {logViewMode === 'session' ? (
+            <>Total Patrol Sessions: <strong>{groupedSessions.length} Sessions</strong> ({filteredLogs.length} Checkpoints)</>
+          ) : (
+            <>Total Checkpoint Logs: <strong>{filteredLogs.length}</strong> {filteredLogs.length !== logs.length && `(Filtered from ${logs.length})`}</>
+          )}
+        </span>
         <span>Security Station Gateway Command Center</span>
       </div>
 

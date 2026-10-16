@@ -25,16 +25,43 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
     const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString())
     const [activeTab, setActiveTab] = useState('dashboard')
 
-    // Determine effective user role for CCTV access
-    let effectiveRole = (user?.role || user?.userRole || '').toLowerCase();
-    if (!effectiveRole) {
+    // Determine effective user info for CCTV access
+    let effectiveUser = user || {};
+    if (!effectiveUser.id && !effectiveUser.userId && !effectiveUser.username) {
         try {
-            const storedUser = JSON.parse(localStorage.getItem('kip_user') || '{}');
-            effectiveRole = (storedUser.role || storedUser.userRole || '').toLowerCase();
+            effectiveUser = JSON.parse(localStorage.getItem('kip_user') || '{}');
         } catch (_) {}
     }
-    // Only Manager, Asisten Manager, General Manager, Mill Manager, Dev/Admin can access CCTV Feed (Security role cannot)
-    const canAccessCctv = ['manager', 'asisten_manager', 'assistant_manager', 'general_manager', 'mill_manager', 'dev', 'developer', 'admin'].includes(effectiveRole);
+    // If still missing user fields, decode from JWT token if available
+    if (!effectiveUser.id && !effectiveUser.userId && !effectiveUser.username) {
+        try {
+            const token = localStorage.getItem('kip_token');
+            if (token) {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                effectiveUser = JSON.parse(jsonPayload);
+            }
+        } catch (_) {}
+    }
+
+    const effectiveRole = (effectiveUser.role || effectiveUser.userRole || effectiveUser.role_name || '').toLowerCase();
+    const effectivePosition = (effectiveUser.position || effectiveUser.position_title || effectiveUser.positionTitle || '').toLowerCase();
+    const effectiveUsername = (effectiveUser.username || '').toLowerCase();
+    const effectiveUserId = Number(effectiveUser.id || effectiveUser.userId || 0);
+
+    // Manager, Asisten Manager, General Manager, Mill Manager, Dev, Admin, and Staff can access CCTV Feed EXCEPT user id = 21
+    const isExcludedUser = effectiveUserId === 21 || effectiveUsername === 'hardi';
+    const isAllowedRole = [
+        'manager', 'asisten_manager', 'assistant_manager', 'general_manager', 'mill_manager', 
+        'dev', 'developer', 'admin', 'staff'
+    ].includes(effectiveRole) || 
+    effectivePosition.includes('staff') || 
+    effectivePosition.includes('manager') ||
+    effectiveUsername.includes('manager') ||
+    ['choirul', 'deka', 'manager', 'asisten_manager', 'general_manager', 'dev', 'admin'].includes(effectiveUsername);
+
+    const canAccessCctv = !isExcludedUser && isAllowedRole;
 
     // Auto fallback activeTab to dashboard if user has no CCTV access
     useEffect(() => {
@@ -217,6 +244,7 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
                     {activeTab === 'incidents' && <IncidentsTab />}
                     {activeTab === 'overview' && (
                         <PatrolMapTab
+                            user={user}
                             mapStations={mapStations}
                             patrolGuards={patrolGuards}
                             stationCheckpoints={stationCheckpoints}
