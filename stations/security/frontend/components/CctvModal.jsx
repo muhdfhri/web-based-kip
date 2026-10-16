@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import SharedCctvStream from './SharedCctvStream.jsx';
 
-function CctvModal({ selectedCctv, setSelectedCctv }) {
+function CctvModal({ selectedCctv, setSelectedCctv, cctvCameras = [] }) {
     const isOpen = Boolean(selectedCctv);
 
     useEffect(() => {
@@ -11,11 +11,26 @@ function CctvModal({ selectedCctv, setSelectedCctv }) {
             if (event.key === 'Escape') {
                 event.preventDefault();
                 setSelectedCctv(null);
+                return;
             }
+            if (event.ctrlKey || event.metaKey || event.altKey
+                || event.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+
+            const key = event.key.toLowerCase();
+            const direction = key === 'arrowleft' || key === 'a' ? -1
+                : key === 'arrowright' || key === 'd' ? 1 : 0;
+            if (!direction || cctvCameras.length < 2) return;
+            event.preventDefault();
+            setSelectedCctv(current => {
+                if (!current) return current;
+                const index = cctvCameras.findIndex(camera => camera.id === current.id);
+                if (index < 0) return current;
+                return cctvCameras[(index + direction + cctvCameras.length) % cctvCameras.length];
+            });
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, setSelectedCctv]);
+    }, [isOpen, setSelectedCctv, cctvCameras]);
 
     if (!selectedCctv) return null;
 
@@ -40,6 +55,7 @@ function CctvModal({ selectedCctv, setSelectedCctv }) {
             </div>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', background: '#000' }}>
                 <SharedCctvStream
+                    key={selectedCctv.id}
                     src={getAiStreamUrl(selectedCctv)}
                     alt={selectedCctv.camera_name}
                     fit="contain"

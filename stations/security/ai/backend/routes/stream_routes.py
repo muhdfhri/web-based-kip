@@ -1,7 +1,7 @@
 from flask import Blueprint, Response, jsonify, request
 from core.rtsp_streamer import (generate_mjpeg_stream_by_id, capture_single_snapshot,
                                get_camera_status, get_camera_info_by_id,
-                               generate_combined_stream, get_camera_infos, stream_diagnostics)
+                               generate_combined_stream, get_live_camera_infos, stream_diagnostics)
 
 stream_bp = Blueprint('stream_bp', __name__)
 
@@ -17,14 +17,25 @@ def get_combined_stream():
             viewed_ids = {int(value) for value in request.args['view'].split(',') if value}
             if not viewed_ids.issubset(camera_ids):
                 raise ValueError('Invalid viewed IDs')
+        preview_width = None
+        preview_fps = None
+        if 'fps' in request.args:
+            preview_fps = int(request.args['fps'])
+            if not 1 <= preview_fps <= 30:
+                raise ValueError('Invalid preview FPS')
+        if 'width' in request.args:
+            preview_width = int(request.args['width'])
+            if not 160 <= preview_width <= 1280:
+                raise ValueError('Invalid preview width')
     except ValueError:
         return jsonify(success=False, message='Expected 1-256 positive camera IDs and a valid view subset'), 400
     try:
-        infos = get_camera_infos(camera_ids)
+        infos = get_live_camera_infos(camera_ids)
     except Exception:
         return jsonify(success=False, message='Camera configuration unavailable'), 503
     response = Response(generate_combined_stream(camera_ids, infos,
-                        request.args.get('focus', type=int), viewed_ids), mimetype='application/octet-stream')
+                        request.args.get('focus', type=int), viewed_ids, batch=True,
+                        preview_width=preview_width, preview_fps=preview_fps), mimetype='application/octet-stream')
     response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Accel-Buffering'] = 'no'
     return response
