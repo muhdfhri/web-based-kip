@@ -91,14 +91,14 @@ const initMapSettingsTable = async () => {
   try {
     await dbPool.query(`
       CREATE TABLE IF NOT EXISTS security_map_settings (
-        id INT PRIMARY KEY AUTO_INCREMENT,
+        id SERIAL PRIMARY KEY,
         factory_name VARCHAR(100) DEFAULT 'Pabrik SKL',
         center_latitude DECIMAL(10, 8) NULL,
         center_longitude DECIMAL(11, 8) NULL,
         default_zoom INT NULL,
         default_bearing INT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
   } catch (err) {
@@ -176,12 +176,8 @@ const getActiveGuardsHandler = async (req, res) => {
   try {
     const { shift, round_number, work_date } = calculateAutoShift(new Date());
 
-    // HARD RESET: Auto-close semua sesi yang masih "active" tapi round/shift-nya sudah kadaluarsa
-    await dbPool.query(`
-      UPDATE security_patrol_sessions 
-      SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
-      WHERE status = 'active' AND (work_date != ? OR shift != ? OR round_number != ?)
-    `, [work_date, shift, round_number]);
+    // Tidak mematikan sesi aktif secara paksa saat pergantian round agar satpam tetap bisa submit checkpoint dan end patrol normal.
+
 
     // Tampilkan HANYA guard yang sedang memiliki sesi patroli AKTIF (status = 'active')
     const [rows] = await dbPool.query(`
@@ -256,7 +252,9 @@ router.get('/sessions/active', async (req, res) => {
     const token = authHeader.split(' ')[1];
     try {
       const decoded = jwt.decode(token);
-      if (decoded && decoded.userId) guard_id = decoded.userId;
+      if (decoded && (decoded.userId || decoded.id || decoded.sub)) {
+        guard_id = decoded.userId || decoded.id || decoded.sub;
+      }
     } catch (_) {}
   }
 
@@ -265,11 +263,31 @@ router.get('/sessions/active', async (req, res) => {
   }
 
   try {
-    // Cari sesi patroli yang aktif untuk guard_id ini
-    const [sessions] = await dbPool.query(
+    // 1. Prioritaskan cari sesi patroli yang aktif milik guard ini sendiri
+    let [sessions] = await dbPool.query(
       "SELECT * FROM security_patrol_sessions WHERE guard_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1",
       [guard_id]
     );
+
+    // 2. Jika tidak ada sesi personal, cari sesi tim yang aktif di shift/ronde saat ini
+    if (sessions.length === 0) {
+      const { shift, round_number, work_date } = calculateAutoShift(new Date());
+      const [teamSessions] = await dbPool.query(
+        "SELECT * FROM security_patrol_sessions WHERE status = 'active' AND (work_date = ? OR DATE(started_at) = CURRENT_DATE) AND shift = ? AND round_number = ? ORDER BY id DESC LIMIT 1",
+        [work_date, shift, round_number]
+      );
+      if (teamSessions.length > 0) {
+        sessions = teamSessions;
+      } else {
+        // 3. Fallback: Sesi patroli aktif apapun yang sedang berlangsung
+        const [anyActive] = await dbPool.query(
+          "SELECT * FROM security_patrol_sessions WHERE status = 'active' ORDER BY id DESC LIMIT 1"
+        );
+        if (anyActive.length > 0) {
+          sessions = anyActive;
+        }
+      }
+    }
 
     if (sessions.length === 0) {
       return res.json(null);
@@ -316,12 +334,8 @@ const getCheckpointsHandler = async (req, res) => {
   try {
     const { shift, round_number, work_date } = calculateAutoShift(new Date());
 
-    // 1. HARD RESET: Auto-close semua sesi yang masih "active" tapi round/shift-nya sudah kadaluarsa
-    await dbPool.query(`
-      UPDATE security_patrol_sessions 
-      SET status = 'completed', completed_at = CURRENT_TIMESTAMP 
-      WHERE status = 'active' AND (work_date != ? OR shift != ? OR round_number != ?)
-    `, [work_date, shift, round_number]);
+    // 1. Tidak auto-close sesi secara paksa agar sesi berjalan tidak terputus di tengah jalan
+
 
     // 2. Ambil data checkpoint yang HANYA milik round yang berlaku saat ini
     const [rows] = await dbPool.query(`
@@ -429,7 +443,89 @@ router.get('/logs', async (req, res) => {
       }
     });
 
-    res.json(rows);
+    let logsList = [...rows];
+
+    // Sertakan data pelaporan penangguhan (round suspensions) jika ada
+    try {
+      let suspQueryParams = [];
+      let suspDateFilter = "";
+      if (all_data !== 'true') {
+        const today = new Date().toISOString().split('T')[0];
+        const fromDate = from_date || today;
+        const toDate = to_date || today;
+        suspDateFilter = "WHERE (work_date BETWEEN ? AND ? OR DATE(created_at) BETWEEN ? AND ?)";
+        suspQueryParams.push(fromDate, toDate, fromDate, toDate);
+      }
+
+      const [suspensions] = await dbPool.query(`
+        SELECT 
+          id,
+          work_date,
+          shift,
+          round_number,
+          reason_notes,
+          evidence_photo,
+          reported_by_id,
+          reported_by_name,
+          created_at
+        FROM security_patrol_round_suspensions
+        ${suspDateFilter}
+        ORDER BY created_at DESC
+        LIMIT 200
+      `, suspQueryParams);
+
+      if (suspensions.length > 0) {
+        // Ambil total master stations untuk perhitungan persentase/progress
+        const [stCount] = await dbPool.query('SELECT COUNT(*) as total FROM security_stations WHERE is_active = 1');
+        const masterCount = stCount.length > 0 ? Number(stCount[0].total) : 24;
+
+        // Ambil avatar pelapor dari user table
+        let userAvatarMap = new Map();
+        try {
+          const [uRows] = await dbMainPool.query('SELECT id, avatar_photo FROM users');
+          for (const u of uRows) {
+            if (u.avatar_photo) userAvatarMap.set(Number(u.id), u.avatar_photo);
+          }
+        } catch (_) {}
+
+        for (const s of suspensions) {
+          logsList.push({
+            id: `susp-${s.id}`,
+            session_id: null,
+            checkpoint_code: 'SUSPENDED',
+            station_name: `[Penangguhan Patroli] ${s.reason_notes || 'Tersuspensi'}`,
+            verification_photo: s.evidence_photo || null,
+            photo_path: s.evidence_photo || null,
+            notes: s.reason_notes || 'Patroli ditangguhkan',
+            status: 'suspended',
+            is_suspended: true,
+            reason_notes: s.reason_notes,
+            evidence_photo: s.evidence_photo,
+            verified_at: s.created_at,
+            created_at: s.created_at,
+            latitude: null,
+            longitude: null,
+            guard_id: s.reported_by_id,
+            guard_name: s.reported_by_name || 'Security Officer',
+            avatar_photo: userAvatarMap.get(Number(s.reported_by_id)) || null,
+            started_at: s.created_at,
+            completed_at: s.created_at,
+            shift: s.shift,
+            round_number: s.round_number,
+            checkpoint_order: 0,
+            session_total_scanned: 0,
+            total_master_stations: masterCount
+          });
+        }
+
+        // Urutkan ulang secara kronologis menurun
+        logsList.sort((a, b) => new Date(b.verified_at || b.created_at) - new Date(a.verified_at || a.created_at));
+      }
+    } catch (suspErr) {
+      console.error('Error fetching suspensions for logs:', suspErr);
+    }
+
+    res.json(logsList);
   } catch (error) {
     console.error('Error fetching patrol logs history:', error);
     res.status(500).json({ error: 'Failed to fetch patrol logs history' });
@@ -480,17 +576,31 @@ router.post('/sessions/start', async (req, res) => {
       full_name = guard_name;
     }
 
-    // Auto-close any previous active session for this guard to maintain clean single-session lifecycle
-    await dbPool.query(
-      "UPDATE security_patrol_sessions SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE guard_id = ? AND status = 'active'",
-      [user_id]
-    );
-
     // Hitung Auto Shift, Work Date, dan Round Number secara presisi dari jam server saat ini
     const autoShiftInfo = calculateAutoShift(new Date());
     const finalShift = autoShiftInfo.shift;
     const workDate = autoShiftInfo.work_date;
     const roundNum = autoShiftInfo.round_number;
+
+    // 🔒 CEK KUNCIAN PUTARAN: Jika ronde ini sedang ditutup/terkendala, tolak pembuatan sesi untuk seluruh tim
+    const [suspensionRows] = await dbPool.query(
+      "SELECT * FROM security_patrol_round_suspensions WHERE work_date = ? AND shift = ? AND round_number = ? LIMIT 1",
+      [workDate, finalShift, roundNum]
+    );
+    if (suspensionRows.length > 0) {
+      const sus = suspensionRows[0];
+      return res.status(403).json({
+        error: `Ronde Ditutup: ${finalShift} Putaran ke-${roundNum} tidak dapat dipatroli karena ada kendala lapangan.`,
+        is_suspended: true,
+        suspension: sus
+      });
+    }
+
+    // Auto-close any previous active session for this guard to maintain clean single-session lifecycle
+    await dbPool.query(
+      "UPDATE security_patrol_sessions SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE guard_id = ? AND status = 'active'",
+      [user_id]
+    );
 
     const session_code = `PTR-${Date.now()}`;
     const [result] = await dbPool.query(
@@ -562,6 +672,13 @@ router.post('/sessions/end', async (req, res) => {
       );
       if (activeSess.length > 0) {
         session_id = activeSess[0].id;
+      } else {
+        const [anyActive] = await dbPool.query(
+          "SELECT id FROM security_patrol_sessions WHERE status = 'active' ORDER BY id DESC LIMIT 1"
+        );
+        if (anyActive.length > 0) {
+          session_id = anyActive[0].id;
+        }
       }
     }
 
@@ -593,6 +710,131 @@ router.post('/sessions/end', async (req, res) => {
 });
 
 /**
+ * GET /api/security/patrol/rounds/status
+ * Check if the current round (or requested work_date, shift, round_number) is suspended
+ */
+router.get('/rounds/status', async (req, res) => {
+  try {
+    const autoShiftInfo = calculateAutoShift(new Date());
+    const work_date = req.query.work_date || autoShiftInfo.work_date;
+    const shift = req.query.shift || autoShiftInfo.shift;
+    const round_number = parseInt(req.query.round_number || autoShiftInfo.round_number);
+
+    const [rows] = await dbPool.query(
+      'SELECT * FROM security_patrol_round_suspensions WHERE work_date = ? AND shift = ? AND round_number = ? LIMIT 1',
+      [work_date, shift, round_number]
+    );
+
+    if (rows.length > 0) {
+      return res.json({
+        is_suspended: true,
+        suspension: rows[0],
+        shift,
+        round_number,
+        work_date
+      });
+    }
+
+    res.json({
+      is_suspended: false,
+      suspension: null,
+      shift,
+      round_number,
+      work_date
+    });
+  } catch (error) {
+    console.error('Error checking round status:', error);
+    res.status(500).json({ error: 'Failed to check round status: ' + error.message });
+  }
+});
+
+/**
+ * POST /api/security/patrol/rounds/suspend
+ * Report field obstacle/issue for the current round, locking patrol for all guards
+ */
+router.post('/rounds/suspend', async (req, res) => {
+  let guard_id = req.body.guard_id || req.body.user_id;
+  let guard_name = req.body.guard_name || 'Security Officer';
+  const reason_notes = (req.body.reason_notes || '').trim();
+  const evidence_photo = req.body.evidence_photo || req.body.photo_path || null;
+
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.decode(token);
+      if (decoded && (decoded.userId || decoded.id)) guard_id = decoded.userId || decoded.id;
+    } catch (_) {}
+  }
+
+  if (!guard_id) {
+    return res.status(401).json({ error: 'Unauthorized: Guard ID is required' });
+  }
+  if (!reason_notes) {
+    return res.status(400).json({ error: 'Keterangan kendala lapangan (reason_notes) wajib diisi' });
+  }
+  if (!evidence_photo) {
+    return res.status(400).json({ error: 'Foto bukti kamera langsung (evidence_photo) wajib dilampirkan' });
+  }
+
+  try {
+    // Resolve user real full name
+    try {
+      const [uMain] = await dbMainPool.query('SELECT full_name, username FROM users WHERE id = ?', [guard_id]);
+      if (uMain && uMain.length > 0) {
+        guard_name = uMain[0].full_name || uMain[0].username || guard_name;
+      }
+    } catch (_) {}
+
+    const autoShiftInfo = calculateAutoShift(new Date());
+    const finalShift = req.body.shift || autoShiftInfo.shift;
+    const workDate = req.body.work_date || autoShiftInfo.work_date;
+    const roundNum = parseInt(req.body.round_number || autoShiftInfo.round_number);
+
+    // Auto-close any active sessions for all guards in this round since it is now suspended
+    await dbPool.query(
+      "UPDATE security_patrol_sessions SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE status = 'active' AND work_date = ? AND shift = ? AND round_number = ?",
+      [workDate, finalShift, roundNum]
+    );
+
+    // Insert suspension record (ON CONFLICT DO UPDATE)
+    const [result] = await dbPool.query(`
+      INSERT INTO security_patrol_round_suspensions 
+        (work_date, shift, round_number, reason_notes, evidence_photo, reported_by_id, reported_by_name, created_at)
+      VALUES 
+        (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT (work_date, shift, round_number)
+      DO UPDATE SET 
+        reason_notes = EXCLUDED.reason_notes,
+        evidence_photo = EXCLUDED.evidence_photo,
+        reported_by_id = EXCLUDED.reported_by_id,
+        reported_by_name = EXCLUDED.reported_by_name,
+        created_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `, [workDate, finalShift, roundNum, reason_notes, evidence_photo, guard_id, guard_name]);
+
+    const savedSuspension = result.length > 0 ? result[0] : null;
+
+    // Broadcast WebSocket event agar web dashboard & mobile guards langsung update tanpa reload
+    broadcastPatrolEvent('patrol_round_suspended', {
+      work_date: workDate,
+      shift: finalShift,
+      round_number: roundNum,
+      suspension: savedSuspension
+    });
+
+    res.json({
+      success: true,
+      message: `Ronde ke-${roundNum} (${finalShift}) berhasil ditutup dengan keterangan kendala lapangan.`,
+      suspension: savedSuspension
+    });
+  } catch (error) {
+    console.error('Error suspending patrol round:', error);
+    res.status(500).json({ error: 'Gagal menutup ronde patroli: ' + error.message });
+  }
+});
+
+/**
  * POST /api/security/patrol/checkpoints
  * Submit a checkpoint (photo/location) from mobile app
  */
@@ -619,8 +861,7 @@ router.post('/checkpoints', async (req, res) => {
   
   try {
       if (guard_id) {
-          // AUTO-CORRECT: Ignore mobile app's session_id if they send the wrong one.
-          // We force find the latest active session for this authenticated guard.
+          // 1. Prioritize active session for this guard
           const [activeSessions] = await dbPool.query(
               "SELECT id FROM security_patrol_sessions WHERE guard_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1", 
               [guard_id]
@@ -628,6 +869,29 @@ router.post('/checkpoints', async (req, res) => {
           
           if (activeSessions.length > 0) {
               session_id = activeSessions[0].id;
+          } else if (session_id) {
+              // Verify requested session_id exists
+              const [reqSession] = await dbPool.query(
+                  "SELECT id, status FROM security_patrol_sessions WHERE id = ?",
+                  [session_id]
+              );
+              if (reqSession.length === 0) {
+                  // Fallback: check any active session in system
+                  const [anyActive] = await dbPool.query(
+                      "SELECT id FROM security_patrol_sessions WHERE status = 'active' ORDER BY id DESC LIMIT 1"
+                  );
+                  if (anyActive.length > 0) {
+                      session_id = anyActive[0].id;
+                  }
+              }
+          } else {
+              // Fallback if no session_id provided: check any active session
+              const [anyActive] = await dbPool.query(
+                  "SELECT id FROM security_patrol_sessions WHERE status = 'active' ORDER BY id DESC LIMIT 1"
+              );
+              if (anyActive.length > 0) {
+                  session_id = anyActive[0].id;
+              }
           }
       }
   } catch (err) {
@@ -640,14 +904,14 @@ router.post('/checkpoints', async (req, res) => {
   const checkpoint_code = req.body.checkpoint_code || null;
   const gps_accuracy = req.body.gps_accuracy || null;
   
-  const station_name = req.body.station_name || req.body.notes;
+  const station_name = (req.body.station_name || req.body.notes || '').trim();
   const verification_photo = req.body.photo_path || req.body.verification_photo;
   const verification_notes = req.body.notes || req.body.verification_notes;
   
   if (!session_id || !latitude || !longitude || !station_name) {
     // LOG IT TO FILE SO I CAN SEE WHY IT FAILED
     const fs = await import('fs');
-    fs.appendFileSync('failed_checkpoints_log.txt', JSON.stringify(req.body) + '\\n');
+    fs.appendFileSync('failed_checkpoints_log.txt', JSON.stringify(req.body) + '\n');
     return res.status(400).json({ error: 'session_id, station_name (or notes), latitude, and longitude are required' });
   }
   
@@ -655,21 +919,47 @@ router.post('/checkpoints', async (req, res) => {
     // === SEQUENCE VALIDATION LOGIC ===
     const [masterCheckpoints] = await dbPool.query("SELECT * FROM security_stations WHERE is_active = 1 ORDER BY sequence_order ASC, id ASC");
     
+    const reqNameLower = station_name.toLowerCase().trim();
+    const reqCodeLower = (checkpoint_code || '').toLowerCase().trim();
+
     // Validasi apakah CP ini terdaftar di master
-    const isValidMasterCP = masterCheckpoints.find(mc => mc.checkpoint_code === checkpoint_code || mc.label === station_name);
+    const isValidMasterCP = masterCheckpoints.find(mc => {
+      const mcCode = (mc.checkpoint_code || '').toLowerCase().trim();
+      const mcLabel = (mc.label || '').toLowerCase().trim();
+      const mcKey = (mc.station_key || '').toLowerCase().trim();
+      return (reqCodeLower && mcCode === reqCodeLower) ||
+             mcLabel === reqNameLower ||
+             mcKey === reqNameLower;
+    });
     
     if (isValidMasterCP) {
         // Ambil CP yang sudah di-scan di sesi ini
         const [scannedCheckpoints] = await dbPool.query("SELECT checkpoint_code, station_name FROM security_session_checkpoints WHERE session_id = ? ORDER BY verified_at ASC", [session_id]);
         
-        const expectedIndex = scannedCheckpoints.length;
-        
-        if (expectedIndex < masterCheckpoints.length) {
-            const expectedCheckpoint = masterCheckpoints[expectedIndex];
+        // Ambil set station master yang sudah diverifikasi di sesi ini
+        const scannedLabels = new Set(scannedCheckpoints.map(sc => (sc.station_name || '').toLowerCase().trim()));
+        const scannedCodes = new Set(scannedCheckpoints.map(sc => (sc.checkpoint_code || '').toLowerCase().trim()));
+
+        // Tentukan expected checkpoint berikutnya berdasarkan urutan master yang belum di-scan
+        const unverifiedMasters = masterCheckpoints.filter(mc => {
+            const mcLabel = (mc.label || '').toLowerCase().trim();
+            const mcCode = (mc.checkpoint_code || '').toLowerCase().trim();
+            return !scannedLabels.has(mcLabel) && (!mcCode || !scannedCodes.has(mcCode));
+        });
+
+        if (unverifiedMasters.length > 0) {
+            const expectedCheckpoint = unverifiedMasters[0];
+            const expLabel = (expectedCheckpoint.label || '').toLowerCase().trim();
+            const expCode = (expectedCheckpoint.checkpoint_code || '').toLowerCase().trim();
+            const expKey = (expectedCheckpoint.station_key || '').toLowerCase().trim();
             
             // Validasi urutan beruntun
-            if (checkpoint_code !== expectedCheckpoint.checkpoint_code && station_name !== expectedCheckpoint.label) {
-                return res.status(400).json({ error: `Beruntun Patroli Gagal: Anda harus scan Checkpoint urutan ke-${expectedIndex + 1} (${expectedCheckpoint.label}) terlebih dahulu!` });
+            const isMatchExpected = (reqCodeLower && reqCodeLower === expCode) ||
+                                    reqNameLower === expLabel ||
+                                    reqNameLower === expKey;
+
+            if (!isMatchExpected) {
+                return res.status(400).json({ error: `Beruntun Patroli Gagal: Anda harus scan Checkpoint urutan ke-${expectedCheckpoint.sequence_order || (masterCheckpoints.length - unverifiedMasters.length + 1)} (${expectedCheckpoint.label}) terlebih dahulu!` });
             }
 
             // Validasi Radius (Dispensasi Jarak)
@@ -1079,9 +1369,10 @@ router.post('/tracks/batch', async (req, res) => {
     }
 
     if (validRows.length > 0) {
+      const placeholders = validRows.map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, $${i * 4 + 4})`).join(', ');
       await dbPool.query(
-        'INSERT INTO security_patrol_tracks (session_id, latitude, longitude, recorded_at) VALUES ?',
-        [validRows]
+        `INSERT INTO security_patrol_tracks (session_id, latitude, longitude, recorded_at) VALUES ${placeholders}`,
+        validRows.flat()
       );
     }
 

@@ -246,7 +246,9 @@ function DashboardHeader({
                         
                         const isHardLocked = STATIONS.includes(label) && !UNLOCKED_STATIONS.includes(label);
                         let hasPerm = true;
-                        if (user?.role?.toLowerCase() !== 'developer' && user?.userRole?.toLowerCase() !== 'developer') {
+                        const roleLower = user?.role?.toLowerCase() || user?.userRole?.toLowerCase() || '';
+                        const isPrivileged = ['developer', 'admin', 'mill_manager', 'general_manager', 'asisten_manager', 'manager', 'staff'].includes(roleLower) || roleLower.includes('manager');
+                        if (!isPrivileged) {
                           const perms = user?.permissions || [];
                           if (item === 'Station View') hasPerm = perms.includes(`View:${label}`);
                           else if (item === 'Settings' && STATIONS.includes(label)) hasPerm = perms.includes(`Setting:${label}`);

@@ -1,7 +1,30 @@
-import React from 'react';
-import { FaUserShield, FaMapMarkerAlt, FaShieldAlt, FaPlay, FaStop, FaWalking } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { FaUserShield, FaMapMarkerAlt, FaShieldAlt, FaPlay, FaStop, FaWalking, FaCalendarAlt } from 'react-icons/fa';
 
 function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], replaySessionId, setReplaySessionId }) {
+    const [realtimeDate, setRealtimeDate] = useState(() => {
+        return new Date().toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+        });
+    });
+
+    useEffect(() => {
+        const updateDate = () => {
+            setRealtimeDate(new Date().toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            }));
+        };
+        // Update check every minute
+        const timer = setInterval(updateDate, 10000);
+        return () => clearInterval(timer);
+    }, []);
+
     return (
         <aside className="som-security-aside">
             {/* GUARD STATUS */}
@@ -49,6 +72,33 @@ function SecurityAside({ patrolGuards, stationCheckpoints, patrolHistory = [], r
                 <div className="som-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span><FaWalking style={{ marginRight: '6px', fontSize: '11px' }} />PATROL HISTORY</span>
                     <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 700 }}>{patrolHistory.length} SESSIONS</span>
+                </div>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 14px 6px 18px',
+                    background: '#f8fafc',
+                    borderBottom: '1px solid #e2e8f0',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: '#475569'
+                }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <FaCalendarAlt style={{ color: '#f59e0b', fontSize: '10px' }} />
+                        <span>{realtimeDate}</span>
+                    </span>
+                    <span style={{
+                        fontSize: '9px',
+                        fontWeight: 700,
+                        color: '#059669',
+                        background: '#ecfdf5',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        border: '1px solid #a7f3d0'
+                    }}>
+                        TODAY
+                    </span>
                 </div>
                 <div className="som-checkpoint-journey" style={{ flex: 1, overflowY: 'auto' }}>
                     {patrolHistory.length === 0 && (

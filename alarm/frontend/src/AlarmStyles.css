@@ -1,14 +1,14 @@
 :root {
-    --alm-bg: #020617;
-    --alm-surface: rgba(15, 23, 42, 0.8);
-    --alm-card-bg: rgba(30, 41, 59, 0.4);
-    --alm-border: rgba(124, 255, 1, 0.15);
-    --alm-border-strong: rgba(124, 255, 1, 0.3);
-    --alm-text-pri: #f8fafc;
-    --alm-text-sec: #94a3b8;
-    --alm-text-muted: #64748b;
-    --alm-accent: #7CFF01;
-    --alm-shadow: rgba(0, 0, 0, 0.5);
+    --alm-bg: #f8fafc;
+    --alm-surface: #ffffff;
+    --alm-card-bg: #ffffff;
+    --alm-border: #e2e8f0;
+    --alm-border-strong: rgba(255, 219, 59, 0.5);
+    --alm-text-pri: #0f172a;
+    --alm-text-sec: #64748b;
+    --alm-text-muted: #94a3b8;
+    --alm-accent: #FFDB3B;
+    --alm-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     --alm-radius: 4px;
 }
 
@@ -41,14 +41,14 @@
 .alm-spec-icon {
     width: 60px;
     height: 60px;
-    background: rgba(124, 255, 1, 0.05);
+    background: rgba(255, 219, 59, 0.05);
     border: 1px solid var(--alm-accent);
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--alm-accent);
-    box-shadow: 0 0 20px rgba(124, 255, 1, 0.2);
+    box-shadow: 0 0 20px rgba(255, 219, 59, 0.2);
     text-shadow: 0 0 10px var(--alm-accent);
 }
 
@@ -68,7 +68,8 @@
 
 .alm-spec-btn-primary {
     background: var(--alm-accent);
-    color: #fff;
+    color: #0f172a;
+    font-weight: 800;
     border: none;
     padding: 10px 20px;
     border-radius: 10px;
@@ -80,7 +81,7 @@
 
 .alm-spec-btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 0 20px rgba(124, 255, 1, 0.4);
+    box-shadow: 0 0 20px rgba(255, 219, 59, 0.4);
     filter: brightness(1.2);
 }
 
@@ -104,7 +105,7 @@
 
 .alm-spec-card:hover {
     border-color: var(--alm-accent);
-    box-shadow: 0 0 15px rgba(124, 255, 1, 0.1);
+    box-shadow: 0 0 15px rgba(255, 219, 59, 0.1);
 }
 
 .alm-spec-card h3 {

@@ -109,7 +109,7 @@
     flex: 1;
     padding: 1.5rem;
     display: grid;
-    grid-template-columns: 1fr 320px;
+    grid-template-columns: 1fr 350px;
     gap: 1.5rem;
     overflow: hidden;
 }
@@ -1233,7 +1233,7 @@
 
 .som-card-header {
     background: #ffdb3b;
-    padding: 8px 12px;
+    padding: 8px 14px 8px 18px;
     font-size: 9px;
     font-weight: 900;
     color: #0f172a;
@@ -1243,7 +1243,7 @@
 }
 
 .som-guards-list {
-    padding: 12px;
+    padding: 12px 14px 12px 18px;
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -1344,7 +1344,7 @@
 }
 
 .som-checkpoint-journey {
-    padding: 0.6rem 1rem;
+    padding: 0.6rem 1rem 0.6rem 1.15rem;
     display: flex;
     flex-direction: column;
     gap: 0;

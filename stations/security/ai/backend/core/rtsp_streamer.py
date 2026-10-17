@@ -258,8 +258,8 @@ class CameraStreamManager:
                 self.detail_sequence, self.detail_jpeg = sequence, jpeg
         return meta, jpeg
 
-    def get_latest_jpeg(self):
-        meta, jpeg = self.get_packet(detail=True)
+    def get_latest_jpeg(self, detail=False):
+        meta, jpeg = self.get_packet(detail=detail)
         return jpeg or create_status_frame_bytes(self.camera_name, meta['status'])
 
     def get_latest_frame_mat(self):

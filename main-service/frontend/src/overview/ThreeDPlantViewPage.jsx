@@ -124,11 +124,11 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                     <div className="som-main-score-card">
                       <div className="som-score-header">
                         <span className="som-score-title">Current Mill Performance Score</span>
-                        <span className="som-score-value">99%</span>
+                        <span className="som-score-value">0%</span>
                       </div>
                       <div className="som-score-footer">
                         <span className="som-label">THROUGHPUT</span>
-                        <span className="som-value orange">45.0 mt/hr</span>
+                        <span className="som-value orange">0.0 mt/hr</span>
                       </div>
                     </div>
 
@@ -139,10 +139,10 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('OIL LOSSES REPORT')}
                       data={[
-                        { label: 'USB Count', value: '0.65%' },
-                        { label: 'PSB Count', value: '1.25%' },
+                        { label: 'USB Count', value: '0.00%' },
+                        { label: 'PSB Count', value: '0.00%' },
                         { label: 'EFB', value: 'Wet', color: 'gray' },
-                        { label: 'Unprocessed EFB', value: '50%' },
+                        { label: 'Unprocessed EFB', value: '0%' },
                         { label: 'Press Floor', value: 'Wet' },
                         { label: 'Station', value: 'Oily' },
                       ]}
@@ -153,11 +153,11 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('OIL LOSSES REPORT')}
                       data={[
-                        { label: 'KL in Fibre', value: '0.9%' },
-                        { label: 'KL in TDS 1', value: '0.5%' },
-                        { label: 'KL in TDS 2', value: '0.8%' },
-                        { label: 'KL in Wet Shell', value: '0.6%' },
-                        { label: 'TOL', value: '0.30%' },
+                        { label: 'KL in Fibre', value: '0.0%' },
+                        { label: 'KL in TDS 1', value: '0.0%' },
+                        { label: 'KL in TDS 2', value: '0.0%' },
+                        { label: 'KL in Wet Shell', value: '0.0%' },
+                        { label: 'TOL', value: '0.00%' },
                       ]}
                     />
 
@@ -168,11 +168,11 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('BOILER HOUSE')}
                       data={[
-                        { label: 'Steam Pressure', value: '23 bar' },
-                        { label: 'Water Level', value: '50%' },
-                        { label: 'TDS', value: '1,200 mg/L' },
-                        { label: 'Station Score', value: '100%' },
-                        { label: 'Capacity', value: '18% (60/30)' },
+                        { label: 'Steam Pressure', value: '0 bar' },
+                        { label: 'Water Level', value: '0%' },
+                        { label: 'TDS', value: '0 mg/L' },
+                        { label: 'Station Score', value: '0%' },
+                        { label: 'Capacity', value: '0% (0/0)' },
                       ]}
                     />
                     <MonitoringCard
@@ -181,8 +181,8 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('PRESS STATION')}
                       data={[
-                        { label: 'Throughput', value: '45.00 mt/hr' },
-                        { label: 'Station Score', value: '00%' },
+                        { label: 'Throughput', value: '0.00 mt/hr' },
+                        { label: 'Station Score', value: '0%' },
                       ]}
                     />
                     <MonitoringCard
@@ -191,8 +191,8 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('THRESHING STATION')}
                       data={[
-                        { label: 'Throughput', value: '45.00 mt/hr' },
-                        { label: 'Station Score', value: '00%' },
+                        { label: 'Throughput', value: '0.00 mt/hr' },
+                        { label: 'Station Score', value: '0%' },
                       ]}
                     />
                     <MonitoringCard
@@ -201,8 +201,8 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('EFB PLANT')}
                       data={[
-                        { label: 'FFB Processed', value: '100%' },
-                        { label: 'Station Score', value: '100%' },
+                        { label: 'FFB Processed', value: '0%' },
+                        { label: 'Station Score', value: '0%' },
                       ]}
                     />
 
@@ -213,10 +213,10 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('ENGINE ROOM')}
                       data={[
-                        { label: 'Power Consumption', value: '1,000 kW' },
-                        { label: 'Steam Consumption', value: '25 mt/hr' },
-                        { label: 'Frequency', value: '50.12 Hz' },
-                        { label: 'Station Score', value: '100% 100%' },
+                        { label: 'Power Consumption', value: '0 kW' },
+                        { label: 'Steam Consumption', value: '0 mt/hr' },
+                        { label: 'Frequency', value: '0.00 Hz' },
+                        { label: 'Station Score', value: '0% 0%' },
                       ]}
                     />
                     <MonitoringCard
@@ -225,8 +225,8 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('KERNEL PLANT')}
                       data={[
-                        { label: 'Throughput', value: '45.00 mt/hr' },
-                        { label: 'Station Score', value: '00%' },
+                        { label: 'Throughput', value: '0.00 mt/hr' },
+                        { label: 'Station Score', value: '0%' },
                       ]}
                     />
                     <MonitoringCard
@@ -235,8 +235,8 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('OIL CLARIFICATION')}
                       data={[
-                        { label: 'Throughput', value: '45.00 mt/hr' },
-                        { label: 'Station Score', value: '00%' },
+                        { label: 'Throughput', value: '0.00 mt/hr' },
+                        { label: 'Station Score', value: '0%' },
                       ]}
                     />
                     <MonitoringCard
@@ -245,8 +245,8 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('STERILIZER STATION')}
                       data={[
-                        { label: 'Throughput', value: '45.00 mt/hr' },
-                        { label: 'Station Score', value: '00%' },
+                        { label: 'Throughput', value: '0.00 mt/hr' },
+                        { label: 'Station Score', value: '0%' },
                       ]}
                     />
 
@@ -257,11 +257,11 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('ANAEROBIC POND')}
                       data={[
-                        { label: 'pH', value: '7.8' },
-                        { label: 'MLSS', value: '6,500 mg/L' },
+                        { label: 'pH', value: '0.0' },
+                        { label: 'MLSS', value: '0 mg/L' },
                         { label: 'Recycling', value: 'ON' },
                         { label: 'Scrimming', value: 'ON' },
-                        { label: 'Score', value: '100%' },
+                        { label: 'Score', value: '0%' },
                       ]}
                     />
                     <MonitoringCard
@@ -270,12 +270,12 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('AEROBIC POND')}
                       data={[
-                        { label: 'pH', value: '8.5' },
-                        { label: 'MLSS', value: '3,500 mg/L' },
-                        { label: 'DO', value: '5.5 mg/L' },
+                        { label: 'pH', value: '0.0' },
+                        { label: 'MLSS', value: '0 mg/L' },
+                        { label: 'DO', value: '0.0 mg/L' },
                         { label: 'Recycling', value: 'ON' },
                         { label: 'Deludging', value: 'OFF' },
-                        { label: 'Station Score', value: '100%' },
+                        { label: 'Station Score', value: '0%' },
                       ]}
                     />
                     <MonitoringCard
@@ -284,10 +284,10 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('EFFLUENT DISCHARGE')}
                       data={[
-                        { label: 'pH', value: '8.8' },
-                        { label: 'TSS', value: '11.0 mg/L' },
-                        { label: 'COD', value: '230.0 mg/L' },
-                        { label: 'D&O', value: '6.0 mg/L' },
+                        { label: 'pH', value: '0.0' },
+                        { label: 'TSS', value: '0.0 mg/L' },
+                        { label: 'COD', value: '0.0 mg/L' },
+                        { label: 'D&O', value: '0.0 mg/L' },
                       ]}
                     />
 
@@ -298,13 +298,13 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('MINI MILL')}
                       data={[
-                        { label: 'LF Received', value: '200 mt' },
-                        { label: 'LF Processed', value: '100.0 mt' },
-                        { label: 'LF balance', value: '100 mt' },
-                        { label: 'Nut Produced', value: '28.0 mt' },
-                        { label: 'CPO Produced', value: '22.0 mt' },
-                        { label: 'OER', value: '20.0%' },
-                        { label: 'Station Score', value: '100%' },
+                        { label: 'LF Received', value: '0 mt' },
+                        { label: 'LF Processed', value: '0.0 mt' },
+                        { label: 'LF balance', value: '0 mt' },
+                        { label: 'Nut Produced', value: '0.0 mt' },
+                        { label: 'CPO Produced', value: '0.0 mt' },
+                        { label: 'OER', value: '0.0%' },
+                        { label: 'Station Score', value: '0%' },
                       ]}
                     />
 
@@ -314,8 +314,8 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('RAW WATER TREATMENT')}
                       data={[
-                        { label: 'Throughput', value: '98.00 m3/hr' },
-                        { label: 'Turbidity', value: '3.00 NTU' },
+                        { label: 'Throughput', value: '0.00 m3/hr' },
+                        { label: 'Turbidity', value: '0.00 NTU' },
                       ]}
                     />
                     <MonitoringCard
@@ -324,10 +324,10 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('WATER CONSUMPTION')}
                       data={[
-                        { label: 'Domestic', value: '5%' },
-                        { label: 'Process', value: '10%' },
-                        { label: 'Boiler', value: '85%' },
-                        { label: 'Water Consumption', value: '1m3/mt.FFB' },
+                        { label: 'Domestic', value: '0%' },
+                        { label: 'Process', value: '0%' },
+                        { label: 'Boiler', value: '0%' },
+                        { label: 'Water Consumption', value: '0 m3/mt.FFB' },
                       ]}
                     />
                     <MonitoringCard
@@ -336,8 +336,8 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('LOADING RAMP')}
                       data={[
-                        { label: 'Throughput', value: '90.00 mt/hr' },
-                        { label: 'Station Score', value: '00%' },
+                        { label: 'Throughput', value: '0.00 mt/hr' },
+                        { label: 'Station Score', value: '0%' },
                       ]}
                     />
 
@@ -347,9 +347,9 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('WEIGHBRIDGE')}
                       data={[
-                        { label: 'FFB Received', value: '200.0 mt' },
-                        { label: 'FFB Grading', value: '16 trucks' },
-                        { label: 'FFB Grading', value: '5 trucks' },
+                        { label: 'FFB Received', value: '0.0 mt' },
+                        { label: 'FFB Grading', value: '0 trucks' },
+                        { label: 'FFB Grading', value: '0 trucks' },
                       ]}
                     />
                     <MonitoringCard
@@ -358,9 +358,9 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('CPO STORAGE')}
                       data={[
-                        { label: 'Tank 1', value: '1,000 mt' },
-                        { label: 'Tank 2', value: '500 mt.' },
-                        { label: 'Tank 3', value: '1' },
+                        { label: 'Tank 1', value: '0 mt' },
+                        { label: 'Tank 2', value: '0 mt' },
+                        { label: 'Tank 3', value: '0' },
                       ]}
                     />
                     <MonitoringCard
@@ -369,9 +369,9 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('GRADING RAMP')}
                       data={[
-                        { label: 'FFB Ripeness', value: '70.0%' },
-                        { label: 'Dust', value: '70.0%' },
-                        { label: 'OGER', value: '16.0%' },
+                        { label: 'FFB Ripeness', value: '0.0%' },
+                        { label: 'Dust', value: '0.0%' },
+                        { label: 'OGER', value: '0.0%' },
                       ]}
                     />
                     <MonitoringCard
@@ -380,9 +380,9 @@ const ThreeDPlantViewPage = ({ onNavigate, stations }) => {
                       onNavigate={onNavigate}
                       isLocked={isCardLocked('FFB BALANCE')}
                       data={[
-                        { label: 'FFB Received', value: '530 mt' },
-                        { label: 'FFB Processed', value: '200 mt' },
-                        { label: 'FFB Balance', value: '320 mt' },
+                        { label: 'FFB Received', value: '0 mt' },
+                        { label: 'FFB Processed', value: '0 mt' },
+                        { label: 'FFB Balance', value: '0 mt' },
                       ]}
                     />
 

@@ -120,7 +120,7 @@ function DashboardHeader({
 
   const hasPermission = (parent, submenu) => {
     const roleLower = user?.userRole?.toLowerCase() || user?.role?.toLowerCase() || "";
-    if (["developer", "admin", "mill_manager", "general_manager", "asisten_manager", "manager"].includes(roleLower) || roleLower.includes("manager")) return true;
+    if (["developer", "admin", "mill_manager", "general_manager", "asisten_manager", "manager", "staff"].includes(roleLower) || roleLower.includes("manager")) return true;
     
     const key = `${parent}:${submenu}`;
     const perms = user?.permissions || [];
@@ -129,7 +129,7 @@ function DashboardHeader({
 
   const isMenuLocked = (menuName) => {
     const roleLower = user?.userRole?.toLowerCase() || user?.role?.toLowerCase() || "";
-    if (["developer", "admin", "mill_manager", "general_manager", "asisten_manager", "manager"].includes(roleLower) || roleLower.includes("manager")) return false;
+    if (["developer", "admin", "mill_manager", "general_manager", "asisten_manager", "manager", "staff"].includes(roleLower) || roleLower.includes("manager")) return false;
 
     if (menuName === "Dashboard") {
       return !hasPermission("Dashboard", "Production Dashboard");

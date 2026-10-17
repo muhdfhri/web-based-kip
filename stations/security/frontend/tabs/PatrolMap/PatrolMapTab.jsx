@@ -16,6 +16,9 @@ import CheckpointSettingsView from './CheckpointSettingsView.jsx';
 const _mobileGuardUpdater = { fn: null };
 const _mobileGuardRemover = { fn: null };
 const _mobileRotate = { fn: null };
+const _mobileTargetStation = { fn: null };
+const _mobileVerifiedStations = { fn: null };
+const _mobileCenterMap = { fn: null };
 
 if (typeof window !== 'undefined') {
   window.updateGuardLocation = (userId, lat, lng, guardName, photoUrl) => {
@@ -40,12 +43,32 @@ if (typeof window !== 'undefined') {
     } catch (e) { console.warn('updateGuardLocationJson parse error:', e); }
   };
 
+  // ── TARGET & VERIFIED STATIONS BRIDGE: Flutter calls setTargetStation & setVerifiedStations ──
+  window.setTargetStation = (targetId) => {
+    if (_mobileTargetStation.fn) {
+      _mobileTargetStation.fn(targetId);
+    }
+  };
+
+  window.setVerifiedStations = (verifiedList) => {
+    if (_mobileVerifiedStations.fn) {
+      _mobileVerifiedStations.fn(verifiedList);
+    }
+  };
+
   // ── ROTATE MAP BRIDGE: Flutter calls window.rotateMap(deltaDegrees) ──
   // e.g. window.rotateMap(45)  → rotate clockwise 45°
   //      window.rotateMap(-45) → rotate counter-clockwise 45°
   //      window.rotateMap(0, true) → reset to 0° (absolute)
   window.rotateMap = (delta, absolute = false) => {
     if (_mobileRotate.fn) _mobileRotate.fn(parseFloat(delta), absolute);
+  };
+
+  // ── CENTER MAP BRIDGE: Flutter calls window.centerMap(lat, lng, zoom) ──
+  window.centerMap = (lat, lng, zoom) => {
+    if (_mobileCenterMap.fn) {
+      _mobileCenterMap.fn(parseFloat(lat), parseFloat(lng), zoom ? parseInt(zoom) : null);
+    }
   };
 }
 
@@ -153,18 +176,24 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
         return roleId === 4 && (roleName === 'dev' || roleName === 'developer');
     })();
 
-    const [center, setCenter] = useState([3.683095, 98.704352]);
-    const [zoom, setZoom] = useState(18);
-    const [bearing, setBearing] = useState(0);
+    const initialLat = parseFloat(localStorage.getItem('mewah_factory_lat')) || null;
+    const initialLng = parseFloat(localStorage.getItem('mewah_factory_lng')) || null;
+    const initialZoom = parseInt(localStorage.getItem('mewah_factory_zoom')) || null;
+    const initialBearing = parseInt(localStorage.getItem('mewah_factory_bearing')) || null;
+
+    const [center, setCenter] = useState(initialLat && initialLng ? [initialLat, initialLng] : null);
+    const [zoom, setZoom] = useState(initialZoom || 18);
+    const [bearing, setBearing] = useState(initialBearing || 0);
+    const [isSettingsLoaded, setIsSettingsLoaded] = useState(!!(initialLat && initialLng));
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     const [showSettings, setShowSettings] = useState(false);
     const [viewMode, setViewMode] = useState('map'); // 'map' or 'logs'
     const [replayOrigin, setReplayOrigin] = useState(null); // 'logs' or null
-    const [tempLat, setTempLat] = useState('');
-    const [tempLng, setTempLng] = useState('');
-    const [tempZoom, setTempZoom] = useState('');
-    const [tempBearing, setTempBearing] = useState('');
+    const [tempLat, setTempLat] = useState(initialLat || '');
+    const [tempLng, setTempLng] = useState(initialLng || '');
+    const [tempZoom, setTempZoom] = useState(initialZoom || '');
+    const [tempBearing, setTempBearing] = useState(initialBearing || '');
 
     // Escape key to exit full screen
     useEffect(() => {
@@ -179,6 +208,8 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
 
     // ── MOBILE WEBVIEW BRIDGE: live guard positions injected from Flutter ──
     const [mobileGuards, setMobileGuards] = useState({});
+    const [mobileTargetSeq, setMobileTargetSeq] = useState(null);
+    const [mobileVerifiedKeys, setMobileVerifiedKeys] = useState(null);
 
     useEffect(() => {
         _mobileGuardUpdater.fn = (userId, lat, lng, guardName, photoUrl) => {
@@ -202,9 +233,27 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                 return next;
             });
         };
+        _mobileTargetStation.fn = (targetId) => {
+            setMobileTargetSeq(targetId !== '' && targetId !== null && targetId !== undefined ? String(targetId) : null);
+        };
+        _mobileVerifiedStations.fn = (verifiedList) => {
+            try {
+                let keys = verifiedList;
+                if (typeof verifiedList === 'string') keys = JSON.parse(verifiedList);
+                if (Array.isArray(keys)) {
+                    setMobileVerifiedKeys(keys.map(k => String(k).toLowerCase().trim()));
+                } else if (keys && typeof keys === 'object') {
+                    setMobileVerifiedKeys(Object.keys(keys).map(k => String(k).toLowerCase().trim()));
+                }
+            } catch (err) {
+                console.warn('[PatrolMapTab] setVerifiedStations error:', err);
+            }
+        };
         return () => { 
             _mobileGuardUpdater.fn = null; 
             _mobileGuardRemover.fn = null;
+            _mobileTargetStation.fn = null;
+            _mobileVerifiedStations.fn = null;
         };
     }, []);
 
@@ -217,7 +266,18 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                 return next;
             });
         };
-        return () => { _mobileRotate.fn = null; };
+        _mobileCenterMap.fn = (lat, lng, newZoom) => {
+            if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+                setCenter([lat, lng]);
+                if (newZoom && !isNaN(newZoom)) {
+                    setZoom(newZoom);
+                }
+            }
+        };
+        return () => { 
+            _mobileRotate.fn = null; 
+            _mobileCenterMap.fn = null;
+        };
     }, []);
 
     // Replay state
@@ -235,23 +295,31 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
         })
         .then(res => res.json())
         .then(data => {
-            if (data) {
-                const lat = parseFloat(data.center_latitude) || 3.683095;
-                const lng = parseFloat(data.center_longitude) || 98.704352;
+            if (data && data.center_latitude && data.center_longitude) {
+                const lat = parseFloat(data.center_latitude);
+                const lng = parseFloat(data.center_longitude);
                 const zm = parseInt(data.default_zoom) || 18;
                 const br = parseInt(data.default_bearing) || 0;
                 setCenter([lat, lng]);
                 setZoom(zm);
                 setBearing(br);
-                if (data.center_latitude !== null && data.center_latitude !== undefined) {
-                    setTempLat(data.center_latitude);
-                    setTempLng(data.center_longitude);
-                    setTempZoom(zm);
-                    setTempBearing(br);
-                }
+                setIsSettingsLoaded(true);
+                localStorage.setItem('mewah_factory_lat', lat);
+                localStorage.setItem('mewah_factory_lng', lng);
+                localStorage.setItem('mewah_factory_zoom', zm);
+                localStorage.setItem('mewah_factory_bearing', br);
+                setTempLat(data.center_latitude);
+                setTempLng(data.center_longitude);
+                setTempZoom(zm);
+                setTempBearing(br);
+            } else {
+                setIsSettingsLoaded(true);
             }
         })
-        .catch(err => console.warn('[PatrolMapTab] Error fetching map settings from API:', err));
+        .catch(err => {
+            console.warn('[PatrolMapTab] Error fetching map settings from API:', err);
+            setIsSettingsLoaded(true);
+        });
     }, []);
 
     const saveSettings = async () => {
@@ -465,9 +533,14 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
     if (isMobileEmbed) {
         return (
             <div style={{ width: '100vw', height: '100vh', background: '#0f172a', margin: 0, padding: 0, overflow: 'hidden' }}>
-                <MapContainer center={center} zoom={zoom} rotate={true} bearing={bearing} touchRotate={true} style={{ width: '100%', height: '100%', zIndex: 1 }} zoomControl={true} dragging={true} touchZoom={true} doubleClickZoom={true} scrollWheelZoom={true}>
-                    <MapUpdater center={center} zoom={zoom} bearing={bearing} />
-                    <TileLayer url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" attribution='&copy; Google Maps' maxZoom={22} />
+                {(!isSettingsLoaded || !center) ? (
+                    <div style={{ width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '13px', fontWeight: '700' }}>
+                        Loading Patrol Map...
+                    </div>
+                ) : (
+                    <MapContainer center={center} zoom={zoom} rotate={true} bearing={bearing} touchRotate={true} style={{ width: '100%', height: '100%', zIndex: 1 }} zoomControl={true} attributionControl={false} dragging={true} touchZoom={true} doubleClickZoom={true} scrollWheelZoom={true}>
+                        <MapUpdater center={center} zoom={zoom} bearing={bearing} />
+                        <TileLayer url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" maxZoom={22} />
 
                     {isReplayMode ? (
                         <>
@@ -569,11 +642,14 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                                 
                                 return (
                                     <React.Fragment key={`lt-m-${sorted[0].session_id}`}>
-                                        <Polyline positions={positions} pathOptions={{ color: '#ff0055', weight: 6, opacity: 0.3, lineCap: 'round', lineJoin: 'round', className: 'pm-track-halo' }} />
-                                        <Polyline positions={positions} pathOptions={{ color: '#ff0055', weight: 3, opacity: 0.9, lineCap: 'round', lineJoin: 'round', smoothFactor: 1.5 }} />
-                                        {positions.map((pos, idx) => (
-                                            <CircleMarker key={`ping-m-${idx}`} center={pos} radius={3} pathOptions={{ color: '#fff', weight: 1, fillColor: '#ff0055', fillOpacity: 1 }} />
-                                        ))}
+                                        {/* Outer glowing halo */}
+                                        <Polyline positions={positions} pathOptions={{ color: '#ff0055', weight: 8, opacity: 0.25, lineCap: 'round', lineJoin: 'round', className: 'pm-track-halo' }} />
+                                        {/* Main clean route polyline */}
+                                        <Polyline positions={positions} pathOptions={{ color: '#ff0055', weight: 3.5, opacity: 0.95, lineCap: 'round', lineJoin: 'round', smoothFactor: 1.2 }} />
+                                        {/* Titik awal patroli (Start dot) */}
+                                        {positions.length > 0 && (
+                                            <CircleMarker center={positions[0]} radius={4} pathOptions={{ color: '#ffffff', weight: 1.5, fillColor: '#10b981', fillOpacity: 1 }} />
+                                        )}
                                     </React.Fragment>
                                 );
                             })}
@@ -598,17 +674,39 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                                         }));
                                     }
                                 };
-                                const isVerified = !!latestLog;
-                                const sortedLiveStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
-                                const nextLiveTarget = sortedLiveStations.find(s => stationCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
-                                const isNextTarget = nextLiveTarget && nextLiveTarget.id === station.id;
+                                const stNameLower = (station.station_name || station.label || '').toLowerCase().trim();
+                                const stKeyLower = (station.station_key || station.key || '').toLowerCase().trim();
+                                const stCodeLower = (station.checkpoint_code || '').toLowerCase().trim();
+                                const isVerified = mobileVerifiedKeys 
+                                    ? mobileVerifiedKeys.some(k => k === stNameLower || k === stKeyLower || k === stCodeLower || k === String(station.id) || k === String(station.sequence_order))
+                                    : !!latestLog;
+
+                                let isNextTarget = false;
+                                if (mobileTargetSeq !== null && mobileTargetSeq !== undefined && mobileTargetSeq !== '') {
+                                    // Target dicocokkan secara spesifik: utamakan sequence_order, checkpoint_code, atau nama station
+                                    isNextTarget = (station.sequence_order !== undefined && station.sequence_order !== null && String(station.sequence_order) === String(mobileTargetSeq)) ||
+                                                   (stCodeLower && stCodeLower === String(mobileTargetSeq).toLowerCase().trim()) ||
+                                                   (stNameLower && stNameLower === String(mobileTargetSeq).toLowerCase().trim());
+                                } else {
+                                    const sortedLiveStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
+                                    const nextLiveTarget = sortedLiveStations.find(s => {
+                                        const sName = (s.station_name || s.label || '').toLowerCase().trim();
+                                        const sKey = (s.station_key || s.key || '').toLowerCase().trim();
+                                        const sCode = (s.checkpoint_code || '').toLowerCase().trim();
+                                        if (mobileVerifiedKeys) {
+                                            return !mobileVerifiedKeys.some(k => k === sName || k === sKey || k === sCode || (s.sequence_order !== undefined && k === String(s.sequence_order)));
+                                        }
+                                        return stationCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0;
+                                    });
+                                    isNextTarget = nextLiveTarget && nextLiveTarget.id === station.id;
+                                }
 
                                 return (
                                     <React.Fragment key={`cp-frag-${station.id}`}>
                                         {isNextTarget && (
                                                 <Circle 
                                                     center={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]} 
-                                                    radius={parseFloat(station.radius_meters) > 0 ? parseFloat(station.radius_meters) : 20} 
+                                                    radius={parseFloat(station.radius_meters) > 0 ? parseFloat(station.radius_meters) : 10} 
                                                     pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 3 }} 
                                                 />
                                         )}
@@ -691,6 +789,7 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                         </>
                     )}
                 </MapContainer>
+                )}
             </div>
         );
     }
@@ -933,9 +1032,14 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                         </button>
                     )}
 
-                    <MapContainer center={center} zoom={zoom} rotate={true} bearing={bearing} touchRotate={true} style={{ width: '100%', height: '100%', zIndex: 1 }} zoomControl={true} attributionControl={false} dragging={true} touchZoom={true} doubleClickZoom={true} scrollWheelZoom={true}>
-                        <MapUpdater center={center} zoom={zoom} bearing={bearing} isFullscreen={isFullscreen} />
-                        <TileLayer url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" maxZoom={22} />
+                    {(!isSettingsLoaded || !center) ? (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: '13px', fontWeight: '700' }}>
+                            Loading Patrol Map...
+                        </div>
+                    ) : (
+                        <MapContainer center={center} zoom={zoom} rotate={true} bearing={bearing} touchRotate={true} style={{ width: '100%', height: '100%', zIndex: 1 }} zoomControl={true} attributionControl={false} dragging={true} touchZoom={true} doubleClickZoom={true} scrollWheelZoom={true}>
+                            <MapUpdater center={center} zoom={zoom} bearing={bearing} isFullscreen={isFullscreen} />
+                            <TileLayer url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}" maxZoom={22} />
 
                         {isReplayMode ? (
                             <>
@@ -1057,15 +1161,14 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                                                     positions={positions}
                                                     pathOptions={{ color: '#ef4444', weight: 2, opacity: 0.8, lineCap: 'round', lineJoin: 'round', smoothFactor: 1.5 }}
                                                 />
-                                                {/* 100% Accurate GPS Pings (Filtered Dots) */}
-                                                {positions.map((pos, idx) => (
+                                                {/* Titik awal patroli (Start dot) */}
+                                                {positions.length > 0 && (
                                                     <CircleMarker
-                                                        key={`ping-${idx}`}
-                                                        center={pos}
-                                                        radius={3}
-                                                        pathOptions={{ color: '#fff', weight: 1, fillColor: '#ef4444', fillOpacity: 1 }}
+                                                        center={positions[0]}
+                                                        radius={4}
+                                                        pathOptions={{ color: '#ffffff', weight: 1.5, fillColor: '#10b981', fillOpacity: 1 }}
                                                     />
-                                                ))}
+                                                )}
                                             </React.Fragment>
                                     );
                                 })}
@@ -1092,17 +1195,39 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                                     const latestLog = logsForStation.length > 0 ? logsForStation[0] : null;
                                     const sData = getStationData(station, latestLog);
                                     
-                                    const isVerified = !!latestLog;
-                                    const sortedLiveStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
-                                    const nextLiveTarget = sortedLiveStations.find(s => stationCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
-                                    const isNextTarget = nextLiveTarget && nextLiveTarget.id === station.id;
+                                    const stNameLower = (station.station_name || station.label || '').toLowerCase().trim();
+                                    const stKeyLower = (station.station_key || station.key || '').toLowerCase().trim();
+                                    const stCodeLower = (station.checkpoint_code || '').toLowerCase().trim();
+                                    const isVerified = mobileVerifiedKeys 
+                                        ? mobileVerifiedKeys.some(k => k === stNameLower || k === stKeyLower || k === stCodeLower || k === String(station.id) || k === String(station.sequence_order))
+                                        : !!latestLog;
+
+                                    let isNextTarget = false;
+                                    if (mobileTargetSeq !== null && mobileTargetSeq !== undefined && mobileTargetSeq !== '') {
+                                        // Target dicocokkan secara spesifik: utamakan sequence_order, checkpoint_code, atau nama station
+                                        isNextTarget = (station.sequence_order !== undefined && station.sequence_order !== null && String(station.sequence_order) === String(mobileTargetSeq)) ||
+                                                       (stCodeLower && stCodeLower === String(mobileTargetSeq).toLowerCase().trim()) ||
+                                                       (stNameLower && stNameLower === String(mobileTargetSeq).toLowerCase().trim());
+                                    } else {
+                                        const sortedLiveStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
+                                        const nextLiveTarget = sortedLiveStations.find(s => {
+                                            const sName = (s.station_name || s.label || '').toLowerCase().trim();
+                                            const sKey = (s.station_key || s.key || '').toLowerCase().trim();
+                                            const sCode = (s.checkpoint_code || '').toLowerCase().trim();
+                                            if (mobileVerifiedKeys) {
+                                                return !mobileVerifiedKeys.some(k => k === sName || k === sKey || k === sCode || (s.sequence_order !== undefined && k === String(s.sequence_order)));
+                                            }
+                                            return stationCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0;
+                                        });
+                                        isNextTarget = nextLiveTarget && nextLiveTarget.id === station.id;
+                                    }
                                     
                                     return (
                                         <React.Fragment key={`cp-frag-${station.id}`}>
                                             {isNextTarget && (
                                                 <Circle 
                                                     center={[parseFloat(station.latitude) + 0, parseFloat(station.longitude) + 0]} 
-                                                    radius={parseFloat(station.radius_meters) > 0 ? parseFloat(station.radius_meters) : 20} 
+                                                    radius={parseFloat(station.radius_meters) > 0 ? parseFloat(station.radius_meters) : 10} 
                                                     pathOptions={{ color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.25, weight: 3 }} 
                                                 />
                                             )}
@@ -1179,6 +1304,7 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                             </>
                         )}
                     </MapContainer>
+                    )}
 
                     {/* HUD or Replay Controls */}
                     {isReplayMode ? (

@@ -4,17 +4,17 @@
    ═══════════════════════════════════════════════════════════════ */
 
 :root {
-    --alm-bg: #020617;
-    --alm-surface: rgba(15, 23, 42, 0.8);
-    --alm-card-bg: rgba(30, 41, 59, 0.4);
-    --alm-border: rgba(124, 255, 1, 0.15);
-    --alm-text-pri: #f8fafc;
-    --alm-text-sec: #94a3b8;
-    --alm-accent: #7CFF01;
+    --alm-bg: #f8fafc;
+    --alm-surface: #ffffff;
+    --alm-card-bg: #ffffff;
+    --alm-border: #e2e8f0;
+    --alm-text-pri: #0f172a;
+    --alm-text-sec: #64748b;
+    --alm-accent: #FFDB3B;
     --alm-critical: #ff4444;
     --alm-warning: #f59e0b;
     --alm-info: #06b6d4;
-    --alm-success: #7CFF01;
+    --alm-success: #FFDB3B;
     --alm-radius: 4px;
     --alm-glass: blur(20px);
 }
@@ -48,14 +48,14 @@
 .alm-header-icon {
     width: 52px;
     height: 52px;
-    background: rgba(124, 255, 1, 0.1);
+    background: rgba(255, 219, 59, 0.1);
     color: var(--alm-accent);
     border: 1px solid var(--alm-accent);
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 20px rgba(124, 255, 1, 0.3);
+    box-shadow: 0 0 20px rgba(255, 219, 59, 0.3);
 }
 
 .alm-page-title {
@@ -92,7 +92,8 @@
 
 .alm-btn-header--ack {
     background: var(--alm-accent);
-    color: #fff;
+    color: #0f172a;
+    font-weight: 800;
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
@@ -209,7 +210,7 @@
     width: 44px;
     height: 44px;
     border-radius: 12px;
-    background: var(--alm-bg);
+    background: #f1f5f9;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -275,10 +276,10 @@
 }
 
 .alm-tab--active {
-    background: rgba(124, 255, 1, 0.1);
+    background: rgba(255, 219, 59, 0.1);
     border: 1px solid var(--alm-accent);
     color: var(--alm-accent) !important;
-    box-shadow: 0 0 15px rgba(124, 255, 1, 0.2);
+    box-shadow: 0 0 15px rgba(255, 219, 59, 0.2);
 }
 
 .alm-tab-count {
@@ -314,7 +315,7 @@
 .alm-search-input {
     border: none;
     background: transparent;
-    color: var(--alm-text-pri);
+    color: #0f172a;
     outline: none;
     flex: 1;
 }
@@ -374,8 +375,8 @@
 
 .alm-row-card:hover {
     border-color: var(--alm-accent);
-    box-shadow: 0 0 20px rgba(124, 255, 1, 0.1);
-    background: rgba(124, 255, 1, 0.05);
+    box-shadow: 0 0 20px rgba(255, 219, 59, 0.1);
+    background: rgba(255, 219, 59, 0.05);
 }
 
 .alm-cell-code {
@@ -496,7 +497,7 @@
 
 .alm-action-btn:hover {
     background: var(--alm-accent);
-    color: #fff;
+    color: #0f172a;
     border-color: var(--alm-accent);
 }
 

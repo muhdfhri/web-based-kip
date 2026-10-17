@@ -4,7 +4,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #020617;
+    background: #f8fafc;
     font-family: 'Inter', sans-serif;
     overflow: hidden;
     position: relative;
@@ -16,22 +16,21 @@
     position: absolute;
     inset: 0;
     background-image: 
-        radial-gradient(circle at 2px 2px, rgba(124, 255, 1, 0.05) 1px, transparent 0);
+        radial-gradient(circle at 2px 2px, rgba(255, 219, 59, 0.05) 1px, transparent 0);
     background-size: 32px 32px;
     opacity: 0.5;
 }
 
 .contact-card {
-    background: rgba(15, 23, 42, 0.6);
+    background: #ffffff;
     backdrop-filter: blur(20px);
     width: 100%;
     max-width: 800px;
     border-radius: 4px;
     padding: 60px;
     box-shadow: 
-        0 40px 100px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(124, 255, 1, 0.1);
-    border: 1px solid rgba(124, 255, 1, 0.2);
+        0 20px 50px rgba(15, 23, 42, 0.08);
+    border: 1px solid #e2e8f0;
     text-align: center;
     position: relative;
     overflow: hidden;
@@ -45,8 +44,8 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, #7CFF01, transparent);
-    box-shadow: 0 0 20px #7CFF01;
+    background: linear-gradient(90deg, transparent, #FFDB3B, transparent);
+    box-shadow: 0 0 20px #FFDB3B;
 }
 
 .logo-container {
@@ -63,28 +62,28 @@
 
 .logo-container:hover {
     transform: scale(1.02);
-    filter: drop-shadow(0 0 20px rgba(124, 255, 1, 0.4));
+    filter: drop-shadow(0 0 20px rgba(255, 219, 59, 0.4));
 }
 
 .role-tag {
     display: inline-block;
     padding: 4px 12px;
-    background: rgba(124, 255, 1, 0.1);
-    color: #7CFF01;
-    border: 1px solid rgba(124, 255, 1, 0.2);
+    background: #FFDB3B;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
     border-radius: 2px;
     font-size: 0.65rem;
     font-weight: 800;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     margin-bottom: 24px;
-    box-shadow: 0 0 15px rgba(124, 255, 1, 0.1);
+    box-shadow: 0 0 15px rgba(255, 219, 59, 0.1);
 }
 
 .company-name {
     font-size: 2.2rem;
     font-weight: 900;
-    color: #f8fafc;
+    color: #0f172a;
     margin: 0 0 12px;
     letter-spacing: -0.01em;
     text-transform: uppercase;
@@ -92,7 +91,7 @@
 
 .company-desc {
     font-size: 1rem;
-    color: #94a3b8;
+    color: #64748b;
     max-width: 500px;
     margin: 0 auto 48px;
     line-height: 1.5;
@@ -103,14 +102,14 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 32px;
     text-align: left;
-    border-top: 1px solid rgba(124, 255, 1, 0.1);
+    border-top: 1px solid #f1f5f9;
     padding-top: 40px;
 }
 
 .info-item label {
     display: block;
     font-size: 0.65rem;
-    color: #475569;
+    color: #64748b;
     text-transform: uppercase;
     font-weight: 800;
     margin-bottom: 6px;
@@ -119,7 +118,7 @@
 
 .info-item p {
     font-size: 1rem;
-    color: #f1f5f9;
+    color: #1e293b;
     font-weight: 600;
     margin: 0;
     letter-spacing: 0.02em;
@@ -127,7 +126,7 @@
 
 /* Developer Portal Enhancements */
 .som-developer-portal {
-    background: #020617;
+    background: #f8fafc;
     min-height: calc(100vh - 64px);
     display: flex;
     flex-direction: column;
@@ -140,7 +139,7 @@
     justify-content: center;
     align-items: center;
     background-image: 
-        radial-gradient(circle at 2px 2px, rgba(124, 255, 1, 0.03) 1px, transparent 0);
+        radial-gradient(circle at 2px 2px, rgba(255, 219, 59, 0.03) 1px, transparent 0);
     background-size: 40px 40px;
 }
 
@@ -165,4 +164,4 @@
     .contact-card {
         padding: 30px;
     }
-}
+}

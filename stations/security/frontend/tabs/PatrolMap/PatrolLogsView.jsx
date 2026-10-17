@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaClipboardList, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaCamera, FaCheckCircle, FaFilter, FaSync, FaArrowLeft, FaFileExcel, FaPlay, FaChevronDown, FaChevronRight, FaClock, FaShieldAlt } from 'react-icons/fa';
+import { FaClipboardList, FaSearch, FaCalendarAlt, FaMapMarkerAlt, FaCamera, FaCheckCircle, FaFilter, FaSync, FaArrowLeft, FaFileExcel, FaPlay, FaChevronDown, FaChevronRight, FaClock, FaShieldAlt, FaExclamationTriangle } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 import ProofModal from '../../components/ProofModal.jsx';
 
@@ -99,9 +99,12 @@ function PatrolLogsView({ onBack, onReplaySession }) {
           officer,
           initial: officer.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
           station,
-          coord: `${lat}, ${lng}`,
+          coord: (lat !== '0.00000' && lng !== '0.00000') ? `${lat}, ${lng}` : (item.is_suspended ? 'Tersuspensi' : '-'),
           status: (item.status || 'VERIFIED').toUpperCase(),
-          photo,
+          isSuspended: !!item.is_suspended,
+          reasonNotes: item.reason_notes || item.notes || null,
+          evidencePhoto: item.evidence_photo || photo || null,
+          photo: photo,
           avatar_photo: item.avatar_photo || null
         });
       });
@@ -252,12 +255,18 @@ function PatrolLogsView({ onBack, onReplaySession }) {
     return Array.from(sessionMap.values()).map(sess => {
       // Sort checkpoints by order / verified time ascending
       sess.checkpoints.sort((a, b) => new Date(a.dateObj) - new Date(b.dateObj));
-      const scannedCount = sess.checkpoints.length;
+      const hasSuspendedLog = sess.checkpoints.some(c => c.isSuspended);
+      const suspendedItem = sess.checkpoints.find(c => c.isSuspended);
+      const validCheckpoints = sess.checkpoints.filter(c => !c.isSuspended);
+      const scannedCount = validCheckpoints.length;
       const totalTarget = sess.totalMaster || stations.length || 20;
       const isComplete = sess.endTimeStr !== '-' || scannedCount >= totalTarget;
       const progressPct = totalTarget > 0 ? Math.min(100, Math.round((scannedCount / totalTarget) * 100)) : 0;
       return {
         ...sess,
+        isSuspended: hasSuspendedLog,
+        reasonNotes: suspendedItem ? suspendedItem.reasonNotes : null,
+        evidencePhoto: suspendedItem ? suspendedItem.evidencePhoto : null,
         scannedCount,
         totalTarget,
         isComplete,
@@ -639,12 +648,14 @@ function PatrolLogsView({ onBack, onReplaySession }) {
                 <th style={thStyle}>CHECKPOINTS</th>
                 <th style={thStyle}>REPLAY</th>
                 <th style={thStyle}>SESSION STATUS</th>
+                <th style={thStyle}>KENDALA / CATATAN</th>
+                <th style={thStyle}>BUKTI FOTO</th>
               </tr>
             </thead>
             <tbody>
               {groupedSessions.length === 0 ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+                  <td colSpan="11" style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                       <FaClipboardList style={{ fontSize: '36px', color: '#cbd5e1' }} />
                       <span style={{ fontSize: '14px', fontWeight: '700', color: '#64748b' }}>NO PATROL SESSIONS FOUND</span>
@@ -655,13 +666,14 @@ function PatrolLogsView({ onBack, onReplaySession }) {
               ) : (
                 groupedSessions.map((sess, idx) => {
                   const isExpanded = !!expandedSessions[sess.sessionId || idx];
+                  const isSuspended = !!sess.isSuspended;
                   const isFullComplete = sess.scannedCount >= sess.totalTarget;
                   const isSessionEnded = sess.endTimeStr !== '-';
                   
                   // Progress color calculation
-                  const progressColor = isFullComplete ? '#10b981' : (isSessionEnded ? '#f59e0b' : '#0284c7');
-                  const progressBg = isFullComplete ? '#ecfdf5' : (isSessionEnded ? '#fffbeb' : '#f0f9ff');
-                  const progressBorder = isFullComplete ? '#a7f3d0' : (isSessionEnded ? '#fde68a' : '#bae6fd');
+                  const progressColor = isSuspended ? '#ea580c' : (isFullComplete ? '#10b981' : (isSessionEnded ? '#f59e0b' : '#0284c7'));
+                  const progressBg = isSuspended ? '#fff7ed' : (isFullComplete ? '#ecfdf5' : (isSessionEnded ? '#fffbeb' : '#f0f9ff'));
+                  const progressBorder = isSuspended ? '#fed7aa' : (isFullComplete ? '#a7f3d0' : (isSessionEnded ? '#fde68a' : '#bae6fd'));
 
                   return (
                     <React.Fragment key={sess.sessionId || idx}>
@@ -800,10 +812,10 @@ function PatrolLogsView({ onBack, onReplaySession }) {
                               onClick={() => onReplaySession && onReplaySession(sess.sessionId)}
                               style={{
                                 background: '#0f172a',
-                                border: '1px solid #38bdf8',
-                                color: '#38bdf8',
-                                padding: '6px 12px',
-                                borderRadius: '6px',
+                                border: '1px solid #0f172a',
+                                color: '#ffdb3b',
+                                padding: '6px 14px',
+                                borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontSize: '11px',
                                 fontWeight: '800',
@@ -815,43 +827,133 @@ function PatrolLogsView({ onBack, onReplaySession }) {
                               }}
                               title={`Replay patrol round ${sess.roundNum} by ${sess.officer}`}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#38bdf8';
-                                e.currentTarget.style.color = '#0f172a';
+                                e.currentTarget.style.background = '#1e293b';
+                                e.currentTarget.style.borderColor = '#1e293b';
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.background = '#0f172a';
+                                e.currentTarget.style.borderColor = '#0f172a';
                               }}
                             >
-                              <FaPlay style={{ fontSize: '9px' }} /> Replay
+                              <FaPlay style={{ fontSize: '9px', color: '#ffdb3b' }} /> Replay
                             </button>
                           ) : (
-                            <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>-</span>
+                            <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', paddingLeft: '8px' }}>-</span>
                           )}
                         </td>
 
                         {/* Status Sesi */}
                         <td style={tdStyle}>
-                          <span style={{
-                            background: isSessionEnded ? '#ecfdf5' : '#eff6ff',
-                            color: isSessionEnded ? '#059669' : '#0284c7',
-                            border: `1px solid ${isSessionEnded ? '#a7f3d0' : '#bfdbfe'}`,
-                            padding: '4px 10px',
-                            borderRadius: '20px',
-                            fontSize: '11px',
-                            fontWeight: '800',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px'
-                          }}>
-                            <FaCheckCircle /> {isSessionEnded ? 'COMPLETED' : 'ACTIVE'}
-                          </span>
+                          {isSuspended ? (
+                            <span style={{
+                              background: '#fff7ed',
+                              color: '#ea580c',
+                              border: '1px solid #fdba74',
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              fontSize: '11px',
+                              fontWeight: '800',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              width: 'fit-content'
+                            }}>
+                              <FaExclamationTriangle /> SUSPENDED
+                            </span>
+                          ) : (
+                            <span style={{
+                              background: isSessionEnded ? '#ecfdf5' : '#eff6ff',
+                              color: isSessionEnded ? '#059669' : '#0284c7',
+                              border: `1px solid ${isSessionEnded ? '#a7f3d0' : '#bfdbfe'}`,
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              fontSize: '11px',
+                              fontWeight: '800',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px'
+                            }}>
+                              <FaCheckCircle /> {isSessionEnded ? 'COMPLETED' : 'ACTIVE'}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Kendala / Catatan */}
+                        <td style={tdStyle}>
+                          {sess.reasonNotes ? (
+                            <span style={{
+                              fontSize: '12px',
+                              color: '#9a3412',
+                              background: '#fff7ed',
+                              border: '1px solid #fed7aa',
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              fontWeight: '600',
+                              display: 'inline-block',
+                              maxWidth: '220px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }} title={sess.reasonNotes}>
+                              {sess.reasonNotes}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>-</span>
+                          )}
+                        </td>
+
+                        {/* Bukti Foto */}
+                        <td style={tdStyle}>
+                          {sess.evidencePhoto ? (
+                            <button
+                              onClick={() => {
+                                const imgUrl = sess.evidencePhoto.startsWith('http') ? sess.evidencePhoto : `/uploads/${sess.evidencePhoto.replace(/^\/+uploads\/+/, '')}`;
+                                setProofIndex(0);
+                                setActiveProof({
+                                  name: `Suspended Round ${sess.roundNum}`,
+                                  proofs: [{
+                                    img: imgUrl,
+                                    guard: sess.officer,
+                                    id: sess.sessionId || 'susp',
+                                    time: sess.startTimeStr,
+                                    date: sess.startDateStr
+                                  }]
+                                });
+                              }}
+                              style={{
+                                background: '#eff6ff',
+                                border: '1px solid #bfdbfe',
+                                color: '#2563eb',
+                                padding: '5px 10px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                width: 'fit-content',
+                                transition: 'all 0.15s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#dbeafe';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#eff6ff';
+                              }}
+                            >
+                              <FaCamera /> Bukti Foto
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>-</span>
+                          )}
                         </td>
                       </tr>
 
                       {/* Expandable Sub-Table: Checkpoint Details */}
                       {isExpanded && (
                         <tr>
-                          <td colSpan="9" style={{ padding: '0', background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                          <td colSpan="11" style={{ padding: '0', background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
                             <div style={{ padding: '16px 20px 20px 48px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                                 <div style={{ fontSize: '12px', fontWeight: '800', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1132,10 +1234,10 @@ function PatrolLogsView({ onBack, onReplaySession }) {
                           onClick={() => onReplaySession && onReplaySession(log.sessionId)}
                           style={{
                             background: '#0f172a',
-                            border: '1px solid #38bdf8',
-                            color: '#38bdf8',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
+                            border: '1px solid #0f172a',
+                            color: '#ffdb3b',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
                             cursor: 'pointer',
                             fontSize: '11px',
                             fontWeight: '800',
@@ -1147,15 +1249,15 @@ function PatrolLogsView({ onBack, onReplaySession }) {
                           }}
                           title={`Replay patrol round ${log.roundNum} by ${log.officer}`}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#38bdf8';
-                            e.currentTarget.style.color = '#0f172a';
+                            e.currentTarget.style.background = '#1e293b';
+                            e.currentTarget.style.borderColor = '#1e293b';
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.background = '#0f172a';
-                            e.currentTarget.style.color = '#38bdf8';
+                            e.currentTarget.style.borderColor = '#0f172a';
                           }}
                         >
-                          <FaPlay style={{ fontSize: '9px' }} /> Replay
+                          <FaPlay style={{ fontSize: '9px', color: '#ffdb3b' }} /> Replay
                         </button>
                       ) : (
                         <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>-</span>
@@ -1164,20 +1266,55 @@ function PatrolLogsView({ onBack, onReplaySession }) {
 
                     {/* Status */}
                     <td style={tdStyle}>
-                      <span style={{
-                        background: '#ecfdf5',
-                        color: '#059669',
-                        border: '1px solid #a7f3d0',
-                        padding: '4px 10px',
-                        borderRadius: '20px',
-                        fontSize: '11px',
-                        fontWeight: '800',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}>
-                        <FaCheckCircle /> {log.status}
-                      </span>
+                      {log.isSuspended ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{
+                            background: '#fff7ed',
+                            color: '#ea580c',
+                            border: '1px solid #fdba74',
+                            padding: '4px 10px',
+                            borderRadius: '20px',
+                            fontSize: '11px',
+                            fontWeight: '800',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            width: 'fit-content'
+                          }}>
+                            <FaExclamationTriangle /> SUSPENDED
+                          </span>
+                          {log.reasonNotes && (
+                            <div style={{
+                              fontSize: '11px',
+                              color: '#9a3412',
+                              background: '#ffedd5',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              maxWidth: '180px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }} title={log.reasonNotes}>
+                              {log.reasonNotes}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{
+                          background: '#ecfdf5',
+                          color: '#059669',
+                          border: '1px solid #a7f3d0',
+                          padding: '4px 10px',
+                          borderRadius: '20px',
+                          fontSize: '11px',
+                          fontWeight: '800',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}>
+                          <FaCheckCircle /> {log.status}
+                        </span>
+                      )}
                     </td>
 
                   </tr>
