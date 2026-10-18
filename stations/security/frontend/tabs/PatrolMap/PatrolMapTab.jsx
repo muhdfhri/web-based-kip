@@ -119,24 +119,49 @@ class KalmanFilter2D {
     }
 }
 
-// 🛡️ Filter Visualisasi 100% Akurat: Hapus Distorsi & Double Kalman
-// Menggunakan koordinat presisi langsung dari GPS + Pembersihan Noise Stasioner (< 0.5m)
+// 🛡️ Filter Visualisasi 100% Akurat: Hapus Distorsi, Stationary Drift & Outlier Spike
+// Mengeliminasi efek "sarang laba-laba" saat berhenti di pos dan membuang lonjakan pantulan kanopi/pohon
 const filterCleanTrack = (rawPositions) => {
     if (!rawPositions || rawPositions.length === 0) return [];
     
-    const cleanPoints = [rawPositions[0]];
+    // Tahap 1: Eliminasi Stationary Noise (< 3.0 meter) dan Impossible Jumps (> 80 meter)
+    const stage1Points = [rawPositions[0]];
     for (let i = 1; i < rawPositions.length; i++) {
-        const prev = cleanPoints[cleanPoints.length - 1];
+        const prev = stage1Points[stage1Points.length - 1];
         const curr = rawPositions[i];
         const dist = calculateHaversine(prev[0], prev[1], curr[0], curr[1]);
         
-        // Hanya saring getaran mikro (< 0.5m) saat HP diam, & lompatan teleportasi (> 150m)
-        if (dist >= 0.5 && dist <= 150.0) {
-            cleanPoints.push(curr);
+        // Hanya rekam titik jika berpindah >= 3.0m (menghilangkan garis bolak-balik saat motor berhenti di pos)
+        // dan tolak lompatan > 80m (anomali teleportasi atap pabrik)
+        if (dist >= 3.0 && dist <= 80.0) {
+            stage1Points.push(curr);
         }
     }
 
-    return cleanPoints;
+    if (stage1Points.length < 3) return stage1Points;
+
+    // Tahap 2: Outlier / Spike Filter (Deteksi efek Ping-Pong / Segitiga Tajam A -> B -> A)
+    // Jika titik B melompat jauh dan langsung membalik arah secara ekstrem (< 35 derajat) kembali ke dekat A
+    const stage2Points = [stage1Points[0]];
+    for (let i = 1; i < stage1Points.length - 1; i++) {
+        const pPrev = stage1Points[i - 1];
+        const pCurr = stage1Points[i];
+        const pNext = stage1Points[i + 1];
+
+        const d1 = calculateHaversine(pPrev[0], pPrev[1], pCurr[0], pCurr[1]);
+        const d2 = calculateHaversine(pCurr[0], pCurr[1], pNext[0], pNext[1]);
+        const dDirect = calculateHaversine(pPrev[0], pPrev[1], pNext[0], pNext[1]);
+
+        // Jika pCurr melonjak (> 12m) tetapi jarak pPrev ke pNext sangat dekat (dDirect < 15m),
+        // ini adalah 100% false spike dari pantulan sinyal (titik melompat lalu balik lagi)
+        const isSpike = (d1 > 12.0 && d2 > 12.0 && dDirect < (d1 + d2) * 0.45);
+        if (!isSpike) {
+            stage2Points.push(pCurr);
+        }
+    }
+    stage2Points.push(stage1Points[stage1Points.length - 1]);
+
+    return stage2Points;
 };
 
 function MapUpdater({ center, zoom, bearing, isFullscreen }) {
@@ -389,7 +414,56 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                     }));
             }
             if (effectiveTracks.length > 0) {
-                setReplayData({ ...data, tracks: effectiveTracks });
+                // 🎯 Pre-calculate exact trigger track index for each checkpoint in replay
+                const rawCps = data.checkpoints || [];
+                let lastTrackIdx = 0;
+                const enrichedCheckpoints = rawCps.map((cp, idx) => {
+                    const cpLat = parseFloat(cp.latitude);
+                    const cpLng = parseFloat(cp.longitude);
+                    let resolvedIdx = -1;
+
+                    // 1. Proximity matching along sequential track points
+                    let minDist = Infinity;
+                    let bestProxIdx = -1;
+                    for (let i = lastTrackIdx; i < effectiveTracks.length; i++) {
+                        const t = effectiveTracks[i];
+                        if (cpLat && cpLng && t.latitude && t.longitude) {
+                            const d = calculateHaversine(cpLat, cpLng, parseFloat(t.latitude), parseFloat(t.longitude));
+                            if (d < minDist) {
+                                minDist = d;
+                                bestProxIdx = i;
+                            }
+                        }
+                    }
+
+                    if (bestProxIdx !== -1 && minDist <= 50) {
+                        resolvedIdx = bestProxIdx;
+                        lastTrackIdx = bestProxIdx;
+                    } else {
+                        // 2. Timestamp fallback matching
+                        const cpTime = cp.verified_at ? new Date(cp.verified_at).getTime() : null;
+                        if (cpTime) {
+                            let minTimeDiff = Infinity;
+                            let bestTimeIdx = -1;
+                            effectiveTracks.forEach((t, i) => {
+                                const diff = Math.abs(new Date(t.recorded_at).getTime() - cpTime);
+                                if (diff < minTimeDiff) {
+                                    minTimeDiff = diff;
+                                    bestTimeIdx = i;
+                                }
+                            });
+                            resolvedIdx = bestTimeIdx !== -1 ? bestTimeIdx : lastTrackIdx;
+                            lastTrackIdx = Math.max(lastTrackIdx, resolvedIdx);
+                        } else {
+                            resolvedIdx = Math.min(effectiveTracks.length - 1, Math.round(((idx + 1) / (rawCps.length + 1)) * effectiveTracks.length));
+                            lastTrackIdx = resolvedIdx;
+                        }
+                    }
+
+                    return { ...cp, triggerTrackIndex: resolvedIdx };
+                });
+
+                setReplayData({ ...data, tracks: effectiveTracks, checkpoints: enrichedCheckpoints });
                 setReplayIndex(0);
                 setReplayPlaying(true);
             }
@@ -423,17 +497,36 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
 
     const isReplayMode = !!replayData;
 
-    // Which checkpoints have been "reached" in replay so far
-    const replayVisibleCheckpoints = isReplayMode ? replayData.checkpoints.filter((cp, i) => {
+    // Helper matcher to link a station entity with a verified checkpoint record
+    const matchCheckpointToStation = (cp, station) => {
+        if (!cp || !station) return false;
+        if (cp.station_id && String(cp.station_id) === String(station.id)) return true;
+        const cpName = String(cp.station_name || cp.checkpoint_code || '').toLowerCase().trim();
+        const stName = String(station.station_name || station.label || '').toLowerCase().trim();
+        const stKey = String(station.station_key || station.key || '').toLowerCase().trim();
+        const stCode = String(station.checkpoint_code || '').toLowerCase().trim();
+
+        if (cpName && (cpName === stName || cpName === stKey || cpName === stCode)) return true;
+        if (stName && cpName.includes(stName)) return true;
+        if (stKey && cpName.includes(stKey)) return true;
+        return false;
+    };
+
+    // Which checkpoints have been reached in replay up to current replayIndex
+    const replayVisibleCheckpoints = isReplayMode ? (replayData.checkpoints || []).filter((cp) => {
+        if (cp.triggerTrackIndex !== undefined && cp.triggerTrackIndex !== null && cp.triggerTrackIndex >= 0) {
+            return replayIndex >= cp.triggerTrackIndex;
+        }
         if (!replayData.tracks[replayIndex]) return false;
         const currentTime = new Date(replayData.tracks[replayIndex].recorded_at);
         return new Date(cp.verified_at) <= currentTime;
     }) : [];
 
-    // Replay trail (only up to current index)
-    const replayTrailPositions = isReplayMode
+    // Replay trail (only up to current index, filtered with filterCleanTrack for smooth single-line route)
+    const replayRawPositions = isReplayMode
         ? replayData.tracks.slice(0, replayIndex + 1).map(t => [parseFloat(t.latitude) + 0, parseFloat(t.longitude) + 0])
         : [];
+    const replayTrailPositions = filterCleanTrack(replayRawPositions);
 
     // Current replay avatar position
     const replayCurrentPos = isReplayMode && replayData.tracks[replayIndex]
@@ -555,13 +648,17 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                             {/* Replay checkpoints */}
                             {mapStations.map((station, i) => {
                                 if (!station.latitude || !station.longitude) return null;
-                                const logsForStation = replayVisibleCheckpoints.filter(cp => cp.station_id === station.id || cp.station_name === station.station_name);
+                                const logsForStation = replayVisibleCheckpoints.filter(cp => matchCheckpointToStation(cp, station));
                                 const latestLog = logsForStation.length > 0 ? logsForStation[0] : null;
                                 const sData = getStationData(station, latestLog);
                                 
                                 const isVerified = !!latestLog;
-                                const sortedReplayStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
-                                const nextReplayTarget = sortedReplayStations.find(s => replayVisibleCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
+                                const sortedReplayStations = [...mapStations]
+                                    .filter(s => s.latitude && s.longitude)
+                                    .sort((a, b) => (Number(a.sequence_order) || Number(a.id)) - (Number(b.sequence_order) || Number(b.id)));
+                                const nextReplayTarget = sortedReplayStations.find(s => 
+                                    !replayVisibleCheckpoints.some(cp => matchCheckpointToStation(cp, s))
+                                );
                                 const isNextTarget = nextReplayTarget && nextReplayTarget.id === station.id;
 
                                 const stLat = parseFloat(station.latitude) + 0;
@@ -574,23 +671,26 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                                     isInsideRadius = dist <= radiusM;
                                 }
 
-                                const circleColor = isVerified ? '#10b981' : (isNextTarget ? (isInsideRadius ? '#10b981' : '#ef4444') : '#64748b');
-                                const circleOpacity = (isNextTarget || isInsideRadius) ? 0.35 : 0.15;
+                                const circleColor = isInsideRadius ? '#10b981' : (isNextTarget ? '#ef4444' : '#10b981');
+                                const circleOpacity = (isNextTarget || isInsideRadius) ? 0.28 : 0.15;
+                                const showRadiusCircle = isNextTarget || isInsideRadius;
 
                                 return (
                                     <React.Fragment key={`rcp-m-frag-${station.id || i}`}>
-                                        {/* Dynamic Checkpoint Radius Circle */}
-                                        <Circle
-                                            center={[stLat, stLng]}
-                                            radius={radiusM}
-                                            pathOptions={{
-                                                color: circleColor,
-                                                fillColor: circleColor,
-                                                fillOpacity: circleOpacity,
-                                                weight: isNextTarget ? 2.5 : 1.5,
-                                                dashArray: isVerified ? undefined : '4, 4'
-                                            }}
-                                        />
+                                        {/* Dynamic Checkpoint Radius Circle: Only active target or guard inside radius */}
+                                        {showRadiusCircle && (
+                                            <Circle
+                                                center={[stLat, stLng]}
+                                                radius={radiusM}
+                                                pathOptions={{
+                                                    color: circleColor,
+                                                    fillColor: circleColor,
+                                                    fillOpacity: circleOpacity,
+                                                    weight: isNextTarget ? 2.5 : 1.5,
+                                                    dashArray: isInsideRadius ? undefined : '4, 4'
+                                                }}
+                                            />
+                                        )}
                                         <Marker
                                             key={`rcp-m-${i}`}
                                             position={[stLat, stLng]}
@@ -1054,13 +1154,17 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                                 {/* Replay checkpoints (appear as avatar passes them) */}
                                 {mapStations.map((station, i) => {
                                     if (!station.latitude || !station.longitude) return null;
-                                    const logsForStation = replayVisibleCheckpoints.filter(cp => cp.station_id === station.id || cp.station_name === station.station_name);
+                                    const logsForStation = replayVisibleCheckpoints.filter(cp => matchCheckpointToStation(cp, station));
                                     const latestLog = logsForStation.length > 0 ? logsForStation[0] : null;
                                     const sData = getStationData(station, latestLog);
                                     
                                     const isVerified = !!latestLog;
-                                    const sortedReplayStations = [...mapStations].filter(s => s.latitude && s.longitude).sort((a, b) => (a.sequence_order || a.id) - (b.sequence_order || b.id));
-                                    const nextReplayTarget = sortedReplayStations.find(s => replayVisibleCheckpoints.filter(cp => cp.station_id === s.id || cp.station_name === s.station_name).length === 0);
+                                    const sortedReplayStations = [...mapStations]
+                                        .filter(s => s.latitude && s.longitude)
+                                        .sort((a, b) => (Number(a.sequence_order) || Number(a.id)) - (Number(b.sequence_order) || Number(b.id)));
+                                    const nextReplayTarget = sortedReplayStations.find(s => 
+                                        !replayVisibleCheckpoints.some(cp => matchCheckpointToStation(cp, s))
+                                    );
                                     const isNextTarget = nextReplayTarget && nextReplayTarget.id === station.id;
 
                                     const stLat = parseFloat(station.latitude) + 0;
@@ -1073,23 +1177,26 @@ function PatrolMapTab({ user, isMobileEmbed = false, mapStations = [], patrolGua
                                         isInsideRadius = dist <= radiusM;
                                     }
 
-                                    const circleColor = isVerified ? '#10b981' : (isNextTarget ? (isInsideRadius ? '#10b981' : '#ef4444') : '#64748b');
-                                    const circleOpacity = (isNextTarget || isInsideRadius) ? 0.35 : 0.15;
+                                    const circleColor = isInsideRadius ? '#10b981' : (isNextTarget ? '#ef4444' : '#10b981');
+                                    const circleOpacity = (isNextTarget || isInsideRadius) ? 0.28 : 0.15;
+                                    const showRadiusCircle = isNextTarget || isInsideRadius;
                                     
                                     return (
                                         <React.Fragment key={`rcp-frag-${station.id || i}`}>
-                                            {/* Dynamic Radius Circle */}
-                                            <Circle
-                                                center={[stLat, stLng]}
-                                                radius={radiusM}
-                                                pathOptions={{
-                                                    color: circleColor,
-                                                    fillColor: circleColor,
-                                                    fillOpacity: circleOpacity,
-                                                    weight: isNextTarget ? 2.5 : 1.5,
-                                                    dashArray: isVerified ? undefined : '4, 4'
-                                                }}
-                                            />
+                                            {/* Dynamic Radius Circle: Only active target or guard inside radius */}
+                                            {showRadiusCircle && (
+                                                <Circle
+                                                    center={[stLat, stLng]}
+                                                    radius={radiusM}
+                                                    pathOptions={{
+                                                        color: circleColor,
+                                                        fillColor: circleColor,
+                                                        fillOpacity: circleOpacity,
+                                                        weight: isNextTarget ? 2.5 : 1.5,
+                                                        dashArray: isInsideRadius ? undefined : '4, 4'
+                                                    }}
+                                                />
+                                            )}
                                             <Marker
                                                 key={`rcp-${i}`}
                                                 position={[stLat, stLng]}

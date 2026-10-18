@@ -1194,19 +1194,21 @@ router.post('/location', async (req, res) => {
       [session_id]
     );
 
-    const isFirstPing = lastLog.length === 0;
-    let shouldSaveToTrack = true;
+    if (accuracy !== null && accuracy > 18.0) {
+      // Abaikan titik dengan akurasi buruk (> 18m) dari penyimpanan lintasan
+      shouldSaveToTrack = false;
+    }
 
-    if (!isFirstPing) {
+    if (!isFirstPing && shouldSaveToTrack) {
       const prevLat = parseFloat(lastLog[0].latitude);
       const prevLng = parseFloat(lastLog[0].longitude);
       const distance = calculateHaversine(prevLat, prevLng, lat, lng);
 
-      // 🛡️ 1. Filter getaran micro stasioner (< 0.3m diabaikan agar titik diam tenang)
-      const isStationaryJitter = distance < 0.3;
+      // 🛡️ 1. Filter getaran stasioner saat motor berhenti di checkpoint / pos (< 3.5m)
+      const isStationaryJitter = distance < 3.5;
 
-      // 🛡️ 2. Filter lompatan teleportasi tak wajar (> 150m)
-      const isImpossibleJump = distance > 150.0;
+      // 🛡️ 2. Filter lompatan teleportasi tak wajar (> 75m)
+      const isImpossibleJump = distance > 75.0;
 
       if (isStationaryJitter || isImpossibleJump) {
         shouldSaveToTrack = false;
@@ -1318,7 +1320,7 @@ const getReplayHandler = async (req, res) => {
 
     // Get all checkpoints for this session
     const [checkpoints] = await dbPool.query(
-      'SELECT station_name, latitude, longitude, verified_at, verification_photo FROM security_session_checkpoints WHERE session_id = ? ORDER BY verified_at ASC',
+      'SELECT id, checkpoint_code, station_name, latitude, longitude, verified_at, verification_photo FROM security_session_checkpoints WHERE session_id = ? ORDER BY verified_at ASC',
       [realSessionId]
     );
 
