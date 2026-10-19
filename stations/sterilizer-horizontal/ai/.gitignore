@@ -1,0 +1,10 @@
+.env
+.venv/
+config/grading_config.runtime.json
+config/grading_config.tmp
+models/*.pt
+models/*.onnx
+__pycache__/
+**/__pycache__/
+*.pyc
+
