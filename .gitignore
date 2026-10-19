@@ -13,3 +13,6 @@ __pycache__/
 *.py[cod]
 stations/security/verification/*.json
 stations/security/verification/*.png
+
+# Vite temporary files
+vite.config.*.timestamp-*
