@@ -133,16 +133,30 @@ function TruckQueuesTab() {
   const getPhotoUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('data:') || url.startsWith('blob:')) return url;
-    const host = window.location.hostname || 'localhost';
+    
+    // Check if running on standard public domain / Cloudflare HTTPS or custom host
+    const isPublic = window.location.protocol === 'https:' || 
+      (window.location.hostname && window.location.hostname.includes('.') && !/^[0-9.]+$/.test(window.location.hostname));
+
     if (url.startsWith('http://') || url.startsWith('https://')) {
       try {
         const u = new URL(url);
+        if (isPublic) {
+          return `${window.location.origin}${u.pathname}`;
+        }
+        const host = window.location.hostname || 'localhost';
         return `http://${host}:3101${u.pathname}`;
       } catch (e) {
         return url;
       }
     }
-    return `http://${host}:3101${url.startsWith('/') ? '' : '/'}${url}`;
+
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    if (isPublic) {
+      return `${window.location.origin}${cleanPath}`;
+    }
+    const host = window.location.hostname || 'localhost';
+    return `http://${host}:3101${cleanPath}`;
   };
 
   // ── Web Speech API (TTS Voice Call) ──
@@ -903,13 +917,13 @@ function TruckQueuesTab() {
 
                         {(() => {
                           const classMap = {
-                            'SO': { label: 'FFB SUPER', bg: '#fef3c7', text: '#b45309', border: '#fde68a' },
-                            'U': { label: 'FFB UMUM', bg: '#d1fae5', text: '#047857', border: '#a7f3d0' },
-                            'M': { label: 'FFB MITRA', bg: '#cffafe', text: '#0369a1', border: '#bae6fd' },
-                            'C': { label: 'CRUDE PALM OIL', bg: '#ffedd5', text: '#c2410c', border: '#fed7aa' },
-                            'K': { label: 'PALM KERNEL', bg: '#ffedd5', text: '#c2410c', border: '#fed7aa' },
-                            'S': { label: 'PALM KERNEL SHELL', bg: '#f3e8ff', text: '#7e22ce', border: '#e9d5ff' },
-                            'DLL': { label: 'DLL', bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' }
+                            'SO': { label: 'FFB SUPER', bg: '#fef3c7', text: '#f59e0b', border: '#fde68a' },
+                            'U': { label: 'FFB UMUM', bg: '#d1fae5', text: '#10b981', border: '#a7f3d0' },
+                            'M': { label: 'FFB MITRA', bg: '#cffafe', text: '#06b6d4', border: '#bae6fd' },
+                            'C': { label: 'CRUDE PALM OIL', bg: '#ffedd5', text: '#ff6b35', border: '#fed7aa' },
+                            'K': { label: 'PALM KERNEL', bg: '#ffedd5', text: '#f97316', border: '#fed7aa' },
+                            'S': { label: 'PALM KERNEL SHELL', bg: '#f3e8ff', text: '#8b5cf6', border: '#e9d5ff' },
+                            'DLL': { label: 'DLL', bg: '#f1f5f9', text: '#64748b', border: '#e2e8f0' }
                           };
                           const meta = classMap[classCode] || { label: q.classification_name || classCode, bg: '#f3f4f6', text: '#4b5563', border: '#e5e7eb' };
 

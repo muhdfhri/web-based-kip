@@ -425,14 +425,33 @@ function DashboardTab() {
     return true;
   });
 
+  // Commodity Classification Colors (100% matched to mobile app Select Transport Classification)
+  const CLASSIFICATION_COLORS = {
+    'SO': { color: '#f59e0b', bg: '#fef3c7', border: '#fde68a' }, // FFB Super (Amber Gold)
+    'U':  { color: '#10b981', bg: '#d1fae5', border: '#a7f3d0' }, // FFB Umum (Mint / Emerald Green #10B981)
+    'M':  { color: '#06b6d4', bg: '#cffafe', border: '#bae6fd' }, // FFB Mitra (Sky Cyan #06B6D4)
+    'C':  { color: '#ff6b35', bg: '#ffedd5', border: '#fed7aa' }, // Crude Palm Oil (Coral Orange #FF6B35)
+    'K':  { color: '#f97316', bg: '#ffedd5', border: '#fed7aa' }, // Palm Kernel (Tangerine Orange #F97316)
+    'S':  { color: '#8b5cf6', bg: '#f3e8ff', border: '#e9d5ff' }, // Palm Kernel Shell (Soft Purple #8B5CF6)
+    'DLL': { color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0' }, // DLL (Slate Gray #64748B)
+    'OTHER': { color: '#64748b', bg: '#f1f5f9', border: '#e2e8f0' },
+  };
+
+  const getCommodityColor = (code) => {
+    const upper = (code || '').toUpperCase();
+    return CLASSIFICATION_COLORS[upper] || { color: '#2563eb', bg: '#dbeafe', border: '#bfdbfe' };
+  };
+
   // Dynamic Commodity Breakdown
   const commodityCounts = {};
   classifications.forEach(c => {
-    commodityCounts[c.code] = { count: 0, label: c.label || c.code, code: c.code };
+    const meta = getCommodityColor(c.code);
+    commodityCounts[c.code] = { count: 0, label: c.label || c.code, code: c.code, ...meta };
   });
   // Fallback for missing/unknown classifications
   if (!commodityCounts['OTHER']) {
-    commodityCounts['OTHER'] = { count: 0, label: 'Lain-lain', code: 'OTHER' };
+    const meta = getCommodityColor('OTHER');
+    commodityCounts['OTHER'] = { count: 0, label: 'Lain-lain', code: 'OTHER', ...meta };
   }
 
   filteredQueuesForChart.forEach(q => {
@@ -586,6 +605,7 @@ function DashboardTab() {
                 <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: space.md, padding: `${space.sm}px 2px 2px 2px`, borderBottom: `1px solid ${colors.bgAlt}` }}>
                   {commodityItems.map((item, idx) => {
                     const heightPct = totalCommoditiesCount > 0 ? Math.round((item.count / maxCount) * 100) : 0;
+                    const isHovered = hoveredNode?.code === item.code;
                     return (
                       <div
                         key={idx}
@@ -597,8 +617,13 @@ function DashboardTab() {
                           style={{
                             ...font.mono,
                             fontSize: '0.75rem',
-                            fontWeight: 700,
-                            color: item.count > 0 ? colors.textStrong : colors.borderStrong,
+                            fontWeight: 800,
+                            color: item.count > 0 ? item.color : colors.borderStrong,
+                            background: item.count > 0 ? item.bg : 'transparent',
+                            border: item.count > 0 ? `1px solid ${item.border}` : '1px solid transparent',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            transition: 'all 0.15s ease',
                           }}
                         >
                           {item.count}
@@ -607,14 +632,30 @@ function DashboardTab() {
                           style={{
                             width: '80%', // Responsive width relative to container
                             maxWidth: 80, // Much wider than 24
-                            height: `${Math.max(heightPct, 4)}%`,
-                            background: item.count > 0 ? chartColor : colors.bgAlt,
-                            opacity: hoveredNode?.code === item.code || !hoveredNode ? 1 : 0.5,
+                            height: `${Math.max(heightPct, 5)}%`,
+                            background: item.count > 0 ? item.color : colors.bgAlt,
+                            opacity: isHovered || !hoveredNode ? 1 : 0.45,
                             borderRadius: '6px 6px 0 0',
-                            transition: 'opacity 0.15s ease, height 0.2s ease',
+                            boxShadow: item.count > 0 ? `0 2px 8px ${item.color}40` : 'none',
+                            transition: 'opacity 0.15s ease, height 0.2s ease, transform 0.15s ease',
+                            transform: isHovered ? 'scaleY(1.03)' : 'scaleY(1)',
+                            transformOrigin: 'bottom',
                           }}
                         />
-                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: colors.textMuted, marginTop: 4 }}>{item.code}</span>
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 800,
+                            color: item.color,
+                            background: item.bg,
+                            border: `1px solid ${item.border}`,
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            marginTop: 4,
+                          }}
+                        >
+                          {item.code}
+                        </span>
                       </div>
                     );
                   })}
@@ -674,10 +715,10 @@ function DashboardTab() {
                             width: isHovered ? 24 : 16,
                             height: isHovered ? 24 : 16,
                             transform: 'translate(-50%, -50%)',
-                            background: chartColor,
+                            background: c.item.color,
                             border: `3px solid ${colors.white}`,
                             borderRadius: '50%',
-                            boxShadow: isHovered ? `0 0 0 8px ${chartColor}33` : '0 2px 4px rgba(0,0,0,0.1)',
+                            boxShadow: isHovered ? `0 0 0 8px ${c.item.color}33` : `0 2px 6px ${c.item.color}40`,
                             transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
                             cursor: 'pointer',
                             zIndex: 10
@@ -719,6 +760,7 @@ function DashboardTab() {
                             whiteSpace: 'nowrap',
                             pointerEvents: 'none',
                             boxShadow: '0 4px 10px rgba(15, 23, 42, 0.18)',
+                            borderLeft: `3px solid ${hoveredNode.color}`,
                           }}
                         >
                           {hoveredNode.label}: {hoveredNode.count}
@@ -733,15 +775,16 @@ function DashboardTab() {
                         key={idx}
                         onMouseEnter={() => setHoveredNode(item)}
                         onMouseLeave={() => setHoveredNode(null)}
-                        style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                        style={{ flex: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
                       >
                         <span
                           style={{
                             ...font.mono,
                             fontSize: '0.6rem',
-                            fontWeight: 700,
-                            color: hoveredNode?.code === item.code ? colors.white : (item.count > 0 ? colors.textStrong : colors.borderStrong),
-                            background: hoveredNode?.code === item.code ? chartColor : 'transparent',
+                            fontWeight: 800,
+                            color: hoveredNode?.code === item.code ? colors.white : (item.count > 0 ? item.color : colors.borderStrong),
+                            background: hoveredNode?.code === item.code ? item.color : (item.count > 0 ? item.bg : 'transparent'),
+                            border: item.count > 0 ? `1px solid ${item.border}` : '1px solid transparent',
                             padding: '1px 4px',
                             borderRadius: 4,
                             transition: 'all 0.15s ease',
@@ -749,7 +792,19 @@ function DashboardTab() {
                         >
                           {item.count}
                         </span>
-                        <span style={{ fontSize: '0.58rem', fontWeight: 700, color: colors.textMuted }}>{item.code}</span>
+                        <span
+                          style={{
+                            fontSize: '0.58rem',
+                            fontWeight: 800,
+                            color: item.color,
+                            background: item.bg,
+                            border: `1px solid ${item.border}`,
+                            padding: '1px 4px',
+                            borderRadius: 4,
+                          }}
+                        >
+                          {item.code}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -964,33 +1019,45 @@ function DashboardTab() {
                         borderRadius: radius.sm - 2,
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: space.xs + 2 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: space.xs + 4 }}>
                         <div
                           style={{
-                            width: 22,
-                            height: 22,
+                            width: 26,
+                            height: 26,
                             borderRadius: '50%',
                             background: colors.bgAlt,
-                            border: `1px solid ${colors.border}`,
+                            border: `1.5px solid ${colors.primary}`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '0.6rem',
+                            fontSize: '0.65rem',
                             fontWeight: 700,
                             color: colors.textBody,
+                            overflow: 'hidden',
                             flexShrink: 0,
                           }}
                         >
-                          {(g.name || 'G').charAt(0).toUpperCase()}
+                          {(g.avatar_photo || g.photo) ? (
+                            <img
+                              src={g.avatar_photo || g.photo}
+                              alt={g.name}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            (g.name || 'G').charAt(0).toUpperCase()
+                          )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: colors.textStrong }}>{g.name || 'Security Officer'}</span>
-                          <span style={{ fontSize: '0.6rem', color: colors.textMuted, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <FaMapMarkerAlt size={7} /> {g.current_station_key || 'Patrolling area'}
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: colors.textStrong }}>{g.name || 'Security Officer'}</span>
+                          <span style={{ fontSize: '0.62rem', color: colors.textMuted, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <FaMapMarkerAlt size={8} style={{ color: colors.primary }} /> {g.current_station_key || 'Patrolling area'}
                           </span>
                         </div>
                       </div>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.success, flexShrink: 0 }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: '0.6rem', color: colors.success, fontWeight: 700 }}>ON DUTY</span>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.success, flexShrink: 0, boxShadow: `0 0 6px ${colors.success}` }} />
+                      </div>
                     </div>
                   ))
                 )}

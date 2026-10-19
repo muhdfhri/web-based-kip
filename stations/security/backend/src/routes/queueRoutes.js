@@ -253,7 +253,7 @@ router.get('/summary', async (req, res) => {
       "SELECT COUNT(*) as count FROM security_truck_queues WHERE status IN ('WAITING', 'WEIGH_IN', 'GRADING')"
     );
     const [patrolCount] = await dbPool.query(
-      "SELECT COUNT(*) as count FROM security_guards_status WHERE status = 'active'"
+      "SELECT COUNT(DISTINCT guard_id) as count FROM security_patrol_sessions WHERE status = 'active'"
     );
     const [incidentCount] = await dbPool.query(
       "SELECT COUNT(*) as count FROM security_incidents WHERE status = 'SUBMITTED'"
