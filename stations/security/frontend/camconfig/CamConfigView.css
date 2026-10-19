@@ -1,5 +1,5 @@
 /* ── Reuse base design system from Sterilizer PlcConfigView ── */
-@import "../../../sterilizer/frontend/PlcConfigView.css";
+@import "../../../sterilizer-horizontal/frontend/PlcConfigView.css";
 
 /* ── Camera count badge next to title ── */
 .ccam-count-badge {

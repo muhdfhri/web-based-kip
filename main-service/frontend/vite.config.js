@@ -22,7 +22,13 @@ export default defineConfig({
         new URL("../../stations/loading-ramp/frontend/src", import.meta.url),
       ),
       "@stations/sterilizer-station": fileURLToPath(
-        new URL("../../stations/sterilizer/frontend", import.meta.url),
+        new URL("../../stations/sterilizer-horizontal/frontend", import.meta.url),
+      ),
+      "@stations/sterilizer-horizontal": fileURLToPath(
+        new URL("../../stations/sterilizer-horizontal/frontend", import.meta.url),
+      ),
+      "@stations/sterilizer-vertikal": fileURLToPath(
+        new URL("../../stations/sterilizer-vertikal/frontend", import.meta.url),
       ),
       "@stations/threshing-station": fileURLToPath(
         new URL("../../stations/threshing/frontend", import.meta.url),
@@ -139,6 +145,8 @@ export default defineConfig({
       "/api/weighbridge": "http://localhost:3102",
       "/api/grading-ramp": "http://localhost:3103",
       "/api/loading-ramp": "http://localhost:3104",
+      "/api/sterilizer-horizontal": "http://localhost:3105",
+      "/api/sterilizer-vertikal": "http://localhost:3117",
       "/api/sterilizer": "http://localhost:3105",
       "/api/threshing": "http://localhost:3106",
       "/api/efb-plant": "http://localhost:3107",
