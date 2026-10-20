@@ -3,6 +3,7 @@ import './SecurityStationPage.css'
 import DashboardTab from './tabs/Dashboard/DashboardTab.jsx'
 import IncidentsTab from './tabs/Incidents/IncidentsTab.jsx'
 import TruckQueuesTab from './tabs/TruckQueues/TruckQueuesTab.jsx'
+import CpoLoadingTab from './tabs/CpoLoading/CpoLoadingTab.jsx'
 import PatrolMapTab from './tabs/PatrolMap/PatrolMapTab.jsx'
 import CctvFeedTab from './tabs/CctvFeed/CctvFeedTab.jsx'
 import SecurityAside from './components/SecurityAside.jsx'
@@ -65,7 +66,7 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
 
     // Auto fallback activeTab to dashboard if user has no CCTV access
     useEffect(() => {
-        if (!canAccessCctv && activeTab === 'cctv') {
+        if (!canAccessCctv && (activeTab === 'cctv' || activeTab === 'cpo-loading')) {
             setActiveTab('dashboard');
         }
     }, [canAccessCctv, activeTab]);
@@ -213,7 +214,7 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
     }
 
     return (
-        <div className="som-security-station">
+        <div className={`som-security-station ${activeTab === 'cpo-loading' ? 'som-cpo-active' : ''}`}>
             <header className="som-security-header">
                 <div className="som-header-left">
                     <h1 className="som-security-title">SECURITY CONTROL CENTER</h1>
@@ -226,6 +227,7 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
                         <button className={`som-station-tab ${activeTab === 'cctv' ? 'active' : ''}`} onClick={() => setActiveTab('cctv')}>CCTV Feed</button>
                     )}
                     <button className={`som-station-tab ${activeTab === 'queues' ? 'active' : ''}`} onClick={() => setActiveTab('queues')}>Truck Queues</button>
+                    {canAccessCctv && <button className={`som-station-tab ${activeTab === 'cpo-loading' ? 'active' : ''}`} onClick={() => setActiveTab('cpo-loading')}>CPO Loading</button>}
                     <button className="som-station-tab locked" disabled style={{ opacity: 0.6, cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                         Incidents
@@ -265,6 +267,7 @@ function SecurityStationPage({ user, isCamConfigOpen, setIsCamConfigOpen, isSett
                         />
                     )}
                     {activeTab === 'queues' && <TruckQueuesTab />}
+                    {activeTab === 'cpo-loading' && canAccessCctv && <CpoLoadingTab key={effectiveUser.id || effectiveUser.userId || effectiveUser.username || 'local'} cctvCameras={cctvCameras} user={effectiveUser} />}
                 </div>
 
                 {activeTab === 'overview' && (
