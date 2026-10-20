@@ -76,10 +76,12 @@ test('corrupt saved schedules fall back safely and retain valid dated overrides'
     assert.equal(s.normal.start, '07:00');
     assert.equal(Object.keys(s.exceptions).length, 1);
 });
-test('camera suggestion matches Oil Dispatch but does not silently select Loading Ramp', () => {
-    const rows = [{ id: 1, camera_name: 'Loading Ramp', is_active: 1 }, { id: 2, camera_name: 'OIL DISPATCH', is_active: 0 }, { id: 3, camera_name: 'Oil Dispatch', is_active: 1 }];
+test('camera is fixed to active Oil Dispatch, excluding other dispatch cameras and location-only matches', () => {
+    const rows = [{ id: 1, camera_name: 'Oil Pipe Tank Dispatch', location: 'Oil Dispatch', is_active: 1 }, { id: 2, camera_name: 'OIL DISPATCH', is_active: 0 }, { id: 3, camera_name: 'Oil Dispatch', is_active: 1 }];
     assert.equal(recommendedCamera(rows).id, 3);
     assert.equal(recommendedCamera(rows.slice(0, 2)), undefined);
+    assert.equal(recommendedCamera([{ id: 4, camera_name: 'Loading Ramp', location: 'Oil Dispatch' }]), undefined);
+    assert.equal(recommendedCamera([{ id: 5, camera_name: ' oil_dispatch ' }]).id, 5);
 });
 test('management UI permissions exclude ordinary staff and permit management roles', () => {
     assert.equal(canManageSchedule({ role: 'staff' }), false);

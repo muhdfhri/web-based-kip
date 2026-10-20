@@ -4,7 +4,7 @@ import LoadingCamera from './components/LoadingCamera.jsx';
 import ScheduleDialog from './components/ScheduleDialog.jsx';
 import EventDetailsDialog from './components/EventDetailsDialog.jsx';
 import { demoVisits, DEMO_TIME } from './demoData.js';
-import { cameraCandidates, canManageSchedule, csvReport, dateKey, formatTime, isOperational, normalizeSchedule, recommendedCamera, summarize } from './loadingModel.js';
+import { canManageSchedule, csvReport, dateKey, formatTime, isOperational, normalizeSchedule, recommendedCamera, summarize } from './loadingModel.js';
 import ActivityPanel from './components/ActivityPanel.jsx';
 import CapturePanel from './components/CapturePanel.jsx';
 import ScheduleSummary from './components/ScheduleSummary.jsx';
@@ -15,18 +15,14 @@ const readStored = key => { try { return JSON.parse(localStorage.getItem(key) ||
 export default function CpoLoadingTab({ cctvCameras = [], user = {} }) {
     const identity = user.id || user.userId || user.username || 'local';
     const storageKey = `mewah.cpo-loading.draft.v1.${identity}`;
-    const cameraKey = `mewah.cpo-loading.camera.v1.${identity}`;
     const [schedule, setSchedule] = useState(() => normalizeSchedule(readStored(storageKey)));
-    const [cameraId, setCameraId] = useState(() => String(readStored(cameraKey) || ''));
     const [demo, setDemo] = useState(false), [selectedDate, setSelectedDate] = useState(dateKey());
     const [now, setNow] = useState(() => new Date()), [query, setQuery] = useState(''), [filter, setFilter] = useState('all');
     const [scheduleTab, setScheduleTab] = useState(null), [mobilePanel, setMobilePanel] = useState('monitor');
     const [selectedVisit, setSelectedVisit] = useState(null), [reviews, setReviews] = useState({}), [message, setMessage] = useState('');
     const lastToday = useRef(dateKey());
     const canManage = canManageSchedule(user);
-    const candidates = useMemo(() => cameraCandidates(cctvCameras), [cctvCameras]);
-    const suggested = recommendedCamera(candidates);
-    const camera = candidates.find(item => String(item.id) === cameraId) || (!cameraId ? suggested : null);
+    const camera = useMemo(() => recommendedCamera(cctvCameras), [cctvCameras]);
     useEffect(() => {
         const timer = setInterval(() => {
             const next = new Date(), today = dateKey(next), previous = lastToday.current;
@@ -56,11 +52,6 @@ export default function CpoLoadingTab({ cctvCameras = [], user = {} }) {
         try { localStorage.setItem(storageKey, JSON.stringify(next)); setSchedule(next); setMessage('Draf jadwal disimpan di browser ini. Belum diterapkan ke alarm atau pengguna lain.'); return true; }
         catch { return false; }
     };
-    const chooseCamera = event => {
-        setCameraId(event.target.value);
-        try { localStorage.setItem(cameraKey, JSON.stringify(event.target.value)); }
-        catch { setMessage('Kamera dipilih untuk sesi ini; preferensi tidak dapat disimpan.'); }
-    };
     const exportCsv = () => {
         const url = URL.createObjectURL(new Blob([csvReport(filtered, schedule)], { type: 'text/csv;charset=utf-8;' }));
         const link = document.createElement('a'); link.href = url; link.download = `cpo-loading-CONTOH-${selectedDate}.csv`; link.click();
@@ -88,7 +79,6 @@ export default function CpoLoadingTab({ cctvCameras = [], user = {} }) {
         <nav className="cpo-mobile-panels" aria-label="Panel CPO Loading">{[['monitor', FiCamera, 'CCTV'], ['captures', FiGrid, 'Capture'], ['activity', FiTruck, 'Aktivitas'], ['schedule', FiClock, 'Jadwal']].map(([value, Icon, label]) => <button type="button" key={value} aria-pressed={mobilePanel === value} onClick={() => setMobilePanel(value)}><Icon />{label}</button>)}</nav>
         <div className="cpo-workspace">
             <section className="cpo-monitor-column" aria-label="Kamera dan capture">
-                <div className="cpo-camera-selector"><label htmlFor="cpo-camera-select"><FiCamera />Sumber kamera</label><select id="cpo-camera-select" value={camera ? String(camera.id) : cameraId} onChange={chooseCamera} disabled={demo}><option value="">{suggested ? `Otomatis · ${suggested.camera_name}` : 'Pilih kamera CCTV'}</option>{cameraId && !camera && <option value={cameraId}>Kamera #{cameraId} tidak tersedia</option>}{candidates.map(item => <option key={item.id} value={String(item.id)}>{item.camera_name} · #{item.id}</option>)}</select><span className="cpo-camera-context">{demo ? 'Ilustrasi zona pantau' : 'Video saat ini'}</span></div>
                 <LoadingCamera key={`${demo}-${camera?.id || 'none'}`} demo={demo} camera={camera} time={formatTime(demo ? selectedNow : now)} onMessage={setMessage} />
                 <CapturePanel captures={captures} demo={demo} onSelect={setSelectedVisit} />
             </section>

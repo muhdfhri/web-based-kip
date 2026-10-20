@@ -92,7 +92,7 @@ export function summarize(visits, schedule, date, now) {
 export const visitState = visit => visit.exitedAt ? 'completed' : visit.loadingStartedAt ? 'loading' : 'waiting';
 export const STATE_LABELS = { completed: 'Selesai', loading: 'Mengisi', waiting: 'Di area' };
 export const cameraCandidates = cameras => cameras.filter(camera => camera.is_active === undefined || camera.is_active === true || camera.is_active === 1);
-export const recommendedCamera = cameras => cameraCandidates(cameras).find(camera => /oil[\s_-]*dispatch|cpo[\s_-]*loading|loading[\s_-]*cpo/i.test(`${camera.camera_name || ''} ${camera.location || ''}`));
+export const recommendedCamera = cameras => cameraCandidates(cameras).find(camera => /^oil[\s_-]*dispatch$/i.test(String(camera.camera_name || '').trim()));
 export function canManageSchedule(user = {}) {
     const role = String(user.role || user.userRole || user.role_name || '').toLowerCase();
     const position = String(user.position || user.position_title || user.positionTitle || '').toLowerCase();

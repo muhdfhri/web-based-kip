@@ -39,8 +39,7 @@
 .cpo-metric--warning strong { color: #a37b2e; }
 .cpo-metric-arrow { margin-left: auto; color: #b7995a; }
 .cpo-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1.65fr) minmax(360px,1fr); gap: 14px; container-type: size; container-name: cpo-workspace; --cpo-row-height: 76px; }
-.cpo-monitor-column { min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 174px; grid-template-rows: 30px minmax(0,1fr); gap: 9px; }
-.cpo-monitor-column > .cpo-camera-selector { grid-column: 1/-1; }
+.cpo-monitor-column { min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 174px; grid-template-rows: minmax(0,1fr); gap: 9px; }
 .cpo-data-column { min-width: 0; min-height: 0; display: grid; grid-template-rows: 137px minmax(0,1fr); gap: 10px; }
 .cpo-panel { border: 1px solid #e0e7ee; border-radius: 9px; background: #fff; overflow: hidden; min-width: 0; min-height: 0; }
 .cpo-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; min-height: 37px; flex-shrink: 0; }
@@ -55,10 +54,6 @@
 .cpo-badge.green { color: #398265; background: #eff8f2; border-color: #dcefe3; }
 .cpo-badge.amber { color: #a9802c; background: #fff7e2; border-color: #eedeb3; }
 .cpo-badge i { width: 5px; height: 5px; background: currentColor; border-radius: 50%; }
-.cpo-camera-selector { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.cpo-camera-selector > label { display: flex; align-items: center; gap: 6px; color: #72899a; font-size: 11px; white-space: nowrap; }
-.cpo-camera-selector select { border: 1px solid #dfe6ed; background: #fff; border-radius: 5px; color: #41617a; padding: 5px 8px; font-size: 11px; min-width: 0; max-width: 60%; }
-.cpo-camera-context { margin-left: auto; font-size: 10px; color: #8094a5; white-space: nowrap; }
 .cpo-monitor { display: flex; flex-direction: column; background: #142733; border-color: #233c4b; }
 .cpo-monitor .cpo-panel-header { color: #e0e9ed; background: #152a37; }
 .cpo-monitor .cpo-section-label svg { color: #d6bd6c; }
@@ -230,7 +225,6 @@
  .cpo-workspace { grid-template-columns: minmax(0,1.3fr) minmax(350px,1fr); }
  .cpo-metric { gap: 8px; padding: 8px 10px; }
  .cpo-metric > i { width: 28px; height: 30px; }
- .cpo-camera-context { display: none; }
  .som-cpo-active .som-security-header { gap: 7px 12px; }
  .som-cpo-active .som-security-title { font-size: 12px; }
  .som-cpo-active .som-security-date { display: none; }
@@ -240,7 +234,7 @@
  .cpo-workspace { display: block; position: relative; }
  .cpo-monitor-column, .cpo-data-column { position: absolute; inset: 0; }
  .cpo-data-column { display: block; }
- .cpo-monitor-column { grid-template-columns: minmax(0,1fr); grid-template-rows: 30px minmax(0,1fr); }
+ .cpo-monitor-column { grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr); }
  .cpo-captures .cpo-panel-header { flex-direction: row; align-items: center; }
  .cpo-capture-items { grid-template-columns: repeat(var(--capture-count),minmax(0,1fr)); grid-template-rows: minmax(0,1fr); }
  .cpo-capture-card { flex-direction: row; align-items: center; gap: 9px; }
@@ -249,7 +243,7 @@
  .cpo-loading[data-panel=monitor] .cpo-captures { display: none; }
  .cpo-loading[data-panel=captures] .cpo-monitor-column { display: block; }
  .cpo-loading[data-panel=captures] .cpo-captures { height: 100%; }
- .cpo-loading[data-panel=captures] .cpo-camera-selector, .cpo-loading[data-panel=captures] .cpo-monitor { display: none; }
+ .cpo-loading[data-panel=captures] .cpo-monitor { display: none; }
  .cpo-loading[data-panel=captures] .cpo-capture-items { align-items: center; }
  .cpo-loading[data-panel=captures] .cpo-capture-card { height: min(120px,100%); }
  .cpo-data-column > * { height: 100%; }
@@ -287,9 +281,7 @@
  .cpo-metric { padding: 6px; }
  .cpo-metric strong { gap: 3px; font-size: 23px; }
  .cpo-metric small { display: none; }
- .cpo-monitor-column { grid-template-rows: 27px minmax(0,1fr); gap: 7px; }
- .cpo-camera-selector > label { font-size: 10px; }
- .cpo-camera-selector select { margin-left: auto; max-width: 65%; font-size: 10px; }
+ .cpo-monitor-column { grid-template-rows: minmax(0,1fr); gap: 7px; }
  .cpo-camera-bottom > span { font-size: 9px; max-width: 63%; }
  .cpo-camera-bottom button > span, .cpo-monitor-footer > span:last-child { display: none; }
  .cpo-camera-top { font-size: 9px; padding: 9px; }
@@ -320,7 +312,7 @@
  .cpo-page-heading { flex-basis: 44px; }
  .cpo-metrics { flex-basis: 66px; }
  .cpo-metric strong { font-size: 23px; }
- .cpo-monitor-column { grid-template-rows: 26px minmax(0,1fr); gap: 6px; }
+ .cpo-monitor-column { grid-template-rows: minmax(0,1fr); gap: 6px; }
  .cpo-data-column { grid-template-rows: 122px minmax(0,1fr); gap: 7px; }
  .cpo-schedule-card .cpo-panel-header { min-height: 30px; padding-top: 5px; padding-bottom: 5px; }
  .cpo-schedule-body { padding-top: 5px; }
@@ -343,7 +335,7 @@
  .cpo-metric strong { font-size: 20px; }
  .cpo-mode-notice { font-size: 9px; }
  .cpo-monitor-footer { display: none; }
- .cpo-monitor-column { grid-template-rows: 26px minmax(0,1fr); }
+ .cpo-monitor-column { grid-template-rows: minmax(0,1fr); }
  .cpo-metric { padding: 5px; }
  .cpo-metric strong { line-height: 24px; }
  .cpo-loading:not([data-panel=monitor]) .cpo-metrics { display: none; }
