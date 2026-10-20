@@ -76,8 +76,7 @@ export default function CpoLoadingTab({ cctvCameras = [], user = {} }) {
         { icon: FiAlertTriangle, label: 'Di luar jam', value: summary.outside, unit: 'kejadian', detail: `${unreviewed.length} perlu ditinjau`, warning: true },
     ];
     return <div className="cpo-loading" data-panel={mobilePanel}>
-        <header className="cpo-page-heading">
-            <div className="cpo-heading-title"><h1>CPO Loading</h1></div>
+        <header className="cpo-page-heading" aria-label="Kontrol CPO Loading">
             <div className="cpo-heading-controls">
                 <div className="cpo-mode-switch" aria-label="Sumber tampilan"><button type="button" aria-pressed={!demo} onClick={() => changeMode(false)}><FiCamera />Live CCTV</button><button type="button" aria-pressed={demo} onClick={() => changeMode(true)}><FiGrid />Data contoh</button></div>
                 <label className="cpo-date-control"><FiCalendar /><input aria-label="Tanggal aktivitas" type="date" value={selectedDate} onChange={event => { if (event.target.value) { setSelectedDate(event.target.value); setFilter('all'); setQuery(''); } }} /><span>WIB</span></label>
