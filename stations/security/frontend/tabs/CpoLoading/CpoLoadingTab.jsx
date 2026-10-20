@@ -7,7 +7,6 @@ import { demoVisits, DEMO_TIME } from './demoData.js';
 import { canManageSchedule, csvReport, dateKey, formatTime, isOperational, normalizeSchedule, recommendedCamera, summarize } from './loadingModel.js';
 import ActivityPanel from './components/ActivityPanel.jsx';
 import CapturePanel from './components/CapturePanel.jsx';
-import ScheduleSummary from './components/ScheduleSummary.jsx';
 import './CpoLoading.css';
 
 const readStored = key => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; } };
@@ -76,14 +75,13 @@ export default function CpoLoadingTab({ cctvCameras = [], user = {} }) {
         </header>
         {demo && <div className="cpo-mode-notice is-demo"><FiInfo /><p><strong>Data contoh · {DEMO_TIME.replace(':', '.')} WIB.</strong> Simulasi; bukan kejadian nyata.</p><span className="cpo-notice-detail">Jadwal: draf browser</span></div>}
         <section className="cpo-metrics" aria-label="Ringkasan aktivitas tanggal terpilih">{metrics.map(({ icon: Icon, label, value, unit, detail, warning }) => <button type="button" key={label} className={`cpo-metric ${warning ? 'cpo-metric--warning' : ''}`} onClick={() => { if (warning) reviewEvents(); else { setMobilePanel('activity'); setFilter(label === 'Di area' ? 'active' : 'all'); } }}><i><Icon /></i><div><span className="cpo-metric-label">{label}</span><strong>{demo && value !== null ? value : '—'}<small>{demo && value !== null && unit}</small></strong><p>{demo ? detail : 'Menunggu data AI'}</p></div>{warning && <FiChevronRight className="cpo-metric-arrow" />}</button>)}</section>
-        <nav className="cpo-mobile-panels" aria-label="Panel CPO Loading">{[['monitor', FiCamera, 'CCTV'], ['captures', FiGrid, 'Capture'], ['activity', FiTruck, 'Aktivitas'], ['schedule', FiClock, 'Jadwal']].map(([value, Icon, label]) => <button type="button" key={value} aria-pressed={mobilePanel === value} onClick={() => setMobilePanel(value)}><Icon />{label}</button>)}</nav>
+        <nav className="cpo-mobile-panels" aria-label="Panel CPO Loading">{[['monitor', FiCamera, 'CCTV'], ['captures', FiGrid, 'Capture'], ['activity', FiTruck, 'Aktivitas']].map(([value, Icon, label]) => <button type="button" key={value} aria-pressed={mobilePanel === value} onClick={() => setMobilePanel(value)}><Icon />{label}</button>)}</nav>
         <div className="cpo-workspace">
             <section className="cpo-monitor-column" aria-label="Kamera dan capture">
                 <LoadingCamera key={`${demo}-${camera?.id || 'none'}`} demo={demo} camera={camera} time={formatTime(demo ? selectedNow : now)} onMessage={setMessage} />
                 <CapturePanel captures={captures} demo={demo} onSelect={setSelectedVisit} />
             </section>
             <aside className="cpo-data-column">
-                <ScheduleSummary schedule={schedule} date={selectedDate} now={selectedNow} demo={demo} onEdit={setScheduleTab} />
                 <ActivityPanel visits={filtered} total={summary.visits.length} demo={demo} now={selectedNow} schedule={schedule} reviews={reviews} query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} filters={tableFilters} onSelect={setSelectedVisit} />
             </aside>
         </div>

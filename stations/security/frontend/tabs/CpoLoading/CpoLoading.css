@@ -40,7 +40,7 @@
 .cpo-metric-arrow { margin-left: auto; color: #b7995a; }
 .cpo-workspace { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1.65fr) minmax(360px,1fr); gap: 14px; container-type: size; container-name: cpo-workspace; --cpo-row-height: 76px; }
 .cpo-monitor-column { min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 174px; grid-template-rows: minmax(0,1fr); gap: 9px; }
-.cpo-data-column { min-width: 0; min-height: 0; display: grid; grid-template-rows: 137px minmax(0,1fr); gap: 10px; }
+.cpo-data-column { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0,1fr); }
 .cpo-panel { border: 1px solid #e0e7ee; border-radius: 9px; background: #fff; overflow: hidden; min-width: 0; min-height: 0; }
 .cpo-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; min-height: 37px; flex-shrink: 0; }
 .cpo-section-label { display: flex; align-items: center; gap: 7px; min-width: 0; }
@@ -93,18 +93,6 @@
 .cpo-capture-card strong { display: block; font-size: 11px; overflow-wrap: anywhere; }
 .cpo-capture-card > div > span { font-size: 10px; color: #7a92a4; }
 .cpo-capture-empty { grid-column: 1/-1; grid-row: 1/-1; display: flex; flex-direction: column; text-align: center; align-items: center; justify-content: center; gap: 10px; color: #8498a9; font-size: 11px; background: #f7fafc; border-radius: 5px; padding: 10px; }
-.cpo-schedule-card { display: flex; flex-direction: column; }
-.cpo-schedule-card .cpo-panel-header { border-bottom: 1px solid #f0f3f6; }
-.cpo-schedule-body { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px 4px; }
-.cpo-schedule-body > div { min-width: 0; }
-.cpo-operating-hours { display: block; font-size: 18px; line-height: 1.3; letter-spacing: -.4px; }
-.cpo-hours-state { display: block; color: #ad8a3b; font-size: 10px; margin-top: 2px; }
-.cpo-hours-state.is-open { color: #3f9470; }
-.cpo-schedule-body .cpo-button { font-size: 10px !important; min-height: 29px; padding: 5px 8px; }
-.cpo-dayline { padding: 3px 12px 5px; display: flex; justify-content: space-between; flex-wrap: wrap; color: #8094a6; font-size: 9px; }
-.cpo-dayline-track { position: relative; flex-basis: 100%; height: 5px; background: #eef3f6; margin-bottom: 4px; border-radius: 3px; }
-.cpo-dayline-track > span { position: absolute; height: 100%; background: #a6caba; border-radius: 2px; }
-.cpo-dayline-track > i { position: absolute; top: -3px; height: 8px; width: 2px; background: #5c7386; }
 .cpo-activity-panel { display: flex; flex-direction: column; }
 .cpo-activity-tools { padding: 0 10px 6px; flex-shrink: 0; }
 .cpo-search { display: flex; gap: 7px; align-items: center; border: 1px solid #e2eaf0; background: #f8fafc; padding: 5px 8px; border-radius: 5px; color: #849aad; }
@@ -247,8 +235,7 @@
  .cpo-loading[data-panel=captures] .cpo-capture-items { align-items: center; }
  .cpo-loading[data-panel=captures] .cpo-capture-card { height: min(120px,100%); }
  .cpo-data-column > * { height: 100%; }
- .cpo-loading:is([data-panel=monitor],[data-panel=captures]) .cpo-data-column, .cpo-loading:not([data-panel=monitor]):not([data-panel=captures]) .cpo-monitor-column,
- .cpo-loading[data-panel=activity] .cpo-schedule-card, .cpo-loading[data-panel=schedule] .cpo-activity-panel { display: none; }
+ .cpo-loading:is([data-panel=monitor],[data-panel=captures]) .cpo-data-column, .cpo-loading:not([data-panel=monitor]):not([data-panel=captures]) .cpo-monitor-column { display: none; }
  .cpo-mobile-panels { flex: 0 0 32px; display: flex; background: #eaf0f5; padding: 3px; gap: 3px; border-radius: 6px; }
  .cpo-mobile-panels button { flex: 1; display: flex; justify-content: center; align-items: center; gap: 6px; border: 0; border-radius: 4px; background: transparent; color: #7e94a5; font-size: 11px; }
  .cpo-mobile-panels button[aria-pressed=true] { background: #fff; color: #3b5e79; box-shadow: 0 1px 3px #1d374615; }
@@ -259,10 +246,6 @@
  .cpo-metric strong { font-size: 23px; line-height: 1.25; }
  .cpo-metric small { font-size: 9px; }
  .cpo-notice-detail, .cpo-page-footer > span:last-child { display: none; }
- .cpo-data-column .cpo-schedule-body { padding: 12px; flex-direction: column; align-items: flex-start; }
- .cpo-data-column .cpo-operating-hours { font-size: 21px; }
- .cpo-data-column .cpo-dayline { padding: 12px; }
- .cpo-data-column .cpo-dayline-track { height: 8px; }
  .som-cpo-active .som-station-tabs { flex-basis: 100%; order: 3; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
  .som-cpo-active .som-security-clock { font-size: 12px; }
  .som-cpo-active .som-security-header { padding: 7px 12px; }
@@ -313,10 +296,6 @@
  .cpo-metrics { flex-basis: 66px; }
  .cpo-metric strong { font-size: 23px; }
  .cpo-monitor-column { grid-template-rows: minmax(0,1fr); gap: 6px; }
- .cpo-data-column { grid-template-rows: 122px minmax(0,1fr); gap: 7px; }
- .cpo-schedule-card .cpo-panel-header { min-height: 30px; padding-top: 5px; padding-bottom: 5px; }
- .cpo-schedule-body { padding-top: 5px; }
- .cpo-operating-hours { font-size: 16px; }
  .cpo-captures .cpo-panel-header { min-height: 31px; padding-top: 3px; padding-bottom: 3px; }
  .cpo-page-footer { display: none; }
  .cpo-dialog { height: min(490px,calc(100dvh - 16px)); }
@@ -350,13 +329,8 @@
  .cpo-date-control { padding: 4px; }
 }
 @container cpo-workspace (max-height: 410px) {
- .cpo-data-column { grid-template-rows: 105px minmax(0,1fr); gap: 7px; }
  .cpo-activity-list { --cpo-row-height: 64px; }
  .cpo-visit { padding-top: 3px; padding-bottom: 3px; }
- .cpo-schedule-card .cpo-panel-header { min-height: 28px; padding-top: 3px; padding-bottom: 3px; }
- .cpo-schedule-body { padding-top: 4px; padding-bottom: 2px; }
- .cpo-operating-hours { font-size: 17px; }
- .cpo-dayline { padding-top: 0; }
  .cpo-activity-tools { padding-bottom: 3px; }
  .cpo-table-filters { margin-top: 3px; }
 }

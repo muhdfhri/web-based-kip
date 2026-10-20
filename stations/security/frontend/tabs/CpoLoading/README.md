@@ -17,7 +17,7 @@ Tidak ada migrasi, dependency baru, perubahan server, ataupun konfigurasi GPU pa
 ## Alur dan aturan tampilan
 
 1. Ringkasan tanggal terpilih: kunjungan masuk dalam jam operasional, sesi yang masih di area, rata-rata pengisian selesai, dan aktivitas masuk di luar jadwal.
-2. Halaman adalah workspace tetap tanpa scroll vertikal maupun horizontal. Pada desktop, CCTV dan kolom recent capture di kiri; jadwal dan daftar aktivitas di kanan. Pada layar kecil, tombol CCTV / Capture / Aktivitas / Jadwal mengganti panel tanpa menggulir. Pada layar pendek, ringkasan angka hanya muncul di panel CCTV untuk memberi ruang pada daftar/detail. Video selalu kondisi saat ini, meskipun tanggal aktivitas diubah ke tanggal lain.
+2. Halaman adalah workspace tetap tanpa scroll vertikal maupun horizontal. Pada desktop, CCTV dan kolom recent capture di kiri; daftar aktivitas memakai seluruh tinggi kolom kanan. Kartu ringkasan jam operasional tidak ditampilkan; jadwal dibuka melalui tombol Atur jadwal / Lihat jadwal di toolbar. Pada layar kecil, tombol CCTV / Capture / Aktivitas mengganti panel tanpa menggulir. Pada layar pendek, ringkasan angka hanya muncul di panel CCTV untuk memberi ruang pada daftar/detail. Video selalu kondisi saat ini, meskipun tanggal aktivitas diubah ke tanggal lain.
 3. Aktivitas dan capture memakai pagination. Kapasitas aktivitas menyesuaikan ruang panel melalui `ResizeObserver`; semua kunjungan tetap dapat dibuka tanpa daftar yang terpotong. Pencarian dan filter mengembalikan daftar ke halaman pertama. Ekspor CSV tetap mencakup seluruh hasil filter, bukan hanya halaman yang terlihat.
 4. Dialog detail mempunyai bagian Ringkasan / Linimasa / Tinjauan. Linimasa menunjukkan masuk → mulai pengisian → selesai pengisian → keluar. Timestamp yang tidak diketahui tetap kosong; waktu tunggu tidak dianggap waktu pengisian.
 5. Aktivitas di luar jadwal memerlukan verifikasi. Tampilan tidak menyimpulkan pencurian. Tinjauan sah tidak menghapus catatan aktivitas di luar jadwal.
@@ -61,7 +61,7 @@ Untuk menghindari pemborosan sumber daya, pertahankan transport CCTV bersama; la
 | `CpoLoadingTab.jsx` / `CpoLoading.css` | Halaman, layout responsif, filter, ringkasan dan ekspor |
 | `loadingModel.js` | Jadwal WIB, validasi, perhitungan dan pemilihan kamera |
 | `demoData.js` | Data contoh eksplisit |
-| `components/` | CCTV, capture, aktivitas dengan pagination, ringkasan jadwal, ilustrasi dan dialog |
+| `components/` | CCTV, capture, aktivitas dengan pagination, ilustrasi dan dialog |
 | `loadingModel.test.mjs` | Pengujian aturan jadwal/perhitungan |
 
 Dari root repository:
