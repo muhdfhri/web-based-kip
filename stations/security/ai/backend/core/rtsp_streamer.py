@@ -23,6 +23,7 @@ QUALITY = max(40, min(90, int(os.getenv("CCTV_JPEG_QUALITY", "72"))))
 TIMEOUT_MS = 5000
 STALE_SECONDS = 4
 IDLE_SECONDS = 30
+SUBSTREAM_RETRY_SECONDS = max(60, int(os.getenv('CCTV_SUBSTREAM_RETRY_SECONDS', '300')))
 _stream_managers = {}
 _manager_lock = threading.Lock()
 _service_lock = threading.Lock()
@@ -115,6 +116,8 @@ class CameraStreamManager:
         self.stop_event = threading.Event()
         self.frame_ready = threading.Event()
         self.lock = threading.Lock()
+        self.encode_lock = threading.Lock()
+        self.variants = {}
         self.latest_jpeg = None
         self.latest_frame = None
         self.sequence = 0
@@ -128,6 +131,10 @@ class CameraStreamManager:
         self.viewer_widths = {}
         self.jpeg_shape = None
         self.reconnects = 0
+        self.substream_recoveries = 0
+        self.probe_lock = threading.Lock()
+        self.probe_thread = None
+        self.substream_capture = None
         self.connection_state = 'connecting'
         self.source_kind = 'substream' if preview and preview_url(self.rtsp_url) != self.rtsp_url else 'main'
         self.thread = threading.Thread(target=self._update_loop, daemon=True,
@@ -137,12 +144,41 @@ class CameraStreamManager:
     def stop(self):
         self.running = False
         self.stop_event.set()
+        if hasattr(self, 'probe_lock'):
+            capture = self._take_substream()
+            if capture is not None:
+                capture.release()
+
+    def _take_substream(self):
+        with self.probe_lock:
+            capture, self.substream_capture = self.substream_capture, None
+            return capture
+
+    def _probe_substream(self, source, options):
+        """Validate a recovered substream without pausing the live main reader."""
+        capture = None
+        try:
+            capture = cv2.VideoCapture(source, cv2.CAP_FFMPEG, options)
+            if not capture.isOpened():
+                return
+            ok, frame = capture.read()
+            if not ok or frame is None:
+                return
+            with self.probe_lock:
+                if self._needed() and self.substream_capture is None:
+                    self.substream_capture, capture = capture, None
+        except Exception:
+            pass  # The working main stream remains untouched.
+        finally:
+            if capture is not None:
+                capture.release()
 
     def _needed(self):
         return self.running and (self.persistent or time.monotonic() - self.last_used < IDLE_SECONDS)
 
     def _update_loop(self):
         source = preview_url(self.rtsp_url) if self.preview else self.rtsp_url
+        preferred_source = source
         failures = 0
         while self._needed():
             cap = None
@@ -165,7 +201,24 @@ class CameraStreamManager:
                 pacer = FramePacer(FPS)
                 background_pacer = FramePacer(1)
                 connected_at = time.monotonic()
+                probe_at = connected_at + SUBSTREAM_RETRY_SECONDS + random.uniform(0, 60)
                 while self._needed():
+                    if source != preferred_source:
+                        replacement = self._take_substream()
+                        if replacement is not None:
+                            cap.release()
+                            cap = replacement
+                            source = preferred_source
+                            self.source_kind = 'substream'
+                            self.substream_recoveries += 1
+                            self.source_fps = cap.get(cv2.CAP_PROP_FPS) or None
+                        elif time.monotonic() >= probe_at:
+                            if self.probe_thread is None or not self.probe_thread.is_alive():
+                                self.probe_thread = threading.Thread(target=self._probe_substream,
+                                    args=(preferred_source, options), daemon=True,
+                                    name=f'cctv-substream-probe-{self.camera_id}')
+                                self.probe_thread.start()
+                            probe_at = time.monotonic() + SUBSTREAM_RETRY_SECONDS + random.uniform(0, 60)
                     # Decode/drain every source frame, but convert to BGR only
                     # when needed. Unviewed cameras avoid 20-30 full-size copies/s.
                     if not cap.grab():
@@ -190,6 +243,7 @@ class CameraStreamManager:
                         self.latest_jpeg = jpeg
                         self.latest_frame = frame
                         self.sequence += 1
+                        self.variants.clear()
                         self.last_frame_at = now
                         self.recent_frames.append(now)
                         self.source_shape = [frame.shape[1], frame.shape[0]]
@@ -216,6 +270,10 @@ class CameraStreamManager:
             if self.running:
                 self.stop_event.wait(min(30, 2 ** min(failures - 1, 5)) + random.random())
         self.running = False
+        if hasattr(self, 'probe_lock'):
+            capture = self._take_substream()
+            if capture is not None:
+                capture.release()
         self.frame_ready.clear()
         with self.lock:
             self.latest_frame = self.latest_jpeg = self.detail_jpeg = None
@@ -240,6 +298,7 @@ class CameraStreamManager:
             meta = {'camera_id': self.camera_id, 'sequence': self.sequence,
                     'status': status, 'age_ms': round(age * 1000) if self.last_frame_at else None}
             shape = getattr(self, 'source_shape', None)
+            width = None
             if live and shape:
                 if detail:
                     width = min(shape[0], 1280)
@@ -247,15 +306,29 @@ class CameraStreamManager:
                 else:
                     jpeg_shape = getattr(self, 'jpeg_shape', None) or [min(shape[0], WIDTH),
                                   max(1, round(shape[1] * min(shape[0], WIDTH) / shape[0]))]
+                    if preview_width is not None:
+                        width = min(shape[0], WIDTH, max(160, preview_width))
+                        jpeg_shape = [width, max(1, round(shape[1] * width / shape[0]))]
                 meta.update(jpeg_width=jpeg_shape[0], jpeg_height=jpeg_shape[1])
             jpeg = self.latest_jpeg if live else b''
-            frame = self.latest_frame if live and detail else None
+            frame = self.latest_frame if live and (detail or width is not None
+                    and width != (getattr(self, 'jpeg_shape', None) or [min(shape[0], WIDTH)])[0]) else None
             sequence = self.sequence
             cached_detail = self.detail_jpeg if self.detail_sequence == sequence else None
         if frame is not None:
-            jpeg = cached_detail or encode_preview(frame, 1280)
-            with self.lock:
-                self.detail_sequence, self.detail_jpeg = sequence, jpeg
+            width = min(frame.shape[1], 1280) if detail else width
+            # Per-resolution cache: a slow viewer must receive its own smaller
+            # JPEG even while another viewer requests a larger shared preview.
+            # The encoder lock is separate from capture so readers keep draining.
+            with self.encode_lock:
+                with self.lock:
+                    cached = self.variants.get(width) if self.sequence == sequence else None
+                jpeg = cached or (cached_detail if detail else None) or encode_preview(frame, width)
+                with self.lock:
+                    if self.sequence == sequence:
+                        self.variants[width] = jpeg
+                        if detail:
+                            self.detail_sequence, self.detail_jpeg = sequence, jpeg
         return meta, jpeg
 
     def get_latest_jpeg(self, detail=False):
@@ -352,7 +425,7 @@ def frame_packet(meta, jpeg=b''):
     return struct.pack('!I', len(header)) + header + jpeg
 
 
-def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids=None, batch=False, preview_width=None, preview_fps=None):
+def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids=None, batch=False, preview_width=None, preview_fps=None, delivery=None):
     managers = {cid: get_stream_manager(cid, preview=True, camera_info=camera_infos[cid])
                 for cid in camera_ids if cid in camera_infos}
     last_sent = {}
@@ -361,11 +434,35 @@ def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids
     config_snapshot = None
     delivery_fps = min(FPS, preview_fps or FPS)
     delivery_pacer = FramePacer(delivery_fps)
+    revision = 0
+    camera_cursor = 0
     while True:
         started = time.monotonic()
+        if delivery:
+            if delivery.expired():
+                return
+            options, next_revision = delivery.snapshot()
+            if next_revision != revision:
+                camera_ids = options['camera_ids']
+                focus_id, viewed_ids = options['focus_id'], options['viewed_ids']
+                preview_width = options['preview_width']
+                delivery_fps = min(FPS, options['preview_fps'] or FPS)
+                delivery_pacer = FramePacer(delivery_fps)
+                revision = next_revision
+                refresh_at = 0
+                last_sent.clear()
+                managers = {cid: manager for cid, manager in managers.items() if cid in camera_ids}
+            # Stop producing bytes until the browser has consumed prior batches.
+            # Readers retain only the latest frame while this viewer is slow.
+            if not delivery.available():
+                time.sleep(.01)
+                continue
         packets = []
         packet_bytes = 0
         images_due = delivery_pacer.due(started)
+        if (delivery or delivery_fps < FPS) and not images_due:
+            time.sleep(.002)
+            continue
         if started >= refresh_at or _camera_infos_cache is not config_snapshot:
             # Preserve target functionality: saved URL/activation edits reach existing viewers.
             # A transient DB outage keeps the last configuration until the next retry.
@@ -384,7 +481,8 @@ def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids
                 logging.warning('[CCTV] Configuration refresh unavailable; retrying')
             config_snapshot = _camera_infos_cache
             refresh_at = started + 5
-        for cid in camera_ids:
+        ordered_ids = camera_ids[camera_cursor:] + camera_ids[:camera_cursor] if delivery else camera_ids
+        for cid in ordered_ids:
             manager = managers.get(cid)
             # An idle reader can finish closing just as a new viewer arrives.
             # Replace it in-place so that one camera cannot stay disconnected.
@@ -403,11 +501,6 @@ def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids
                     meta, _ = manager.get_packet(viewing=False)
                     jpeg = b''
                 meta['camera_id'] = cid  # aliases can share a reader
-            if delivery_fps < FPS and not images_due and meta['status'] == 'live' \
-                    and (viewed_ids is None or cid in viewed_ids):
-                # Per-viewer delivery pacing never changes the shared reader,
-                # snapshots, or other viewers. Sample the newest frame when due.
-                continue
             previous = last_sent.get(cid)
             state = (meta['sequence'] if viewed_ids is None or cid in viewed_ids else 0, meta['status'])
             if previous and previous[0] == state and started - previous[1] < 1:
@@ -424,11 +517,22 @@ def generate_combined_stream(camera_ids, camera_infos, focus_id=None, viewed_ids
                 # of small WSGI/HTTP writes per second add overhead and amplify
                 # backpressure across the proxy when many cameras are visible.
                 if packets and packet_bytes + len(packet) > 2 * 1024 * 1024:
+                    if delivery:
+                        batch_id = delivery.reserve(packet_bytes)
+                        packets.append(frame_packet({'type': 'batch', 'batch_id': batch_id}))
                     yield b''.join(packets)
                     packets, packet_bytes = [], 0
                 packets.append(packet)
                 packet_bytes += len(packet)
+                if delivery and packet_bytes >= 256 * 1024:
+                    # Round-robin partial sweeps bound in-flight bytes even with
+                    # hundreds of large frames; later cameras cannot starve.
+                    camera_cursor = (camera_ids.index(cid) + 1) % len(camera_ids)
+                    break
         if packets:
+            if delivery:
+                batch_id = delivery.reserve(packet_bytes)
+                packets.append(frame_packet({'type': 'batch', 'batch_id': batch_id}))
             yield b''.join(packets)
         # Poll faster than producers so unrelated camera phases do not halve FPS.
         # No extra JPEGs are sent unless a camera's frame sequence has changed.
@@ -445,6 +549,7 @@ def stream_diagnostics():
              'encoded_fps': m.measured_fps(),
              'encoding_mode': 'idle' if m.persistent and time.monotonic() - m.last_used >= 2 else 'viewing',
              'persistent': m.persistent, 'decoder': 'cpu', 'reconnects': m.reconnects,
+             'substream_recoveries': m.substream_recoveries,
              'status': m.get_packet(viewing=False)[0]['status'],
              'age_ms': round((time.monotonic() - m.last_frame_at) * 1000) if m.last_frame_at else None}
             for m in managers]

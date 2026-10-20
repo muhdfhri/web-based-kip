@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import http from 'node:http';
+import { webcrypto } from 'node:crypto';
 import { FrameDecoder, StreamClock, subscribeCctv, getCctvDiagnostics } from './cctvTransport.js';
+globalThis.crypto ??= webcrypto;
 
 function packet(id, sequence = 1, extra = {}, jpeg = Buffer.from([255, 216, id, 255, 217])) {
     const header = Buffer.from(JSON.stringify({ camera_id: id, sequence, status: 'live', length: jpeg.length, ...extra }));
@@ -88,6 +90,19 @@ test('backlog detection ignores clock offset and catches continuously arriving d
     assert.equal(clock.backlog({ sent_ms: 9000200, age_ms: 60000, status: 'reconnecting' }, 300), 0);
     assert.ok(clock.backlog({ sent_ms: 9000200, age_ms: 20 }, 2300) > 1500);
     assert.equal(clock.backlog({ age_ms: 20 }, 2400), 0); // older protocol
+});
+
+test('long viewing sessions tolerate clock drift while still detecting real delivery backlog', () => {
+    const clock = new StreamClock();
+    for (let second = 0; second <= 8 * 3600; second++) {
+        const sent = second * 1000;
+        const received = 9000000 + sent * 1.00008;
+        assert.ok(clock.backlog({ sent_ms: sent }, received) < 6, 'clock drift must not turn fresh frames into permanent backlog');
+    }
+    assert.ok(clock.samples.length <= 61);
+    const fresh = new StreamClock();
+    fresh.backlog({ sent_ms: 0 }, 0);
+    assert.ok(fresh.backlog({ sent_ms: 1000 }, 3000) > 1500, 'real backlog must still be detected immediately');
 });
 
 test('sustained bandwidth backlog reduces grid pixels once and restores healthy playback', async () => {
@@ -187,6 +202,82 @@ test('large coalesced chunks of valid frames do not reset all cameras', () => {
     const prefix = Buffer.alloc(4); prefix.writeUInt32BE(header.length);
     const frame = Buffer.concat([prefix, header, jpeg]);
     assert.equal(new FrameDecoder().push(Buffer.concat(Array(5).fill(frame))).length, 5);
+});
+
+test('feedback changes delivery budget, fullscreen and layout without reopening live video', async () => {
+    let requests = 0, feedbackRequests = 0, ack = 0, sent = 0, busy = 0, maxBusy = 0;
+    let options, sequence = 0, status;
+    const budgets = [];
+    const observers = new Map();
+    globalThis.ResizeObserver = class {
+        constructor(callback) { this.callback = callback; }
+        observe(canvas) { observers.set(canvas, this.callback); }
+        disconnect() {}
+    };
+    const server = http.createServer((req, res) => {
+        if (req.method === 'POST') {
+            feedbackRequests++; busy++; maxBusy = Math.max(maxBusy, busy);
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', () => setTimeout(() => {
+                const data = JSON.parse(body);
+                assert.ok(data.ack >= ack && data.ack <= sent);
+                ack = data.ack;
+                options = new URLSearchParams(data.query);
+                budgets.push(Number(options.get('width')));
+                busy--;
+                res.end('{"success":true}');
+            }, 50));
+            return;
+        }
+        requests++;
+        options = new URL(req.url, 'http://localhost').searchParams;
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'X-CCTV-Control': '1' });
+        res.flushHeaders();
+        const timer = setInterval(() => {
+            if (sent - ack >= 8) return;
+            const slow = Number(options.get('width')) > 160 && !options.has('focus');
+            sequence += slow ? 3 : 1;
+            res.write(Buffer.concat([
+                packet(1, sequence, { sent_ms: performance.now(), jpeg_width: 640, jpeg_height: 360 }),
+                packet(0, 0, { type: 'batch', batch_id: ++sent }, Buffer.alloc(0)),
+            ]));
+        }, 50);
+        res.on('close', () => clearInterval(timer));
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    globalThis.window = { location: { href: origin }, addEventListener() {} };
+    globalThis.document = { hidden: false, addEventListener() {} };
+    globalThis.createImageBitmap = async () => ({ width: 320, height: 180, close() {} });
+    const canvas = fit => ({ dataset: { fit }, clientWidth: 320, clientHeight: 180,
+        getContext: () => ({ fillRect() {}, drawImage() {} }) });
+    const grid = canvas('cover'), modal = canvas('contain'), unsubscribe = [];
+    try {
+        unsubscribe.push(subscribeCctv(`${origin}/api/security/cctv/stream/1`, grid, next => { status = next; }));
+        await waitFor(() => budgets.includes(160) && status === 'live', 7500);
+        assert.equal(requests, 1, 'adaptation must keep the existing video connection');
+        assert.equal(getCctvDiagnostics()[0].bandwidthAdaptations, 1);
+        unsubscribe.push(subscribeCctv(`${origin}/api/security/cctv/stream/1`, modal, () => {}));
+        await waitFor(() => options.get('focus') === '1');
+        assert.equal(options.get('width'), '320');
+        assert.equal(options.get('fps'), '30');
+        unsubscribe.pop()();
+        await waitFor(() => !options.has('focus'));
+        grid.clientWidth = 640;
+        observers.get(grid)();
+        await waitFor(() => options.get('width') === '320');
+        assert.equal(requests, 1, 'modal and resize must update the same connection');
+        assert.ok(feedbackRequests > 3);
+        assert.equal(maxBusy, 1, 'feedback requests must be serialized');
+        assert.equal(getCctvDiagnostics()[0].flowControlled, true);
+        assert.ok(getCctvDiagnostics()[0].acknowledgedBatch > 0);
+    } finally {
+        unsubscribe.forEach(fn => fn());
+        server.closeAllConnections();
+        await new Promise(resolve => server.close(resolve));
+        delete globalThis.ResizeObserver;
+    }
 });
 
 test('fragmented large JPEG uses one payload allocation and rejects oversized payloads', () => {

@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "dependencies": {
     "leaflet-rotate": "^0.2.8"
   }

@@ -39,6 +39,8 @@ class StreamRegressionTests(unittest.TestCase):
         manager.last_frame_at = time.monotonic()
         manager.latest_jpeg = b'preview'
         manager.latest_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        manager.encode_lock = threading.Lock()
+        manager.variants = {}
         manager.source_shape = [1280, 720]
         manager.sequence = 1
         manager.detail_sequence = -1
@@ -69,6 +71,8 @@ class StreamRegressionTests(unittest.TestCase):
         manager.last_frame_at = time.monotonic()
         manager.latest_jpeg = b'preview'
         manager.latest_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        manager.encode_lock = threading.Lock()
+        manager.variants = {}
         manager.source_shape = [1280, 720]
         manager.jpeg_shape = [160, 90]
         manager.sequence = 1

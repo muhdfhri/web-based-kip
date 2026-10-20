@@ -7,7 +7,21 @@ to 256 positive IDs. `view` selects visible tiles; omitting it sends every image
 and an empty value sends statuses only. `focus` selects a fullscreen JPEG up to
 1280 pixels. Packets contain a 4-byte big-endian JSON-header length, UTF-8 metadata,
 then `length` JPEG bytes. Unchanged frames produce a heartbeat once per second.
-The live endpoint batches one polling sweep into writes around 2 MiB maximum
+Current browsers also send a random 32-hex `session` token. The server advertises
+`X-CCTV-Control: 1` and ends each batch with a zero-payload packet containing
+`type: "batch"` and `batch_id`. The browser acknowledges consumed batches with
+`POST /api/security/cctv/live/control/<session>` and JSON `{ack, query}`, where
+`query` contains the validated live subscription parameters. The gateway forwards
+this to the corresponding `/api/security-ai/live/control/<session>` endpoint.
+The server stops producing for this viewer at eight unacknowledged batches or a
+512 KiB outstanding-byte watermark. A batch stops after crossing 256 KiB; one
+JPEG can cross that threshold. These are watermarks, not strict payload limits.
+Capture continues independently, retaining the newest frame rather than a history.
+Feedback expires after 30 seconds; closing/expiring the response removes its state.
+Feedback and video must reach the same Python process. The existing single-worker
+PM2 launcher provides this; a multi-process WSGI deployment would require shared
+session state or affinity.
+The legacy live endpoint batches one polling sweep into writes around 2 MiB maximum
 (plus a single frame's header), retaining individual binary packet boundaries.
 This reduces WSGI/HTTP write overhead without waiting for a batch to fill.
 
@@ -49,13 +63,22 @@ after two seconds. This reduces grid JPEG size without reducing the source frame
 fullscreen detail, or main-stream snapshots. Existing clients without `width`
 retain the configured preview size. A ResizeObserver updates the subscription
 when the grid layout changes.
+Each viewer receives its requested JPEG width, even when another viewer requests
+a larger preview. Size variants share a per-frame cache and a separate encoding
+lock, so concurrent viewers reuse matching encodes without blocking the capture
+lock. Delivery FPS is checked before requesting/encoding fullscreen frames.
 The endpoint also accepts widths down to 160 for bandwidth adaptation, and an
 optional per-viewer `fps` from 1 to 30. Lower delivery rates sample the newest
 shared frame; they do not change capture FPS, snapshots, or other viewers.
 
 Hikvision `*01` URLs are tried as `*02` substreams, falling back independently to
-the stored URL after two failures. Other RTSP paths are used as entered. Snapshot
-and AI callers use a shared main reader that closes after 30 idle seconds. Cold
+the stored URL after two failures. Other RTSP paths are used as entered. Preview
+readers that have fallen back to main streams probe the preferred substream in
+the background after `CCTV_SUBSTREAM_RETRY_SECONDS` (default 300, minimum 60), with
+up to 60 seconds of jitter. A valid decoded substream replaces the main capture;
+failed probes leave the working main stream intact. This prevents a temporary
+substream failure from leaving previews on expensive main streams indefinitely.
+Snapshot and AI callers use a shared main reader that closes after 30 idle seconds. Cold
 snapshots wait up to five seconds for the first frame. Reconnects use interruptible
 exponential backoff with jitter, bounded around 30 seconds. Repeated failures show
 `offline` while retrying, without stopping healthy readers.
@@ -88,14 +111,22 @@ image. Fragmented payloads use one allocation per JPEG instead of repeatedly
 copying the entire partial frame. A malformed JPEG affects only its camera.
 
 Monotonic send/receive clock deltas detect backlog. Frames over 1.5 seconds behind
-are discarded; only backlog sustained for eight seconds reopens transport.
+are identified using minimum offsets from the latest minute, bounded to one
+sample per second. This follows gradual server/browser clock drift during long
+viewing sessions instead of mistaking it for an ever-growing network queue.
+Delayed frames
+are discarded. With feedback enabled, subscriptions and bandwidth budgets update
+on the existing video connection. Grid resizing, scrolling, opening/closing
+fullscreen, and automatic delivery adaptation do not reopen that connection.
+Legacy servers without feedback retain the previous reconnect-based adaptation.
 Transient backlog no longer reconnects every tile. Actual connection loss or a
 12-second stream stall still retries. An individual stale/offline camera affects
 only itself. Subscription changes retain healthy camera statuses.
 If backlog exceeds 1.5 seconds continuously for two seconds, grid width is
 halved first, down to 160 pixels. If that is still insufficient, only this
-connection's delivery FPS is halved, down to 1 FPS. Each adaptation reopens the
-connection after 100 ms to discard the obsolete TCP backlog. The chosen budget
+connection's delivery FPS is halved, down to 1 FPS. Feedback applies adaptation
+in place; outstanding batches drain while newly produced frames use the new
+budget. Only legacy connections reopen after 100 ms. The chosen budget
 is retained for the current group rather than repeatedly retrying the same
 overloaded resolution/rate. Grid and fullscreen have separate FPS budgets;
 fullscreen detail resolution is retained. This trades grid detail/rate for
@@ -127,6 +158,8 @@ The `getCctvDiagnostics()` export from `cctvTransport.js` reports decode queue
 sizes, connection attempts, decode errors, dropped frames/backlog, bitmap sizes,
 and the last transport error, without RTSP credentials. It also includes
 `bandwidthAdaptations`, `requestedWidth`, and `requestedFps`.
+`flowControlled` confirms negotiation and `acknowledgedBatch` confirms that
+browser feedback reaches the streaming worker.
 
 From `stations/security/ai/backend`:
 
@@ -138,6 +171,7 @@ From `stations/security/backend`:
 
 ```powershell
 node --test tests/cctv-crud-isolated.test.mjs
+node --test tests/cctv-delivery-proxy.test.mjs
 ```
 
 The CRUD test creates/drops only `cctv_verify_api_<pid>`. It uses real PostgreSQL
@@ -151,3 +185,4 @@ reconnect counts without RTSP credentials.
 It also reports `encoded_fps` over recent frames, `encoding_mode` (idle/viewing),
 and `preview_resolution`. Idle encodes normally run at 1 FPS; `target_fps=30`
 is a limit, not evidence that the source or displayed image runs at 30 FPS.
+`substream_recoveries` counts successful background switches from main fallback.

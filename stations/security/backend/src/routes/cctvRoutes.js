@@ -16,13 +16,17 @@ function validRtsp(value) {
 }
 
 // One grid/modal connection. Pipe respects backpressure; response close releases upstream.
-function forwardCameraStream(req, res, path) {
+function forwardCameraStream(req, res, path, body) {
   let upstream;
-  const proxy = http.get({ hostname: aiHost, port: aiPort, path, agent: false }, incoming => {
+  const payload = body === undefined ? null : JSON.stringify(body);
+  const proxy = http.request({ hostname: aiHost, port: aiPort, path, agent: false,
+    method: payload === null ? 'GET' : 'POST',
+    headers: payload === null ? {} : { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+  }, incoming => {
     upstream = incoming;
     if (res.destroyed) { incoming.destroy(); return; }
     res.writeHead(incoming.statusCode, { ...incoming.headers,
-      'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
+      'Cache-Control': 'no-store, no-transform', 'X-Accel-Buffering': 'no' });
     res.flushHeaders();
     incoming.pipe(res);
     incoming.on('error', () => res.destroy());
@@ -33,6 +37,7 @@ function forwardCameraStream(req, res, path) {
     else res.destroy();
   });
   res.on('close', () => { upstream?.destroy(); proxy.destroy(); });
+  proxy.end(payload);
 }
 
 function syncToAiBackend(camera, deleting = false) {
@@ -60,6 +65,12 @@ router.get('/live', (req, res) => {
   }
   const ids = [...new Set(values.map(Number))];
   const query = new URLSearchParams({ ids: ids.join(',') });
+  if (req.query.session !== undefined) {
+    if (!/^[a-f0-9]{32}$/.test(String(req.query.session))) {
+      return res.status(400).json({ success: false, message: 'Invalid live session' });
+    }
+    query.set('session', req.query.session);
+  }
   if (req.query.fps !== undefined) {
     const fps = String(req.query.fps);
     if (!/^\d+$/.test(fps) || Number(fps) < 1 || Number(fps) > 30) {
@@ -83,6 +94,12 @@ router.get('/live', (req, res) => {
   }
   if (validId(req.query.focus) && ids.includes(Number(req.query.focus))) query.set('focus', String(Number(req.query.focus)));
   forwardCameraStream(req, res, `/api/security-ai/live?${query}`);
+});
+router.post('/live/control/:token', (req, res) => {
+  if (!/^[a-f0-9]{32}$/.test(req.params.token) || !req.body || JSON.stringify(req.body).length > 20000) {
+    return res.status(400).json({ success: false, message: 'Invalid delivery feedback' });
+  }
+  forwardCameraStream(req, res, `/api/security-ai/live/control/${req.params.token}`, req.body);
 });
 router.get('/stream/status', (req, res) => forwardCameraStream(req, res, '/api/security-ai/stream/status'));
 router.get('/stream/:id', (req, res) => {
