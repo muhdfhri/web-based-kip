@@ -79,9 +79,9 @@ export default function CpoLoadingTab({ cctvCameras = [], user = {} }) {
         <div className="cpo-workspace">
             <section className="cpo-monitor-column" aria-label="Kamera dan capture">
                 <LoadingCamera key={`${demo}-${camera?.id || 'none'}`} demo={demo} camera={camera} time={formatTime(demo ? selectedNow : now)} onMessage={setMessage} />
-                <CapturePanel captures={captures} demo={demo} onSelect={setSelectedVisit} />
             </section>
             <aside className="cpo-data-column">
+                <CapturePanel captures={captures} demo={demo} onSelect={setSelectedVisit} />
                 <ActivityPanel visits={filtered} total={summary.visits.length} demo={demo} now={selectedNow} schedule={schedule} reviews={reviews} query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} filters={tableFilters} onSelect={setSelectedVisit} />
             </aside>
         </div>
