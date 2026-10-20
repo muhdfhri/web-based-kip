@@ -77,14 +77,14 @@ export default function CpoLoadingTab({ cctvCameras = [], user = {} }) {
     ];
     return <div className="cpo-loading" data-panel={mobilePanel}>
         <header className="cpo-page-heading">
-            <div className="cpo-heading-title"><span className="cpo-eyebrow">AI VISION / OIL DISPATCH</span><h1>CPO Loading <span className="cpo-design-tag">Rancangan UI</span></h1></div>
+            <div className="cpo-heading-title"><h1>CPO Loading</h1></div>
             <div className="cpo-heading-controls">
                 <div className="cpo-mode-switch" aria-label="Sumber tampilan"><button type="button" aria-pressed={!demo} onClick={() => changeMode(false)}><FiCamera />Live CCTV</button><button type="button" aria-pressed={demo} onClick={() => changeMode(true)}><FiGrid />Data contoh</button></div>
                 <label className="cpo-date-control"><FiCalendar /><input aria-label="Tanggal aktivitas" type="date" value={selectedDate} onChange={event => { if (event.target.value) { setSelectedDate(event.target.value); setFilter('all'); setQuery(''); } }} /><span>WIB</span></label>
             </div>
             <div className="cpo-page-actions"><button type="button" className="cpo-button cpo-export" disabled={!demo || !filtered.length} onClick={exportCsv} aria-label="Ekspor CSV" title="Ekspor data contoh sesuai filter"><FiDownload /><span>CSV</span></button><button type="button" className="cpo-button cpo-button--primary" onClick={() => setScheduleTab('normal')} aria-label={canManage ? 'Atur jadwal' : 'Lihat jadwal'}><FiSettings /><span>{canManage ? 'Atur jadwal' : 'Lihat jadwal'}</span></button></div>
         </header>
-        <div className={`cpo-mode-notice ${demo ? 'is-demo' : ''}`}><FiInfo /><p>{demo ? <><strong>Data contoh · {DEMO_TIME.replace(':', '.')} WIB.</strong> Simulasi; bukan kejadian nyata.</> : <><strong>AI belum terhubung.</strong> CCTV dapat dipantau. Data dan alarm AI belum aktif.</>}</p><span className="cpo-notice-detail">Jadwal: draf browser</span></div>
+        {demo && <div className="cpo-mode-notice is-demo"><FiInfo /><p><strong>Data contoh · {DEMO_TIME.replace(':', '.')} WIB.</strong> Simulasi; bukan kejadian nyata.</p><span className="cpo-notice-detail">Jadwal: draf browser</span></div>}
         <section className="cpo-metrics" aria-label="Ringkasan aktivitas tanggal terpilih">{metrics.map(({ icon: Icon, label, value, unit, detail, warning }) => <button type="button" key={label} className={`cpo-metric ${warning ? 'cpo-metric--warning' : ''}`} onClick={() => { if (warning) reviewEvents(); else { setMobilePanel('activity'); setFilter(label === 'Di area' ? 'active' : 'all'); } }}><i><Icon /></i><div><span className="cpo-metric-label">{label}</span><strong>{demo && value !== null ? value : '—'}<small>{demo && value !== null && unit}</small></strong><p>{demo ? detail : 'Menunggu data AI'}</p></div>{warning && <FiChevronRight className="cpo-metric-arrow" />}</button>)}</section>
         <nav className="cpo-mobile-panels" aria-label="Panel CPO Loading">{[['monitor', FiCamera, 'CCTV'], ['captures', FiGrid, 'Capture'], ['activity', FiTruck, 'Aktivitas'], ['schedule', FiClock, 'Jadwal']].map(([value, Icon, label]) => <button type="button" key={value} aria-pressed={mobilePanel === value} onClick={() => setMobilePanel(value)}><Icon />{label}</button>)}</nav>
         <div className="cpo-workspace">
@@ -98,7 +98,7 @@ export default function CpoLoadingTab({ cctvCameras = [], user = {} }) {
                 <ActivityPanel visits={filtered} total={summary.visits.length} demo={demo} now={selectedNow} schedule={schedule} reviews={reviews} query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} filters={tableFilters} onSelect={setSelectedVisit} />
             </aside>
         </div>
-        <footer className="cpo-page-footer"><span><i />{demo ? 'Mode contoh · tidak mencatat kejadian nyata' : 'CCTV aktif sesuai akses · AI menunggu integrasi'}</span><span>Aktivitas di luar jadwal perlu verifikasi petugas.</span></footer>
+        {demo && <footer className="cpo-page-footer"><span><i />Mode contoh · tidak mencatat kejadian nyata</span><span>Aktivitas di luar jadwal perlu verifikasi petugas.</span></footer>}
         {scheduleTab && <ScheduleDialog schedule={schedule} initialTab={scheduleTab} selectedDate={selectedDate} user={user} canManage={canManage} onSave={saveSchedule} onClose={() => setScheduleTab(null)} />}
         {selectedVisit && <EventDetailsDialog visit={selectedVisit} schedule={schedule} now={selectedNow} review={reviews[selectedVisit.id]} canManage={canManage} onClose={() => setSelectedVisit(null)} onReview={review => { setReviews(previous => ({ ...previous, [selectedVisit.id]: review })); setMessage('Tinjauan contoh disimpan untuk sesi pratinjau ini.'); }} />}
         {message && <div className="cpo-toast" role="status"><FiCheckCircle /><span>{message}</span><button type="button" aria-label="Tutup pemberitahuan" onClick={() => setMessage('')}><FiX /></button></div>}

@@ -13,7 +13,6 @@
 .cpo-heading-title { margin-right: auto; flex-shrink: 0; }
 .cpo-eyebrow { color: #7d8c9b; font-size: 10px; font-weight: 700; letter-spacing: 1.25px; }
 .cpo-page-heading h1 { display: flex; align-items: center; gap: 10px; font-size: 25px; letter-spacing: -.7px; line-height: 1.2; }
-.cpo-design-tag { font-size: 10px; font-weight: 600; letter-spacing: 0; color: #8a6b24; background: #fff8df; border: 1px solid #f1e2ac; border-radius: 4px; padding: 3px 7px; }
 .cpo-heading-controls, .cpo-page-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .cpo-mode-switch { display: flex; gap: 2px; background: #edf2f6; border: 1px solid #dee6ed; padding: 3px; border-radius: 7px; }
 .cpo-mode-switch button { background: transparent; border: 0; border-radius: 4px; color: #738395; display: flex; align-items: center; gap: 6px; padding: 6px 10px; white-space: nowrap; font-size: 12px; font-weight: 600; }
@@ -78,6 +77,7 @@
 .cpo-camera-bottom { position: absolute; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; color: #c1d1da; font-size: 10px; background: linear-gradient(transparent,#081d2de6); }
 .cpo-camera-bottom > span { max-width: 68%; }
 .cpo-camera-bottom > div { display: flex; gap: 5px; }
+.cpo-camera-bottom > div:only-child { margin-left: auto; }
 .cpo-camera-bottom button { border: 1px solid #547080; border-radius: 4px; background: #1c3b4bb3; color: #e2ebef; display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 28px; height: 28px; padding: 5px 6px; font-size: 10px; }
 .cpo-camera-bottom button.selected { color: #e8ce79; border-color: #b5a664; }
 .cpo-monitor-footer { display: none; }
@@ -283,7 +283,6 @@
  .cpo-page-heading { flex-basis: 80px; }
  .cpo-eyebrow { font-size: 8px; letter-spacing: .8px; }
  .cpo-page-heading h1 { font-size: 20px; gap: 6px; }
- .cpo-design-tag { font-size: 8px; padding: 2px 4px; }
  .cpo-page-actions { gap: 5px; }
  .cpo-page-actions .cpo-button { padding: 7px; }
  .cpo-page-actions .cpo-button > span { display: none; }
@@ -345,7 +344,6 @@
 }
 @media (max-width: 800px) and (max-height: 700px) {
  .cpo-page-heading { flex-basis: 65px; }
- .cpo-heading-title .cpo-eyebrow, .cpo-heading-title .cpo-design-tag { display: none; }
  .cpo-metrics { flex-basis: 53px; }
  .cpo-metric-label { font-size: 9px; }
  .cpo-metric strong { font-size: 20px; }
