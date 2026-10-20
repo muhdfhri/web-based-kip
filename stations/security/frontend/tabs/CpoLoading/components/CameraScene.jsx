@@ -3,7 +3,7 @@ import { useId } from 'react';
 // Code-native illustration for explicitly labelled example mode; not CCTV evidence.
 export default function CameraScene({ compact = false }) {
     const id = useId().replaceAll(':', '');
-    return <svg viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid slice" className="cpo-camera-scene" role="img" aria-label="Ilustrasi area loading CPO dengan truk tangki; bukan rekaman CCTV">
+    return <svg viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid meet" className="cpo-camera-scene" role="img" aria-label="Ilustrasi area loading CPO dengan truk tangki; bukan rekaman CCTV">
         <defs>
             <linearGradient id={`${id}ground`} x2=".8" y2="1"><stop stopColor="#526268" /><stop offset="1" stopColor="#1d303b" /></linearGradient>
             <linearGradient id={`${id}tank`} x2="0" y2="1"><stop stopColor="#e0e9e8" /><stop offset=".4" stopColor="#aebfc3" /><stop offset="1" stopColor="#526d79" /></linearGradient>

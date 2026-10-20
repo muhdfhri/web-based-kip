@@ -12,9 +12,9 @@ export default function ScheduleDialog({ schedule, initialTab, selectedDate, use
     const [normal, setNormal] = useState({ ...schedule.normal, days: [...schedule.normal.days] });
     const makeSpecial = d => ({ date: d, start: schedule.normal.start, end: schedule.normal.end, reason: '', closed: false, ...schedule.exceptions[d] });
     const [special, setSpecial] = useState(() => makeSpecial(date));
-    const [error, setError] = useState('');
+    const [error, setError] = useState(''), [step, setStep] = useState(0);
     const tabId = useId();
-    const switchTab = value => { setTab(value); setError(''); };
+    const switchTab = value => { setTab(value); setError(''); setStep(0); };
     const moveTab = event => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
@@ -26,6 +26,7 @@ export default function ScheduleDialog({ schedule, initialTab, selectedDate, use
     const submit = event => {
         event.preventDefault();
         if (!canManage) return;
+        if (tab === 'special' && step === 0) { setStep(1); return; }
         const invalid = tab === 'normal' ? validateNormal(normal) : validateException(special, today);
         if (invalid) { setError(invalid); return; }
         const audit = { updatedBy: actor, updatedAt: new Date().toISOString() };
@@ -41,36 +42,36 @@ export default function ScheduleDialog({ schedule, initialTab, selectedDate, use
         if (onSave({ ...schedule, exceptions })) onClose();
         else setError('Draf belum dapat dihapus dari penyimpanan browser.');
     };
-    return <Dialog title="Jadwal operasional" eyebrow="PENGATURAN CPO LOADING" onClose={onClose}>
+    return <Dialog title="Jadwal operasional" eyebrow="PENGATURAN CPO LOADING" className="cpo-schedule-dialog" onClose={onClose}>
         <div className="cpo-dialog-tabs" role="tablist" aria-label="Jenis jadwal" onKeyDown={moveTab}>
             <button id={`${tabId}-normal`} type="button" role="tab" aria-controls={`${tabId}-panel`} tabIndex={tab === 'normal' ? 0 : -1} aria-selected={tab === 'normal'} onClick={() => switchTab('normal')}><FiClock />Jadwal normal</button>
             <button id={`${tabId}-special`} type="button" role="tab" aria-controls={`${tabId}-panel`} tabIndex={tab === 'special' ? 0 : -1} aria-selected={tab === 'special'} onClick={() => switchTab('special')}><FiCalendar />Jadwal khusus</button>
         </div>
-        <form onSubmit={submit}>
+        <form onSubmit={submit} className="cpo-schedule-form">
             <div id={`${tabId}-panel`} className="cpo-form-content" role="tabpanel" aria-labelledby={`${tabId}-${tab}`}>
-                <div className="cpo-notice cpo-notice--blue"><FiInfo /><p><strong>Draf pengaturan UI</strong>Disimpan hanya di browser dan akun ini. Jadwal ini belum mengubah alarm, model AI, atau pengaturan pengguna lain.</p></div>
-                {!canManage && <div className="cpo-notice"><FiLock /><p>Anda dapat melihat jadwal. Perubahan jadwal hanya untuk manajemen.</p></div>}
+                <div className="cpo-notice"><FiInfo /><p><strong>Draf browser per akun.</strong> Belum mengubah alarm, AI, atau jadwal pengguna lain.</p></div>
+                {!canManage && <p className="cpo-read-only"><FiLock />Hanya manajemen dapat mengubah jadwal.</p>}
+                {tab === 'special' && <div className="cpo-step-switch" aria-label="Langkah jadwal khusus"><button type="button" aria-pressed={step === 0} onClick={() => setStep(0)}>1. Tanggal & waktu</button><button type="button" aria-pressed={step === 1} onClick={() => setStep(1)}>2. Alasan & konfirmasi</button></div>}
                 <fieldset disabled={!canManage}>
                     {tab === 'normal' ? <>
-                        <div className="cpo-form-intro"><h3>Jam kerja yang berlaku rutin</h3><p>Perubahan jadwal normal berlaku seterusnya sampai manajemen mengubahnya kembali.</p></div>
-                        <div className="cpo-time-fields"><label>Jam mulai<input required type="time" value={normal.start} onChange={event => setNormal({ ...normal, start: event.target.value })} /></label><span>—</span><label>Jam selesai<input required type="time" value={normal.end} onChange={event => setNormal({ ...normal, end: event.target.value })} /></label><span className="cpo-timezone">WIB</span></div>
-                        {normal.start > normal.end && <p className="cpo-form-hint">Jadwal lintas hari: selesai pada hari berikutnya.</p>}
-                        <label className="cpo-field-label">Hari operasional</label>
-                        <div className="cpo-day-picker">{DAYS.map(([day, label]) => <button key={day} type="button" aria-pressed={normal.days.includes(day)} onClick={() => setNormal({ ...normal, days: normal.days.includes(day) ? normal.days.filter(d => d !== day) : [...normal.days, day] })}>{label}</button>)}</div>
-                        <p className="cpo-form-hint">Hari tanpa pilihan dianggap tidak beroperasi. Default awal: setiap hari, 07.00–17.00 WIB.</p>
-                    </> : <>
-                        <div className="cpo-form-intro"><h3>Pengecualian untuk satu tanggal</h3><p>Untuk kedatangan terlambat, perpanjangan jam, atau penutupan sementara. Tidak mengubah jadwal normal.</p></div>
+                        <div className="cpo-form-intro"><h3>Jadwal rutin</h3><p>Berlaku seterusnya sampai diubah manajemen.</p></div>
+                        <div className="cpo-time-fields"><label>Jam mulai<input required type="time" value={normal.start} onChange={event => setNormal({ ...normal, start: event.target.value })} /></label><span>—</span><label>Jam selesai<input required type="time" value={normal.end} onChange={event => setNormal({ ...normal, end: event.target.value })} /></label><span>WIB</span></div>
+                        <label className="cpo-field-label">Hari operasional</label><div className="cpo-day-picker">{DAYS.map(([day, label]) => <button key={day} type="button" aria-pressed={normal.days.includes(day)} onClick={() => setNormal({ ...normal, days: normal.days.includes(day) ? normal.days.filter(d => d !== day) : [...normal.days, day] })}>{label}</button>)}</div>
+                        <p className="cpo-form-hint">{normal.start > normal.end ? 'Lintas hari: selesai pada hari berikutnya.' : 'Hari yang tidak dipilih dianggap tidak beroperasi.'}</p>
+                    </> : step === 0 ? <>
                         <label>Tanggal berlaku<input required type="date" min={today} value={special.date} onChange={event => { setSpecial(makeSpecial(event.target.value)); setError(''); }} /></label>
-                        <label className="cpo-checkbox"><input type="checkbox" checked={special.closed} onChange={event => setSpecial({ ...special, closed: event.target.checked })} /><span>Area tidak beroperasi pada tanggal ini</span></label>
-                        {!special.closed && <div className="cpo-time-fields"><label>Jam mulai<input required type="time" value={special.start} onChange={event => setSpecial({ ...special, start: event.target.value })} /></label><span>—</span><label>Jam selesai<input required type="time" value={special.end} onChange={event => setSpecial({ ...special, end: event.target.value })} /></label><span className="cpo-timezone">WIB</span></div>}
-                        <label>Alasan perubahan <span className="cpo-required">*</span><textarea required maxLength={300} rows={3} placeholder="Contoh: kedatangan truk terlambat, loading diperpanjang hingga 21.00 WIB." value={special.reason} onChange={event => setSpecial({ ...special, reason: event.target.value })} /></label>
-                        <div className="cpo-return-note"><FiRotateCcw /><div><strong>Kembali otomatis ke jadwal normal</strong><span>Setelah {special.date ? formatDate(special.date) : 'tanggal tersebut'}, tanggal berikutnya kembali memakai jadwal normalnya, kecuali memiliki pengecualian tersendiri.</span></div></div>
+                        <label className="cpo-checkbox"><input type="checkbox" checked={special.closed} onChange={event => setSpecial({ ...special, closed: event.target.checked })} /><span>Tidak beroperasi pada tanggal ini</span></label>
+                        {!special.closed && <div className="cpo-time-fields"><label>Jam mulai<input required type="time" value={special.start} onChange={event => setSpecial({ ...special, start: event.target.value })} /></label><span>—</span><label>Jam selesai<input required type="time" value={special.end} onChange={event => setSpecial({ ...special, end: event.target.value })} /></label><span>WIB</span></div>}
+                        <p className="cpo-form-hint">Menggantikan jadwal normal hanya pada tanggal ini.</p>
+                    </> : <>
+                        <div className="cpo-confirm-schedule"><span>{special.date ? formatDate(special.date) : 'Pilih tanggal'}</span><strong>{scheduleLabel({ ...special, open: !special.closed })}</strong></div>
+                        <label>Alasan perubahan<input required type="text" maxLength={300} placeholder="Contoh: kedatangan truk terlambat" value={special.reason} onChange={event => setSpecial({ ...special, reason: event.target.value })} /></label>
+                        <div className="cpo-return-note"><FiRotateCcw /><p><strong>Kembali otomatis ke jadwal normal</strong>Tanggal berikutnya memakai jadwal normal, kecuali ada pengecualian lain.</p></div>
                     </>}
                 </fieldset>
-                {tab === 'special' && schedule.exceptions[special.date] && <div className="cpo-existing-exception"><div><strong>Draf khusus sudah tersimpan</strong><span>{scheduleLabel({ ...schedule.exceptions[special.date], open: !schedule.exceptions[special.date].closed })} · {schedule.exceptions[special.date].updatedBy || 'Manajemen'}</span></div>{canManage && <button type="button" className="cpo-text-button cpo-danger-text" onClick={removeSpecial}>Hapus pengecualian</button>}</div>}
-                {error && <p className="cpo-form-error" role="alert">{error}</p>}
+                {tab === 'special' && schedule.exceptions[special.date] && <div className="cpo-existing-exception"><span>Draf khusus tersimpan</span>{canManage && <button type="button" className="cpo-text-button" onClick={removeSpecial}>Hapus pengecualian</button>}</div>}
             </div>
-            <footer className="cpo-dialog-footer"><span>Zona waktu: Asia/Jakarta</span><div><button type="button" className="cpo-button" onClick={onClose}>Tutup</button>{canManage && <button type="submit" className="cpo-button cpo-button--primary"><FiSave />Simpan draf</button>}</div></footer>
+            <footer className="cpo-dialog-footer"><div className="cpo-dialog-feedback">{error ? <p role="alert">{error}</p> : <span>Asia/Jakarta · WIB</span>}</div><div>{tab === 'special' && step === 1 ? <button type="button" className="cpo-button" onClick={() => { setStep(0); setError(''); }}>Kembali</button> : <button type="button" className="cpo-button" onClick={onClose}>Tutup</button>}{tab === 'special' && step === 0 ? <button type="button" className="cpo-button cpo-button--primary" onClick={event => { event.preventDefault(); const invalid = validateException({ ...special, reason: 'validation' }, today); if (invalid) setError(invalid); else { setStep(1); setError(''); } }}>Lanjut</button> : canManage && <button type="submit" className="cpo-button cpo-button--primary"><FiSave />Simpan draf</button>}</div></footer>
         </form>
     </Dialog>;
 }

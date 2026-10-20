@@ -2,7 +2,7 @@ import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FiX } from 'react-icons/fi';
 
-export default function Dialog({ title, eyebrow, children, onClose, wide = false }) {
+export default function Dialog({ title, eyebrow, children, onClose, wide = false, className = '' }) {
     const ref = useRef(null), titleId = useId();
     useEffect(() => {
         const dialog = ref.current, previousFocus = document.activeElement;
@@ -12,7 +12,7 @@ export default function Dialog({ title, eyebrow, children, onClose, wide = false
             if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
         };
     }, []);
-    return createPortal(<dialog ref={ref} className={`cpo-dialog ${wide ? 'cpo-dialog--wide' : ''}`} aria-labelledby={titleId}
+    return createPortal(<dialog ref={ref} className={`cpo-dialog ${wide ? 'cpo-dialog--wide' : ''} ${className}`} aria-labelledby={titleId}
         onCancel={event => { event.preventDefault(); onClose(); }}
         onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
         <div className="cpo-dialog-inner">
