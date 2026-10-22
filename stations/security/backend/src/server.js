@@ -42,6 +42,33 @@ app.use('/api/upload', uploadRoutes);
 // ── Static Files (Uploads) ──
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// ── App Update & Version Check (Self-Hosted OTA) ──
+const APP_VERSION_CONFIG = {
+  version: '1.0.1',
+  build_number: 2,
+  apk_url: '/uploads/app-release.apk',
+  force_update: false,
+  release_notes: 'Pembaruan UI Patrol Map & Otorisasi Petugas Keamanan',
+  released_at: '2026-10-22'
+};
+
+app.get(['/api/security/app-version', '/api/app-version'], (_req, res) => {
+  res.json({
+    success: true,
+    data: APP_VERSION_CONFIG
+  });
+});
+
+// Endpoint untuk update konfigurasi versi dari admin jika dibutuhkan nanti
+app.post('/api/security/app-version', (req, res) => {
+  const { version, build_number, release_notes, force_update } = req.body;
+  if (version) APP_VERSION_CONFIG.version = version;
+  if (build_number) APP_VERSION_CONFIG.build_number = Number(build_number);
+  if (release_notes) APP_VERSION_CONFIG.release_notes = release_notes;
+  if (force_update !== undefined) APP_VERSION_CONFIG.force_update = Boolean(force_update);
+  res.json({ success: true, message: 'App version updated', data: APP_VERSION_CONFIG });
+});
+
 // ── Health ──
 const getHealthResponse = () => ({
   success: true,

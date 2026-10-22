@@ -28,6 +28,60 @@ async function broadcastQueueEvent(event, data) {
 // due to real-world operations needing manual control to avoid chaotic queues.
 
 /**
+ * 🏭 Helper Menentukan Window Siklus Operasional Antrean Truk:
+ * - Weekday (Senin - Sabtu): Cut-off jam 20:00 Malam (berjalan 20:00 s/d 20:00 hari berikutnya)
+ * - Weekend (Minggu): Penerimaan hanya s/d jam 12:00 Siang.
+ *   - Siklus Sabtu Malam s/d Minggu Siang: Sabtu 20:00 s/d Minggu 12:00
+ *   - Siklus Minggu Siang s/d Senin Malam: Minggu 12:00 s/d Senin 20:00
+ * Siklus menghasilkan format: [KODE_KOMODITAS][TANGGAL_SIKLUS]-[NOMOR_URUT] (misal: M22-001)
+ */
+export function getQueueCycleWindow(dateObj = new Date()) {
+  const day = dateObj.getDay(); // 0: Minggu, 1: Senin, ..., 6: Sabtu
+  const hours = dateObj.getHours();
+
+  let cycleStart = new Date(dateObj);
+  let operationalDate = new Date(dateObj);
+
+  if (day === 0) {
+    // MINGGU: Cut-off jam 12:00 siang
+    if (hours >= 12) {
+      // Minggu jam 12:00 siang ke atas -> siklus dimulai Minggu 12:00
+      cycleStart.setHours(12, 0, 0, 0);
+    } else {
+      // Minggu pagi sebelum jam 12:00 -> siklus dari Sabtu jam 20:00 malam
+      cycleStart.setDate(cycleStart.getDate() - 1);
+      cycleStart.setHours(20, 0, 0, 0);
+    }
+  } else if (day === 1) {
+    // SENIN: Cut-off jam 20:00 malam
+    if (hours >= 20) {
+      // Senin jam 20:00 ke atas -> siklus dimulai Senin 20:00
+      cycleStart.setHours(20, 0, 0, 0);
+    } else {
+      // Senin sebelum jam 20:00 -> siklus dari Minggu kemarin jam 12:00 siang
+      cycleStart.setDate(cycleStart.getDate() - 1);
+      cycleStart.setHours(12, 0, 0, 0);
+    }
+  } else {
+    // SELASA - SABTU: Cut-off jam 20:00 malam
+    if (hours >= 20) {
+      // Jam 20:00 ke atas -> siklus dimulai hari ini jam 20:00
+      cycleStart.setHours(20, 0, 0, 0);
+    } else {
+      // Sebelum jam 20:00 -> siklus dimulai kemarin jam 20:00
+      cycleStart.setDate(cycleStart.getDate() - 1);
+      cycleStart.setHours(20, 0, 0, 0);
+    }
+  }
+
+  const pad = (n) => n.toString().padStart(2, '0');
+  const cycleStartStr = `${cycleStart.getFullYear()}-${pad(cycleStart.getMonth() + 1)}-${pad(cycleStart.getDate())} ${pad(cycleStart.getHours())}:${pad(cycleStart.getMinutes())}:${pad(cycleStart.getSeconds())}`;
+  const opDayStr = pad(operationalDate.getDate());
+
+  return { cycleStart, cycleStartStr, opDayStr };
+}
+
+/**
  * GET /api/security/queues/classifications
  */
 router.get('/classifications', async (req, res) => {
@@ -100,12 +154,13 @@ router.get('/next-sequence/:code', async (req, res) => {
   const upperCode = (code || 'U').toUpperCase();
 
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const { cycleStartStr, opDayStr } = getQueueCycleWindow(new Date());
+
     const [rows] = await dbPool.query(
       `SELECT queue_code, sequence_number FROM security_truck_queues 
-       WHERE classification_code = ?
+       WHERE classification_code = ? AND created_at >= ?
        ORDER BY sequence_number DESC, id DESC LIMIT 1`,
-      [upperCode]
+      [upperCode, cycleStartStr]
     );
 
     let nextNum = 1;
@@ -123,7 +178,7 @@ router.get('/next-sequence/:code', async (req, res) => {
 
     let ticketNumber = null;
     do {
-      const candidate = `${upperCode}-${String(nextNum).padStart(3, '0')}`;
+      const candidate = `${upperCode}${opDayStr}-${String(nextNum).padStart(3, '0')}`;
       const [exist] = await dbPool.query(
         'SELECT id FROM security_truck_queues WHERE queue_code = ?',
         [candidate]
@@ -138,7 +193,8 @@ router.get('/next-sequence/:code', async (req, res) => {
     res.json({ success: true, ticket_number: ticketNumber });
   } catch (error) {
     console.error('Error generating next sequence:', error);
-    res.json({ success: true, ticket_number: `${upperCode}-001` });
+    const { opDayStr } = getQueueCycleWindow(new Date());
+    res.json({ success: true, ticket_number: `${upperCode}${opDayStr}-001` });
   }
 });
 
@@ -165,6 +221,8 @@ const getQueueList = async (req, res) => {
       whereClause = 'WHERE DATE(COALESCE(q.check_in_at, q.created_at)) = ?';
       params.push(date);
     }
+
+    const { cycleStartStr } = getQueueCycleWindow(new Date());
 
     const [rows] = await dbPool.query(
       `SELECT 
@@ -203,13 +261,17 @@ const getQueueList = async (req, res) => {
         q.created_at AS createdAt,
         q.created_at,
         q.updated_at AS updatedAt,
-        q.updated_at
+        q.updated_at,
+        CASE 
+          WHEN q.status = 'WAITING' AND COALESCE(q.check_in_at, q.created_at) < '${cycleStartStr}' THEN 1 
+          ELSE 0 
+        END AS is_carry_over
        FROM security_truck_queues q
        LEFT JOIN (
          SELECT DISTINCT ON (code) code, label FROM security_queue_classifications ORDER BY code, id
        ) c ON q.classification_code = c.code
        ${whereClause}
-       ORDER BY q.check_in_at DESC`,
+       ORDER BY is_carry_over DESC, q.check_in_at ASC`,
       params
     );
 
@@ -326,13 +388,15 @@ const createQueueHandler = async (req, res) => {
       registeredByName = 'System';
     }
 
+    const { cycleStartStr, opDayStr } = getQueueCycleWindow(new Date());
     const today = new Date().toISOString().split('T')[0];
     
+    // 🏭 Cari sequence tertinggi yang terdaftar pada siklus operasional saat ini
     const [seqRows] = await dbPool.query(
       `SELECT sequence_number, queue_code FROM security_truck_queues 
-       WHERE classification_code = ?
+       WHERE classification_code = ? AND created_at >= ?
        ORDER BY sequence_number DESC, id DESC LIMIT 1`,
-      [finalClassCode]
+      [finalClassCode, cycleStartStr]
     );
 
     let nextSeq = 1;
@@ -351,7 +415,7 @@ const createQueueHandler = async (req, res) => {
     let finalQueueCode = queueCode || queue_number;
     if (!finalQueueCode) {
       do {
-        const candidate = `${finalClassCode}-${String(nextSeq).padStart(3, '0')}`;
+        const candidate = `${finalClassCode}${opDayStr}-${String(nextSeq).padStart(3, '0')}`;
         const [exist] = await dbPool.query(
           'SELECT id FROM security_truck_queues WHERE queue_code = ?',
           [candidate]
@@ -369,7 +433,7 @@ const createQueueHandler = async (req, res) => {
       );
       if (exist.length > 0) {
         do {
-          const candidate = `${finalClassCode}-${String(nextSeq).padStart(3, '0')}`;
+          const candidate = `${finalClassCode}${opDayStr}-${String(nextSeq).padStart(3, '0')}`;
           const [existCand] = await dbPool.query(
             'SELECT id FROM security_truck_queues WHERE queue_code = ?',
             [candidate]
