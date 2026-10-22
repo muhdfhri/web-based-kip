@@ -41,12 +41,25 @@ app.use('/api/upload', uploadRoutes);
 
 // ── Static Files (Uploads) ──
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use(`/api/${STATION_SLUG}/uploads`, express.static(path.join(__dirname, '../uploads')));
+app.use(`/api/${STATION_SLUG}/apk`, express.static(path.join(__dirname, '../uploads/apk')));
+
+// Endpoint khusus download APK yang pasti lolos proxy Cloudflare
+app.get([`/api/${STATION_SLUG}/download-apk`, '/api/security/download-apk'], (_req, res) => {
+  const filePath = path.join(__dirname, '../uploads/apk/mewah-v1.0.1.apk');
+  res.download(filePath, 'mewah-v1.0.1.apk', (err) => {
+    if (err) {
+      console.error('[APK Download] File not found or error:', err.message);
+      if (!res.headersSent) res.status(404).send('APK file not found on server');
+    }
+  });
+});
 
 // ── App Update & Version Check (Self-Hosted OTA) ──
 const APP_VERSION_CONFIG = {
   version: '1.0.1',
   build_number: 2,
-  apk_url: '/uploads/apk/mewah-v1.0.1.apk',
+  apk_url: '/api/security/apk/mewah-v1.0.1.apk',
   force_update: false,
   release_notes: 'Pembaruan UI Patroli & Antrean Truk.',
   released_at: '2026-10-22'
