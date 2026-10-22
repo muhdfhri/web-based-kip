@@ -48,7 +48,7 @@ const APP_VERSION_CONFIG = {
   build_number: 2,
   apk_url: '/uploads/apk/mewah-v1.0.1.apk',
   force_update: false,
-  release_notes: 'Pembaruan UI Patrol Map & Otorisasi Petugas Keamanan',
+  release_notes: 'Pembaruan UI Patroli & Antrean Truk.',
   released_at: '2026-10-22'
 };
 
