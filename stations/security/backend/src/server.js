@@ -46,7 +46,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 const APP_VERSION_CONFIG = {
   version: '1.0.1',
   build_number: 2,
-  apk_url: '/uploads/app-release.apk',
+  apk_url: '/uploads/mewah-v1.0.1.apk',
   force_update: false,
   release_notes: 'Pembaruan UI Patrol Map & Otorisasi Petugas Keamanan',
   released_at: '2026-10-22'
