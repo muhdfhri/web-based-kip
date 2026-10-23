@@ -212,14 +212,27 @@ const getQueueList = async (req, res) => {
     const toDate = endDate || end_date;
 
     if (fromDate && toDate) {
-      whereClause = 'WHERE DATE(COALESCE(q.check_in_at, q.created_at)) >= ? AND DATE(COALESCE(q.check_in_at, q.created_at)) <= ?';
-      params.push(fromDate, toDate);
+      // Sertakan data dalam rentang tanggal, ATAU antrean dari hari sebelumnya yang belum terselesaikan
+      whereClause = `WHERE (
+        (DATE(COALESCE(q.check_in_at, q.created_at)) >= ? AND DATE(COALESCE(q.check_in_at, q.created_at)) <= ?)
+        OR
+        (q.status IN ('WAITING', 'WEIGH_IN', 'GRADING', 'PENDING') AND DATE(COALESCE(q.check_in_at, q.created_at)) < ?)
+      )`;
+      params.push(fromDate, toDate, fromDate);
     } else if (fromDate) {
-      whereClause = 'WHERE DATE(COALESCE(q.check_in_at, q.created_at)) = ?';
-      params.push(fromDate);
+      whereClause = `WHERE (
+        DATE(COALESCE(q.check_in_at, q.created_at)) = ?
+        OR
+        (q.status IN ('WAITING', 'WEIGH_IN', 'GRADING', 'PENDING') AND DATE(COALESCE(q.check_in_at, q.created_at)) < ?)
+      )`;
+      params.push(fromDate, fromDate);
     } else if (date) {
-      whereClause = 'WHERE DATE(COALESCE(q.check_in_at, q.created_at)) = ?';
-      params.push(date);
+      whereClause = `WHERE (
+        DATE(COALESCE(q.check_in_at, q.created_at)) = ?
+        OR
+        (q.status IN ('WAITING', 'WEIGH_IN', 'GRADING', 'PENDING') AND DATE(COALESCE(q.check_in_at, q.created_at)) < ?)
+      )`;
+      params.push(date, date);
     }
 
     const { cycleStartStr } = getQueueCycleWindow(new Date());
@@ -263,7 +276,7 @@ const getQueueList = async (req, res) => {
         q.updated_at AS updatedAt,
         q.updated_at,
         CASE 
-          WHEN q.status = 'WAITING' AND COALESCE(q.check_in_at, q.created_at) < '${cycleStartStr}' THEN 1 
+          WHEN q.status IN ('WAITING', 'WEIGH_IN', 'GRADING', 'PENDING') AND (DATE(COALESCE(q.check_in_at, q.created_at)) < CURRENT_DATE OR COALESCE(q.check_in_at, q.created_at) < '${cycleStartStr}') THEN 1 
           ELSE 0 
         END AS is_carry_over
        FROM security_truck_queues q

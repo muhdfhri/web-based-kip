@@ -46,8 +46,8 @@ app.use(`/api/${STATION_SLUG}/apk`, express.static(path.join(__dirname, '../uplo
 
 // Endpoint khusus download APK yang pasti lolos proxy Cloudflare
 app.get([`/api/${STATION_SLUG}/download-apk`, '/api/security/download-apk'], (_req, res) => {
-  const filePath = path.join(__dirname, '../uploads/apk/mewah-v1.0.1.apk');
-  res.download(filePath, 'mewah-v1.0.1.apk', (err) => {
+  const filePath = path.join(__dirname, '../uploads/apk/mewah-v1.0.6.apk');
+  res.download(filePath, 'mewah-v1.0.6.apk', (err) => {
     if (err) {
       console.error('[APK Download] File not found or error:', err.message);
       if (!res.headersSent) res.status(404).send('APK file not found on server');
@@ -57,12 +57,12 @@ app.get([`/api/${STATION_SLUG}/download-apk`, '/api/security/download-apk'], (_r
 
 // ── App Update & Version Check (Self-Hosted OTA) ──
 const APP_VERSION_CONFIG = {
-  version: '1.0.1',
-  build_number: 2,
-  apk_url: '/api/security/apk/mewah-v1.0.1.apk',
+  version: '1.0.6',
+  build_number: 7,
+  apk_url: '/api/security/apk/mewah-v1.0.6.apk',
   force_update: false,
-  release_notes: 'Pembaruan UI Patroli & Antrean Truk.',
-  released_at: '2026-10-22'
+  release_notes: 'Peningkatan stabilitas dan pembaruan tampilan antrean truk.',
+  released_at: '2026-10-23'
 };
 
 app.get(['/api/security/app-version', '/api/app-version'], (_req, res) => {
