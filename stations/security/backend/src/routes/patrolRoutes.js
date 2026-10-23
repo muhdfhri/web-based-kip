@@ -176,10 +176,15 @@ const getActiveGuardsHandler = async (req, res) => {
   try {
     const { shift, round_number, work_date } = calculateAutoShift(new Date());
 
-    // Tidak mematikan sesi aktif secara paksa saat pergantian round agar satpam tetap bisa submit checkpoint dan end patrol normal.
+    // 🛡️ Auto-close sesi usang yang sudah melewati jadwal shift atau ronde berjalan
+    await dbPool.query(`
+      UPDATE security_patrol_sessions 
+      SET status = 'completed', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE status = 'active' 
+        AND (work_date < ? OR shift != ? OR round_number != ?)
+    `, [work_date, shift, round_number]);
 
-
-    // Tampilkan HANYA guard yang sedang memiliki sesi patroli AKTIF (status = 'active')
+    // Tampilkan HANYA guard yang sedang memiliki sesi patroli AKTIF pada shift & round berjalan
     const [rows] = await dbPool.query(`
       SELECT 
         s.id as session_id,
@@ -196,8 +201,11 @@ const getActiveGuardsHandler = async (req, res) => {
       FROM security_patrol_sessions s
       LEFT JOIN security_guards_status gs ON gs.user_id = s.guard_id
       WHERE s.status = 'active' 
+        AND s.work_date = ? 
+        AND s.shift = ? 
+        AND s.round_number = ?
       ORDER BY s.started_at DESC
-    `);
+    `, [work_date, shift, round_number]);
 
     let finalRows = rows;
     try {
@@ -263,29 +271,30 @@ router.get('/sessions/active', async (req, res) => {
   }
 
   try {
-    // 1. Prioritaskan cari sesi patroli yang aktif milik guard ini sendiri
+    const { shift, round_number, work_date } = calculateAutoShift(new Date());
+
+    // 🛡️ Auto-close sesi usang yang sudah melewati jadwal shift atau ronde berjalan
+    await dbPool.query(`
+      UPDATE security_patrol_sessions 
+      SET status = 'completed', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE status = 'active' 
+        AND (work_date < ? OR shift != ? OR round_number != ?)
+    `, [work_date, shift, round_number]);
+
+    // 1. Prioritaskan cari sesi patroli yang aktif milik guard ini sendiri PADA SHIFT & ROUND BERJALAN
     let [sessions] = await dbPool.query(
-      "SELECT * FROM security_patrol_sessions WHERE guard_id = ? AND status = 'active' ORDER BY id DESC LIMIT 1",
-      [guard_id]
+      "SELECT * FROM security_patrol_sessions WHERE guard_id = ? AND status = 'active' AND work_date = ? AND shift = ? AND round_number = ? ORDER BY id DESC LIMIT 1",
+      [guard_id, work_date, shift, round_number]
     );
 
     // 2. Jika tidak ada sesi personal, cari sesi tim yang aktif di shift/ronde saat ini
     if (sessions.length === 0) {
-      const { shift, round_number, work_date } = calculateAutoShift(new Date());
       const [teamSessions] = await dbPool.query(
-        "SELECT * FROM security_patrol_sessions WHERE status = 'active' AND (work_date = ? OR DATE(started_at) = CURRENT_DATE) AND shift = ? AND round_number = ? ORDER BY id DESC LIMIT 1",
+        "SELECT * FROM security_patrol_sessions WHERE status = 'active' AND work_date = ? AND shift = ? AND round_number = ? ORDER BY id DESC LIMIT 1",
         [work_date, shift, round_number]
       );
       if (teamSessions.length > 0) {
         sessions = teamSessions;
-      } else {
-        // 3. Fallback: Sesi patroli aktif apapun yang sedang berlangsung
-        const [anyActive] = await dbPool.query(
-          "SELECT * FROM security_patrol_sessions WHERE status = 'active' ORDER BY id DESC LIMIT 1"
-        );
-        if (anyActive.length > 0) {
-          sessions = anyActive;
-        }
       }
     }
 
